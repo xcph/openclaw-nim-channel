@@ -13,10 +13,11 @@
 - [x] 3.2 添加 `deliveryMode: "gateway"` 配置
 - [x] 3.3 配置 `textChunkLimit: 5000`
 - [x] 3.4 集成 `splitMessageIntoChunks` 作为 chunker
+- [x] 3.5 修复 `reply-dispatcher.ts`，使用 SDK 的 `createReplyDispatcherWithTyping` 创建正确格式的 dispatcher（支持 `sendBlockReply`/`sendToolResult`/`sendFinalReply` 方法）
 
 ## 4. 验证与测试
-- [ ] 4.1 本地测试：通过 NIM 客户端发送消息给 MoltBot
-- [ ] 4.2 验证 MoltBot 处理后能够回复消息到 NIM 客户端
+- [x] 4.1 本地测试：通过 NIM 客户端发送消息给 MoltBot
+- [x] 4.2 验证 MoltBot 处理后能够回复消息到 NIM 客户端
 - [ ] 4.3 测试长消息自动分割功能
 - [ ] 4.4 测试媒体消息发送功能
 

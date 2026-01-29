@@ -1,6 +1,6 @@
 {
   "name": "moltbot-nim",
-  "version": "0.1.2",
+  "version": "0.1.5",
   "type": "module",
   "description": "MoltBot NIM (NetEase IM) channel plugin",
   "license": "MIT",
