@@ -13,20 +13,19 @@ A [Clawdbot](https://clawdbot.dev) channel plugin for NetEase IM (网易云信).
 ## Installation
 
 ```bash
-npm install moltbot-nim
-```
-
-Or add to your Clawdbot configuration:
-
-```json
-{
-  "plugins": ["moltbot-nim"]
-}
+clawdbot plugins install moltbot-nim
 ```
 
 ## Configuration
 
-Add the following to your Clawdbot configuration (`clawdbot.yaml` or `clawdbot.json`):
+```bash
+clawdbot config set channels.nim.appKey "your-app-key"
+clawdbot config set channels.nim.account "your-bot-account-id"
+clawdbot config set channels.nim.token "your-auth-token"
+clawdbot config set channels.nim.enabled true     
+```
+
+Or add the following to your Clawdbot configuration (`clawdbot.yaml` or `clawdbot.json`):
 
 ```yaml
 channels:
@@ -58,6 +57,12 @@ channels:
 | `lbsUrl` | string | - | Custom LBS server URL (for private deployment) |
 | `linkUrl` | string | - | Custom Link server URL (for private deployment) |
 | `debug` | boolean | `false` | Enable SDK debug logging |
+
+## Start the Bot
+
+```bash
+clawdbot onboard
+```
 
 ## Getting Credentials
 
