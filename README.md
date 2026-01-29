@@ -13,14 +13,14 @@ A [Clawdbot](https://clawdbot.dev) channel plugin for NetEase IM (网易云信).
 ## Installation
 
 ```bash
-npm install @moltbot/nim
+npm install moltbot-nim
 ```
 
 Or add to your Clawdbot configuration:
 
 ```json
 {
-  "plugins": ["@moltbot/nim"]
+  "plugins": ["moltbot-nim"]
 }
 ```
 
@@ -71,7 +71,7 @@ channels:
 ### Sending Messages
 
 ```typescript
-import { sendMessageNim, sendImageNim } from "@moltbot/nim";
+import { sendMessageNim, sendImageNim } from "moltbot-nim";
 
 // Send text message
 await sendMessageNim({
