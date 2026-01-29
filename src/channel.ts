@@ -4,7 +4,7 @@ import { resolveNimAccount, resolveNimCredentials, DEFAULT_NIM_ACCOUNT_ID } from
 import { normalizeNimTarget, looksLikeNimId } from "./targets.js";
 import { sendMessageNim } from "./send.js";
 import { probeNim } from "./probe.js";
-import { nimOutbound } from "./outbound.js";
+import { nimOutboundConfig } from "./outbound.js";
 
 /**
  * Channel plugin metadata.
@@ -144,7 +144,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       hint: "<accountId|user:accountId|nim:accountId>",
     },
   },
-  outbound: nimOutbound,
+  outbound: nimOutboundConfig,
   status: {
     defaultRuntime: {
       accountId: DEFAULT_NIM_ACCOUNT_ID,

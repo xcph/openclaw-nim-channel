@@ -9,6 +9,16 @@ export { monitorNimProvider, stopNimMonitor, isNimMonitorRunning } from "./src/m
 // Export send functions
 export { sendMessageNim, editMessageNim, getMessageNim, sendLongMessageNim } from "./src/send.js";
 
+// Export outbound functions
+export { 
+  nimOutboundConfig, 
+  sendNimOutboundText, 
+  sendNimOutboundMedia, 
+  resolveNimOutboundTarget,
+  nimOutbound,
+  type NimOutboundResult,
+} from "./src/outbound.js";
+
 // Export media functions
 export { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, downloadNimMedia } from "./src/media.js";
 
