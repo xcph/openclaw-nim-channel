@@ -51,7 +51,7 @@ export { resolveNimCredentials, resolveNimAccount, isNimDmAllowed } from "./src/
  * A Clawdbot channel plugin for NetEase IM (NIM).
  */
 const plugin = {
-  id: "nim",
+  id: "moltbot-nim",
   name: "NIM",
   description: "NetEase IM (网易云信) channel plugin",
   configSchema: emptyPluginConfigSchema(),
