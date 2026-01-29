@@ -1,0 +1,9 @@
+{
+  "id": "nim",
+  "channels": ["nim"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

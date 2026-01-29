@@ -1,0 +1,54 @@
+import type { ClawdbotPluginApi } from "clawdbot/plugin-sdk";
+import { emptyPluginConfigSchema } from "clawdbot/plugin-sdk";
+import { nimPlugin } from "./src/channel.js";
+import { setNimRuntime } from "./src/runtime.js";
+
+// Export monitor functions
+export { monitorNimProvider, stopNimMonitor, isNimMonitorRunning } from "./src/monitor.js";
+
+// Export send functions
+export { sendMessageNim, editMessageNim, getMessageNim, sendLongMessageNim } from "./src/send.js";
+
+// Export media functions
+export { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, downloadNimMedia } from "./src/media.js";
+
+// Export probe function
+export { probeNim, probeNimWithConnect } from "./src/probe.js";
+
+// Export channel plugin
+export { nimPlugin } from "./src/channel.js";
+
+// Export types
+export type {
+  NimConfig,
+  NimMessageContext,
+  NimSendResult,
+  NimProbeResult,
+  NimMediaInfo,
+  NimMessageEvent,
+  NimMessageType,
+  NimDmPolicy,
+  ResolvedNimAccount,
+} from "./src/types.js";
+
+// Export utility functions
+export { normalizeNimTarget, looksLikeNimId, formatNimTarget } from "./src/targets.js";
+export { resolveNimCredentials, resolveNimAccount, isNimDmAllowed } from "./src/accounts.js";
+
+/**
+ * MoltBot NIM Plugin
+ *
+ * A Clawdbot channel plugin for NetEase IM (NIM).
+ */
+const plugin = {
+  id: "nim",
+  name: "NIM",
+  description: "NetEase IM (网易云信) channel plugin",
+  configSchema: emptyPluginConfigSchema(),
+  register(api: ClawdbotPluginApi) {
+    setNimRuntime(api.runtime);
+    api.registerChannel({ plugin: nimPlugin });
+  },
+};
+
+export default plugin;
