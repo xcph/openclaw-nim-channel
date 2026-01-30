@@ -1,20 +1,29 @@
 import { z } from "zod";
 
 /**
+ * Coerce value to string (handles number inputs from YAML).
+ * YAML may parse values like `account: 123456` as numbers.
+ */
+const coerceToString = z.preprocess(
+  (val) => (typeof val === "number" ? String(val) : val),
+  z.string()
+);
+
+/**
  * NIM channel configuration schema.
  */
 export const NimConfigSchema = z.object({
   /** Whether the NIM channel is enabled */
   enabled: z.boolean().optional().default(false),
 
-  /** NIM App Key */
-  appKey: z.string().optional(),
+  /** NIM App Key (coerced from number if needed) */
+  appKey: coerceToString.optional(),
 
-  /** Bot account ID */
-  account: z.string().optional(),
+  /** Bot account ID (coerced from number if needed) */
+  account: coerceToString.optional(),
 
-  /** Authentication token */
-  token: z.string().optional(),
+  /** Authentication token (coerced from number if needed) */
+  token: coerceToString.optional(),
 
   /** DM access policy: open (allow all), allowlist (only allowed users) */
   dmPolicy: z.enum(["open", "allowlist"]).optional().default("open"),

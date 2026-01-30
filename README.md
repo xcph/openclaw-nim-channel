@@ -12,6 +12,67 @@ A [Clawdbot](https://clawdbot.dev) channel plugin for NetEase IM (网易云信).
 
 ## Installation
 
+### Install Node.js
+
+#### Option 1: Official Installer (Recommended)
+
+1. Visit [nodejs.org](https://nodejs.org/).
+2. Download the **LTS** version (e.g., v20.x.x).
+3. Run the installer and follow the prompts.
+
+#### Option 2: NVM (Node Version Manager)
+
+NVM allows you to install and manage multiple Node.js versions:
+
+```bash
+# Install nvm (if not already installed)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# Restart terminal or run:
+source ~/.zshrc  # or ~/.bashrc for bash
+
+# Install Node.js LTS
+nvm install --lts
+
+# Use the installed version
+nvm use --lts
+```
+
+#### Option 3: Homebrew (macOS)
+
+If you have Homebrew installed:
+
+```bash
+brew install node
+```
+
+#### Verify Installation
+
+```bash
+node --version
+# Should show v20.x.x or higher
+```
+
+### Install MoltBot
+
+Open Terminal
+
+Press `Cmd + Space`, type `Terminal`, and hit Enter.
+
+Install CLI
+
+```bash
+npm install -g moltbot@latest
+```
+
+> **Note:** If you see permission errors, use `sudo`:
+>
+> ```bash
+> sudo npm install -g moltbot@latest
+> ```
+
+### Installation Plugin
+
 ```bash
 clawdbot plugins install moltbot-nim
 ```

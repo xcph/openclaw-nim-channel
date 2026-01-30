@@ -7,8 +7,20 @@ import type { NimConfig, ResolvedNimAccount, NimDmPolicy } from "./types.js";
 export const DEFAULT_NIM_ACCOUNT_ID = "default";
 
 /**
+ * Coerce a value to string.
+ * Handles cases where YAML parses numeric values (e.g., account: 123456) as numbers.
+ */
+function coerceToString(value: unknown): string {
+  if (typeof value === "number") {
+    return String(value);
+  }
+  return String(value ?? "");
+}
+
+/**
  * Resolve NIM credentials from configuration.
  * Returns null if required credentials are missing.
+ * Automatically converts numeric values to strings (YAML may parse them as numbers).
  */
 export function resolveNimCredentials(
   cfg: NimConfig | undefined,
@@ -17,9 +29,9 @@ export function resolveNimCredentials(
     return null;
   }
   return {
-    appKey: cfg.appKey,
-    account: cfg.account,
-    token: cfg.token,
+    appKey: coerceToString(cfg.appKey),
+    account: coerceToString(cfg.account),
+    token: coerceToString(cfg.token),
   };
 }
 
