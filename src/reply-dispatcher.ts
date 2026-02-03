@@ -1,4 +1,4 @@
-import type { ClawdbotConfig, RuntimeEnv } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
 import type { NimConfig } from "./types.js";
 import { sendMessageNim, splitMessageIntoChunks } from "./send.js";
 import { sendImageNim, sendFileNim, inferMessageType } from "./media.js";
@@ -19,7 +19,7 @@ type ReplyPayload = {
  * Uses the Clawdbot SDK's createReplyDispatcherWithTyping for proper integration.
  */
 export function createNimReplyDispatcher(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   agentId: string;
   runtime: RuntimeEnv;
   senderId: string;

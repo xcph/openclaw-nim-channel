@@ -1,13 +1,14 @@
 {
   "name": "openclaw-nim",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "type": "module",
   "description": "OpenClaw NIM (NetEase IM) channel plugin",
   "license": "MIT",
   "files": [
     "index.ts",
     "src",
-    "openclaw.plugin.json"
+    "openclaw.plugin.json",
+    "CHANGELOG.md"
   ],
   "keywords": [
     "openclaw",

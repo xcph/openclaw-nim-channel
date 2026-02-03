@@ -1,4 +1,4 @@
-import type { ClawdbotConfig, RuntimeEnv } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
 import type { NimConfig, NimMessageContext, NimMessageEvent, NimMessageType, NimSessionType } from "./types.js";
 import { isNimDmAllowed } from "./accounts.js";
 import { getNimRuntime } from "./runtime.js";
@@ -105,7 +105,7 @@ export function parseNimMessageEvent(message: NimMessageEvent): NimMessageContex
  * Handle an incoming NIM message.
  */
 export async function handleNimMessage(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   message: NimMessageEvent;
   runtime?: RuntimeEnv;
 }): Promise<void> {

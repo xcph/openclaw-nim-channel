@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { NimConfig, ResolvedNimAccount, NimDmPolicy } from "./types.js";
 
 /**
@@ -39,7 +39,7 @@ export function resolveNimCredentials(
  * Resolve NIM account information from Clawdbot configuration.
  */
 export function resolveNimAccount(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
 }): ResolvedNimAccount | null {
   const { cfg } = params;
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;

@@ -2,7 +2,7 @@
  * NIM Monitor - 消息监听模块 (node-nim 版本)
  */
 
-import type { ClawdbotConfig, RuntimeEnv } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
 import type { NimConfig, NimClientInstance, NimMessageEvent } from "./types.js";
 import { createNimClient, clearNimClientCache } from "./client.js";
 import { resolveNimCredentials } from "./accounts.js";
@@ -22,7 +22,7 @@ const monitorStates = new Map<string, MonitorState>();
  * 启动 NIM 消息监听
  */
 export async function monitorNimProvider(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   runtime: RuntimeEnv;
   abortSignal?: AbortSignal;
 }): Promise<void> {

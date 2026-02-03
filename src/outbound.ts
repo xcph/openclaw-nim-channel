@@ -1,4 +1,4 @@
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { NimConfig } from "./types.js";
 import { sendMessageNim, splitMessageIntoChunks } from "./send.js";
 import { sendImageNim, sendFileNim, inferMessageType } from "./media.js";
@@ -22,7 +22,7 @@ export type NimOutboundResult = {
  * Outbound message options (legacy, for backward compatibility)
  */
 export type NimOutboundOptions = {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   text?: string;
   mediaPath?: string;
@@ -104,7 +104,7 @@ export function resolveNimOutboundTarget(params: {
 export async function sendNimOutboundText(params: {
   to: string;
   text: string;
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   accountId?: string;
 }): Promise<NimOutboundResult> {
   const { to, text, cfg } = params;
@@ -150,7 +150,7 @@ export async function sendNimOutboundMedia(params: {
   text?: string;
   mediaUrl?: string;
   mediaPath?: string;
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   accountId?: string;
 }): Promise<NimOutboundResult> {
   const { to, text, mediaUrl, mediaPath, cfg } = params;
@@ -244,7 +244,7 @@ export const nimOutboundConfig = {
   sendText: async (params: {
     to: string;
     text: string;
-    cfg: ClawdbotConfig;
+    cfg: OpenClawConfig;
     accountId?: string;
     deps?: unknown;
   }): Promise<NimOutboundResult> => {
@@ -258,7 +258,7 @@ export const nimOutboundConfig = {
     to: string;
     text?: string;
     mediaUrl?: string;
-    cfg: ClawdbotConfig;
+    cfg: OpenClawConfig;
     accountId?: string;
     deps?: unknown;
   }): Promise<NimOutboundResult> => {
@@ -315,7 +315,7 @@ export async function nimOutbound(params: NimOutboundOptions): Promise<void> {
  * Create an outbound handler function for the NIM channel.
  * @deprecated Use nimOutboundConfig instead
  */
-export function createNimOutboundHandler(cfg: ClawdbotConfig) {
+export function createNimOutboundHandler(cfg: OpenClawConfig) {
   return async (params: { to: string; text?: string; mediaPath?: string }) => {
     await nimOutbound({ cfg, ...params });
   };

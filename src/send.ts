@@ -2,7 +2,7 @@
  * NIM Send - 消息发送模块 (node-nim 版本)
  */
 
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { NimConfig, NimSendResult, NimSessionType } from "./types.js";
 import { createNimClient, getCachedNimClient } from "./client.js";
 import { normalizeNimTarget } from "./targets.js";
@@ -14,7 +14,7 @@ const MAX_MESSAGE_LENGTH = 5000;
  * 发送文本消息
  */
 export async function sendMessageNim(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   text: string;
   sessionType?: NimSessionType;
@@ -48,7 +48,7 @@ export async function sendMessageNim(params: {
  * 发送长消息（自动分割）
  */
 export async function sendLongMessageNim(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   text: string;
   sessionType?: NimSessionType;
@@ -85,7 +85,7 @@ export async function sendLongMessageNim(params: {
  * 注意：这个功能可能需要根据实际 SDK 能力调整
  */
 export async function editMessageNim(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   msgId: string;
   to: string;
   newText: string;
@@ -101,7 +101,7 @@ export async function editMessageNim(params: {
  * 注意：需要根据实际 node-nim SDK 能力实现
  */
 export async function getMessageNim(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   msgId: string;
 }): Promise<{ success: boolean; message?: unknown; error?: string }> {
   // 暂时返回不支持

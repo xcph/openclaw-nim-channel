@@ -1,5 +1,5 @@
-import type { ClawdbotPluginApi } from "clawdbot/plugin-sdk";
-import { emptyPluginConfigSchema } from "clawdbot/plugin-sdk";
+import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
+import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
 import { nimPlugin } from "./src/channel.js";
 import { setNimRuntime } from "./src/runtime.js";
 
@@ -55,7 +55,7 @@ const plugin = {
   name: "NIM",
   description: "NetEase IM (网易云信) channel plugin",
   configSchema: emptyPluginConfigSchema(),
-  register(api: ClawdbotPluginApi) {
+  register(api: OpenClawPluginApi) {
     setNimRuntime(api.runtime);
     api.registerChannel({ plugin: nimPlugin });
   },

@@ -1,4 +1,4 @@
-import type { ChannelPlugin, ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { ChannelPlugin, OpenClawConfig } from "openclaw/plugin-sdk";
 import type { ResolvedNimAccount, NimConfig } from "./types.js";
 import { resolveNimAccount, resolveNimCredentials, DEFAULT_NIM_ACCOUNT_ID } from "./accounts.js";
 import { normalizeNimTarget, looksLikeNimId } from "./targets.js";
@@ -89,7 +89,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       },
     }),
     deleteAccount: ({ cfg }) => {
-      const next = { ...cfg } as ClawdbotConfig;
+      const next = { ...cfg } as OpenClawConfig;
       const nextChannels = { ...cfg.channels };
       delete (nextChannels as Record<string, unknown>).nim;
       if (Object.keys(nextChannels).length > 0) {

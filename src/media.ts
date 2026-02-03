@@ -2,7 +2,7 @@
  * NIM Media - 媒体消息处理模块 (node-nim 版本)
  */
 
-import type { ClawdbotConfig } from "clawdbot/plugin-sdk";
+import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { NimConfig, NimSendResult, NimMediaInfo, NimMessageEvent, NimSessionType } from "./types.js";
 import { createNimClient, getCachedNimClient } from "./client.js";
 import { normalizeNimTarget } from "./targets.js";
@@ -17,7 +17,7 @@ import * as http from "http";
  * 发送图片消息
  */
 export async function sendImageNim(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   imagePath: string;
   sessionType?: NimSessionType;
@@ -51,7 +51,7 @@ export async function sendImageNim(params: {
  * 发送文件消息
  */
 export async function sendFileNim(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   filePath: string;
   sessionType?: NimSessionType;
@@ -85,7 +85,7 @@ export async function sendFileNim(params: {
  * 发送音频消息
  */
 export async function sendAudioNim(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   audioPath: string;
   duration: number;
@@ -120,7 +120,7 @@ export async function sendAudioNim(params: {
  * 发送视频消息
  */
 export async function sendVideoNim(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   to: string;
   videoPath: string;
   duration: number;
@@ -157,7 +157,7 @@ export async function sendVideoNim(params: {
  * 下载媒体文件
  */
 export async function downloadNimMedia(params: {
-  cfg: ClawdbotConfig;
+  cfg: OpenClawConfig;
   url: string;
   filename?: string;
   maxBytes?: number;
