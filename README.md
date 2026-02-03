@@ -1,6 +1,6 @@
-# MoltBot NIM Plugin
+# OpenClaw NIM Plugin
 
-A [Clawdbot](https://clawdbot.dev) channel plugin for NetEase IM (网易云信).
+A [OpenClaw](https://openclaw.ai/) channel plugin for NetEase IM (网易云信).
 
 ## Features
 
@@ -53,7 +53,7 @@ node --version
 # Should show v20.x.x or higher
 ```
 
-### Install MoltBot
+### Install OpenClaw
 
 Open Terminal
 
@@ -62,31 +62,31 @@ Press `Cmd + Space`, type `Terminal`, and hit Enter.
 Install CLI
 
 ```bash
-npm install -g moltbot@latest
+npm install -g openclaw@latest
 ```
 
 > **Note:** If you see permission errors, use `sudo`:
 >
 > ```bash
-> sudo npm install -g moltbot@latest
+> sudo npm install -g openclaw@latest
 > ```
 
 ### Installation Plugin
 
 ```bash
-clawdbot plugins install moltbot-nim
+openclaw plugins install openclaw-nim
 ```
 
 ## Configuration
 
 ```bash
-clawdbot config set channels.nim.appKey "your-app-key"
-clawdbot config set channels.nim.account "your-bot-account-id"
-clawdbot config set channels.nim.token "your-auth-token"
-clawdbot config set channels.nim.enabled true     
+openclaw config set channels.nim.appKey "your-app-key"
+openclaw config set channels.nim.account "your-bot-account-id"
+openclaw config set channels.nim.token "your-auth-token"
+openclaw config set channels.nim.enabled true     
 ```
 
-Or add the following to your Clawdbot configuration (`clawdbot.yaml` or `clawdbot.json`):
+Or add the following to your OpenClaw configuration (`openclaw.yaml` or `openclaw.json`):
 
 ```yaml
 channels:
@@ -122,7 +122,7 @@ channels:
 ## Start the Bot
 
 ```bash
-clawdbot onboard
+openclaw onboard
 ```
 
 ## Getting Credentials
@@ -137,18 +137,18 @@ clawdbot onboard
 ### Sending Messages
 
 ```typescript
-import { sendMessageNim, sendImageNim } from "moltbot-nim";
+import { sendMessageNim, sendImageNim } from "openclaw-nim";
 
 // Send text message
 await sendMessageNim({
-  cfg: clawdbotConfig,
+  cfg: openclawConfig,
   to: "user123",
   text: "Hello from NIM bot!",
 });
 
 // Send image
 await sendImageNim({
-  cfg: clawdbotConfig,
+  cfg: openclawConfig,
   to: "user123",
   imagePath: "/path/to/image.png",
 });

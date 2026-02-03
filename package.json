@@ -1,17 +1,16 @@
 {
-  "name": "moltbot-nim",
-  "version": "0.1.6",
+  "name": "openclaw-nim",
+  "version": "0.0.1",
   "type": "module",
-  "description": "MoltBot NIM (NetEase IM) channel plugin",
+  "description": "OpenClaw NIM (NetEase IM) channel plugin",
   "license": "MIT",
   "files": [
     "index.ts",
     "src",
-    "clawdbot.plugin.json"
+    "openclaw.plugin.json"
   ],
   "keywords": [
-    "clawdbot",
-    "moltbot",
+    "openclaw",
     "nim",
     "netease",
     "yunxin",
@@ -19,7 +18,7 @@
     "chatbot",
     "ai"
   ],
-  "clawdbot": {
+  "openclaw": {
     "extensions": [
       "./index.ts"
     ],
@@ -45,18 +44,15 @@
   },
   "dependencies": {
     "node-nim": "^10.9.72",
-    "zod": "^3.23.0"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
-    "clawdbot": "2026.1.24-2",
+    "@types/node": "^25.0.10",
+    "openclaw": "2026.1.29",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
   },
   "peerDependencies": {
-    "clawdbot": ">=2026.1.24"
-  },
-  "publishConfig": {
-    "registry": "http://npm.netease.im/"
+    "openclaw": ">=2026.1.29"
   }
 }

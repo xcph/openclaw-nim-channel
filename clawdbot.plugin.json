@@ -1,5 +1,5 @@
 {
-  "id": "moltbot-nim",
+  "id": "openclaw-nim",
   "channels": ["nim"],
   "configSchema": {
     "type": "object",

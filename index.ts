@@ -46,12 +46,12 @@ export { normalizeNimTarget, looksLikeNimId, formatNimTarget } from "./src/targe
 export { resolveNimCredentials, resolveNimAccount, isNimDmAllowed } from "./src/accounts.js";
 
 /**
- * MoltBot NIM Plugin
+ * OpenClaw NIM Plugin
  *
  * A Clawdbot channel plugin for NetEase IM (NIM).
  */
 const plugin = {
-  id: "moltbot-nim",
+  id: "openclaw-nim",
   name: "NIM",
   description: "NetEase IM (网易云信) channel plugin",
   configSchema: emptyPluginConfigSchema(),

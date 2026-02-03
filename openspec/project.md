@@ -1,7 +1,7 @@
 # Project Context
 
 ## Purpose
-MoltBot-NIM 是一个基于网易云信 IM SDK 的智能机器人项目，用于分析和优化 IM SDK 的使用体验，包括登录成功率分析、性能监控等功能。
+OpenClaw NIM Plugin 是一个基于网易云信 IM SDK 的 OpenClaw 渠道插件，用于通过网易云信 IM 与 AI 机器人进行交互。
 
 ## Tech Stack
 - **Runtime**: Node.js >= 20.19.0

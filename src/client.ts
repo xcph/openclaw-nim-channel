@@ -29,7 +29,7 @@ const connectionCallbacks = new Map<string, Set<(state: string) => void>>();
  * 获取 SDK 数据目录
  */
 function getSdkDataPath(account: string): string {
-  const dataDir = path.join(os.homedir(), ".moltbot-nim", account);
+  const dataDir = path.join(os.homedir(), ".openclaw-nim", account);
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
   }
