@@ -1,7 +1,7 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { NimConfig } from "./types.js";
 import { sendMessageNim, splitMessageIntoChunks } from "./send.js";
-import { sendImageNim, sendFileNim, inferMessageType } from "./media.js";
+import { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, inferMessageType } from "./media.js";
 import { normalizeNimTarget } from "./targets.js";
 
 /** Default text chunk limit for NIM messages */
@@ -166,6 +166,21 @@ export async function sendNimOutboundMedia(params: {
 
       if (mediaType === "image") {
         mediaResult = await sendImageNim({ cfg, to, imagePath: media });
+      } else if (mediaType === "audio") {
+        // For audio files, we need duration - for now use a default duration
+        // In a real implementation, you might want to extract this from the file metadata
+        mediaResult = await sendAudioNim({ cfg, to, audioPath: media, duration: 0 });
+      } else if (mediaType === "video") {
+        // For video files, we need duration, width, and height - for now use defaults
+        // In a real implementation, you might want to extract these from the file metadata
+        mediaResult = await sendVideoNim({ 
+          cfg, 
+          to, 
+          videoPath: media, 
+          duration: 0, 
+          width: 1920, 
+          height: 1080 
+        });
       } else {
         mediaResult = await sendFileNim({ cfg, to, filePath: media });
       }

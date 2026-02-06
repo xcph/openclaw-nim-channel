@@ -1,7 +1,7 @@
 import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
 import type { NimConfig } from "./types.js";
 import { sendMessageNim, splitMessageIntoChunks } from "./send.js";
-import { sendImageNim, sendFileNim, inferMessageType } from "./media.js";
+import { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, inferMessageType } from "./media.js";
 import { getNimRuntime } from "./runtime.js";
 
 /**
@@ -58,6 +58,21 @@ export function createNimReplyDispatcher(params: {
           
           if (mediaType === "image") {
             await sendImageNim({ cfg, to: senderId, imagePath: mediaUrl });
+          } else if (mediaType === "audio") {
+            // For audio files, we need duration - for now use a default duration
+            // In a real implementation, you might want to extract this from the file metadata
+            await sendAudioNim({ cfg, to: senderId, audioPath: mediaUrl, duration: 0 });
+          } else if (mediaType === "video") {
+            // For video files, we need duration, width, and height - for now use defaults
+            // In a real implementation, you might want to extract these from the file metadata
+            await sendVideoNim({ 
+              cfg, 
+              to: senderId, 
+              videoPath: mediaUrl, 
+              duration: 0, 
+              width: 1920, 
+              height: 1080 
+            });
           } else {
             await sendFileNim({ cfg, to: senderId, filePath: mediaUrl });
           }
