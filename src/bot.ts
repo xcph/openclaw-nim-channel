@@ -71,9 +71,11 @@ function extractMessageContent(message: NimMessageEvent): string {
     }
   }
 
-  // For media messages, return a placeholder
+  // For media messages, return a placeholder with URL
   if (["image", "file", "audio", "video"].includes(message.type)) {
-    return inferMediaPlaceholder(message.type);
+    const placeholder = inferMediaPlaceholder(message.type);
+    const url = message.attach?.url;
+    return url ? `${placeholder} ${url}` : placeholder;
   }
 
   return message.text || "";
@@ -214,6 +216,8 @@ export async function handleNimMessage(params: {
       OriginatingTo: nimTo,
       ...mediaPayload,
     });
+
+    log(`nim: ====== mediapayload ==== ${JSON.stringify(route.mediaPayload)}`);
 
     const { dispatcher, replyOptions, markDispatchIdle } = createNimReplyDispatcher({
       cfg,
