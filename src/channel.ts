@@ -52,7 +52,13 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
     messageToolHints: () => [
       "- NIM targeting: omit `target` to reply to the current conversation (auto-inferred). Explicit targets: `user:<accountId>` or `nim:<accountId>`.",
       "- NIM supports text, image, file, audio, and video messages.",
+      "- To send an image: use the `mediaUrl` or `mediaPath` parameter with an image file path (png, jpg, gif, webp).",
+      "- To send a file: use `mediaUrl` or `mediaPath` with any file path.",
+      "- To send audio: use `mediaUrl` or `mediaPath` with an audio file (mp3, wav, aac, m4a).",
+      "- To send video: use `mediaUrl` or `mediaPath` with a video file (mp4, mov, avi, webm).",
     ],
+    channelDescription: () =>
+      "NIM (NetEase IM / 网易云信) is an instant messaging platform. This channel supports sending text messages, images, files, audio, and video. Use `mediaUrl` or `mediaPath` to attach media files to your messages.",
   },
   reload: { configPrefixes: ["channels.nim"] },
   configSchema: {

@@ -137,7 +137,13 @@ openclaw onboard
 ### Sending Messages
 
 ```typescript
-import { sendMessageNim, sendImageNim } from "openclaw-nim";
+import { 
+  sendMessageNim, 
+  sendImageNim, 
+  sendFileNim, 
+  sendAudioNim, 
+  sendVideoNim 
+} from "openclaw-nim";
 
 // Send text message
 await sendMessageNim({
@@ -146,11 +152,36 @@ await sendMessageNim({
   text: "Hello from NIM bot!",
 });
 
-// Send image
+// Send image (supports: .jpg, .jpeg, .png, .gif, .webp, .bmp)
 await sendImageNim({
   cfg: openclawConfig,
   to: "user123",
   imagePath: "/path/to/image.png",
+});
+
+// Send video (supports: .mp4, .mov, .avi, .mkv, .webm, .flv)
+await sendVideoNim({
+  cfg: openclawConfig,
+  to: "user123",
+  videoPath: "/path/to/video.mp4",
+  duration: 60,  // duration in seconds
+  width: 1920,   // video width in pixels
+  height: 1080,  // video height in pixels
+});
+
+// Send audio (supports: .mp3, .wav, .aac, .m4a, .ogg, .amr)
+await sendAudioNim({
+  cfg: openclawConfig,
+  to: "user123",
+  audioPath: "/path/to/audio.mp3",
+  duration: 30, // duration in seconds
+});
+
+// Send file (any file type)
+await sendFileNim({
+  cfg: openclawConfig,
+  to: "user123",
+  filePath: "/path/to/document.pdf",
 });
 ```
 
