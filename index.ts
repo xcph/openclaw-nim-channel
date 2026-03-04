@@ -39,11 +39,18 @@ export type {
   NimMessageType,
   NimDmPolicy,
   ResolvedNimAccount,
+  QChatConfig,
+  QChatInboundMessage,
 } from "./src/types.js";
 
 // Export utility functions
 export { normalizeNimTarget, looksLikeNimId, formatNimTarget } from "./src/targets.js";
 export { resolveNimCredentials, resolveNimAccount, isNimDmAllowed } from "./src/accounts.js";
+
+// Export QChat functions
+export { sendQChatMessage, setSharedQChatClient, getSharedQChatClient } from "./src/qchat-send.js";
+export { parseQChatMessage, handleQChatInbound } from "./src/qchat-inbound.js";
+export { QChatClient } from "./src/qchat-client.js";
 
 /**
  * OpenClaw NIM Plugin

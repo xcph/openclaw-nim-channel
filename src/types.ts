@@ -55,6 +55,8 @@ export interface NimMessageEvent {
   attach?: NimAttachment;
   /** 扩展字段 */
   ext?: Record<string, unknown>;
+  /** 强制推送目标账号列表 (群消息中用于判断是否 @了当前账号) */
+  forcePushAccountIds?: string[];
   /** 原始消息对象 */
   rawMsg?: unknown;
 }
@@ -200,4 +202,31 @@ export interface NimClientInstance {
   onConnectionChange(callback: (state: string) => void): void;
   /** 销毁客户端 */
   destroy(): Promise<void>;
+}
+
+// ── QChat (圈组) Types ────────────────────────────────────────────────────────
+
+/**
+ * QChat 配置（嵌套在 channels.nim.qchat 下）
+ */
+export interface QChatConfig {
+  /** 是否启用圈组功能 */
+  enabled?: boolean;
+  /** 要订阅的 Server ID 列表（留空自动发现所有已加入 server） */
+  serverIds?: string[];
+}
+
+/**
+ * QChat 入站消息（解析后的简化结构）
+ */
+export interface QChatInboundMessage {
+  messageId: string;
+  serverId: string;
+  channelId: string;
+  senderAccid: string;
+  senderNick?: string;
+  text: string;
+  timestamp: number;
+  /** true if @all or the bot's accid is in mention_accids */
+  wasMentioned: boolean;
 }

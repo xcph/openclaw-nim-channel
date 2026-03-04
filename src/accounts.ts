@@ -40,20 +40,16 @@ export function resolveNimCredentials(
  */
 export function resolveNimAccount(params: {
   cfg: OpenClawConfig;
-}): ResolvedNimAccount | null {
+}): ResolvedNimAccount {
   const { cfg } = params;
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;
   const creds = resolveNimCredentials(nimCfg);
 
-  if (!creds) {
-    return null;
-  }
-
   return {
     id: DEFAULT_NIM_ACCOUNT_ID,
-    appKey: creds.appKey,
-    account: creds.account,
-    token: creds.token,
+    appKey: creds?.appKey ?? coerceToString(nimCfg?.appKey),
+    account: creds?.account ?? coerceToString(nimCfg?.account),
+    token: creds?.token ?? "",
     enabled: nimCfg?.enabled ?? false,
     dmPolicy: (nimCfg?.dmPolicy as NimDmPolicy) ?? "open",
     allowFrom: nimCfg?.allowFrom ?? [],

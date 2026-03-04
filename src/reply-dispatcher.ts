@@ -1,5 +1,5 @@
 import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
-import type { NimConfig } from "./types.js";
+import type { NimConfig, NimSessionType } from "./types.js";
 import { sendMessageNim, splitMessageIntoChunks } from "./send.js";
 import { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, inferMessageType } from "./media.js";
 import { getNimRuntime } from "./runtime.js";
@@ -23,8 +23,9 @@ export function createNimReplyDispatcher(params: {
   agentId: string;
   runtime: RuntimeEnv;
   senderId: string;
+  sessionType?: NimSessionType;
 }) {
-  const { cfg, runtime, senderId } = params;
+  const { cfg, runtime, senderId, sessionType = "p2p" } = params;
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;
   const log = runtime?.log ?? console.log;
   const chunkLimit = nimCfg?.textChunkLimit ?? 4000;
@@ -88,6 +89,7 @@ export function createNimReplyDispatcher(params: {
             cfg,
             to: senderId,
             text: chunk,
+            sessionType,
           });
           log(`nim: sent reply chunk (${chunk.length} chars) to ${senderId}`);
         }

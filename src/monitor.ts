@@ -7,7 +7,7 @@ import type { NimConfig, NimClientInstance, NimMessageEvent } from "./types.js";
 import { createNimClient, clearNimClientCache } from "./client.js";
 import { resolveNimCredentials } from "./accounts.js";
 import { handleNimMessage } from "./bot.js";
-
+import type { QChatClient } from "./qchat-client.js";
 /** 监控状态 */
 interface MonitorState {
   client: NimClientInstance;
@@ -25,6 +25,8 @@ export async function monitorNimProvider(params: {
   cfg: OpenClawConfig;
   runtime: RuntimeEnv;
   abortSignal?: AbortSignal;
+  /** QChat client to wire into the IM login lifecycle (two-phase). */
+  qchatClient?: QChatClient | null;
 }): Promise<void> {
   const { cfg, runtime, abortSignal } = params;
   const nimCfg = cfg.channels?.nim as NimConfig;
@@ -50,8 +52,16 @@ export async function monitorNimProvider(params: {
   console.log("[NIM] Starting monitor for account:", creds.account);
 
   try {
-    // 创建客户端并登录
+    // 创建客户端（IM 初始化）
     const client = await createNimClient(nimCfg);
+
+    // QChat phase 1: register passive listeners AFTER IM init, BEFORE login
+    if (params.qchatClient) {
+      console.log("[NIM] Registering QChat listeners (pre-login)");
+      params.qchatClient.initListeners();
+    }
+
+    // IM 登录
     const loginSuccess = await client.login();
 
     if (!loginSuccess) {
@@ -60,6 +70,18 @@ export async function monitorNimProvider(params: {
     }
 
     console.log("[NIM] Login successful, starting message listener");
+
+    // QChat phase 2: activate (discover servers + subscribe) AFTER login success
+    if (params.qchatClient) {
+      console.log("[NIM] Activating QChat subscriptions (post-login)");
+      try {
+        await params.qchatClient.activate();
+        console.log("[NIM] QChat activated successfully");
+      } catch (qchatErr) {
+        console.error("[NIM] QChat activation failed:", qchatErr);
+        // QChat failure should not prevent IM from working
+      }
+    }
 
     // 创建 AbortController 用于停止监控
     const abortController = new AbortController();

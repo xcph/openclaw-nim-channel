@@ -35,21 +35,6 @@ function mapMessageType(msgType: number): NimMessageType {
 }
 
 /**
- * Get session type name from number.
- * node-nim session_type: 0=p2p, 1=team
- */
-function getSessionTypeName(sessionType: number): "p2p" | "team" | "unknown" {
-  switch (sessionType) {
-    case 0:
-      return "p2p";
-    case 1:
-      return "team";
-    default:
-      return "unknown";
-  }
-}
-
-/**
  * Extract text content from a NIM message.
  */
 function extractMessageContent(message: NimMessageEvent): string {
@@ -105,6 +90,8 @@ export function parseNimMessageEvent(message: NimMessageEvent): NimMessageContex
 
 /**
  * Handle an incoming NIM message.
+ * Supports P2P (DM) and team (group) messages.
+ * Team messages are only processed when forcePushAccountIds includes the bot account.
  */
 export async function handleNimMessage(params: {
   cfg: OpenClawConfig;
@@ -115,49 +102,77 @@ export async function handleNimMessage(params: {
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;
   const log = runtime?.log ?? console.log;
   const error = runtime?.error ?? console.error;
+  const botAccount = nimCfg?.account ? String(nimCfg.account) : "";
 
-  // Only process P2P messages (DM only for now)
-  if (message.sessionType !== "p2p") {
-    log(`nim: ignoring non-P2P message from session type: ${message.sessionType}`);
+  const isP2P = message.sessionType === "p2p";
+  const isTeam = message.sessionType === "team" || message.sessionType === "superTeam";
+
+  if (!isP2P && !isTeam) {
+    log(`nim: ignoring message from unsupported session type: ${message.sessionType}`);
     return;
+  }
+
+  // For team messages, only process when forcePushAccountIds includes the bot
+  if (isTeam) {
+    const forcePushIds = message.forcePushAccountIds ?? [];
+    if (!forcePushIds.includes(botAccount)) {
+      log(`nim: ignoring team message — bot not in forcePushAccountIds (ids=${JSON.stringify(forcePushIds)})`);
+      return;
+    }
+    log(`nim: team message with bot in forcePushAccountIds, processing`);
   }
 
   const ctx = parseNimMessageEvent(message);
 
-  log(`nim: received message from ${ctx.senderId} (type: ${ctx.type})`);
+  log(`nim: received ${isTeam ? "team" : "DM"} message from ${ctx.senderId} (type: ${ctx.type})`);
 
-  // Check DM policy
-  const dmPolicy = nimCfg?.dmPolicy ?? "open";
-  const allowFrom = nimCfg?.allowFrom ?? [];
+  // Check DM policy (only for P2P)
+  if (isP2P) {
+    const dmPolicy = nimCfg?.dmPolicy ?? "open";
+    const allowFrom = nimCfg?.allowFrom ?? [];
 
-  const allowed = isNimDmAllowed({
-    dmPolicy,
-    allowFrom,
-    senderId: ctx.senderId,
-  });
+    const allowed = isNimDmAllowed({
+      dmPolicy,
+      allowFrom,
+      senderId: ctx.senderId,
+    });
 
-  if (!allowed) {
-    log(`nim: sender ${ctx.senderId} not allowed by DM policy`);
-    return;
+    if (!allowed) {
+      log(`nim: sender ${ctx.senderId} not allowed by DM policy`);
+      return;
+    }
   }
 
   try {
     const core = getNimRuntime();
 
+    // For P2P: reply target is the sender; for team: reply target is the team/group ID
+    const replyTarget = isTeam ? message.to : ctx.senderId;
     const nimFrom = `nim:${ctx.senderId}`;
-    const nimTo = `user:${ctx.senderId}`;
+    const nimTo = isTeam ? `team:${message.to}` : `user:${ctx.senderId}`;
+    const chatType = isTeam ? "group" : "direct";
+    const peerKind = isTeam ? "group" : "dm";
+    const peerId = isTeam ? message.to : ctx.senderId;
+    const sessionType: NimSessionType = isTeam ? message.sessionType : "p2p";
 
     const route = core.channel.routing.resolveAgentRoute({
       cfg,
       channel: "nim",
       peer: {
-        kind: "dm",
-        id: ctx.senderId,
+        kind: peerKind,
+        id: peerId,
       },
     });
 
+    if (!route) {
+      log(`nim: no agent route resolved for peer ${peerId} — skipping`);
+      return;
+    }
+
     const preview = ctx.text.replace(/\s+/g, " ").slice(0, 160);
-    const inboundLabel = `NIM DM from ${ctx.senderId}`;
+    const inboundLabel = isTeam
+      ? `NIM team message from ${ctx.senderId} in ${message.to}`
+      : `NIM DM from ${ctx.senderId}`;
 
     core.system.enqueueSystemEvent(`${inboundLabel}: ${preview}`, {
       sessionKey: route.sessionKey,
@@ -204,7 +219,7 @@ export async function handleNimMessage(params: {
       To: nimTo,
       SessionKey: route.sessionKey,
       AccountId: route.accountId,
-      ChatType: "direct",
+      ChatType: chatType,
       SenderName: ctx.senderId,
       SenderId: ctx.senderId,
       Provider: "nim" as const,
@@ -214,19 +229,19 @@ export async function handleNimMessage(params: {
       CommandAuthorized: true,
       OriginatingChannel: "nim" as const,
       OriginatingTo: nimTo,
+      ...(isTeam ? { GroupSubject: message.to, WasMentioned: true } : {}),
       ...mediaPayload,
     });
-
-    log(`nim: ====== mediapayload ==== ${JSON.stringify(route.mediaPayload)}`);
 
     const { dispatcher, replyOptions, markDispatchIdle } = createNimReplyDispatcher({
       cfg,
       agentId: route.agentId,
       runtime: runtime as RuntimeEnv,
-      senderId: ctx.senderId,
+      senderId: replyTarget,
+      sessionType,
     });
 
-    log(`nim: dispatching to agent (session=${route.sessionKey})`);
+    log(`nim: dispatching to agent (session=${route.sessionKey}, chatType=${chatType})`);
 
     const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
       ctx: ctxPayload,

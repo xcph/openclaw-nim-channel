@@ -116,6 +116,10 @@ function parseV2Attachment(msg: any): NimAttachment | undefined {
 function convertV2ToMessageEvent(msg: any): NimMessageEvent {
   const { sessionType } = parseConversationId(msg.conversationId || "");
   
+  // Extract forcePushAccountIds from V2 push config
+  const forcePushAccountIds: string[] | undefined =
+    msg.pushConfig?.forcePushAccountIds ?? undefined;
+
   return {
     msgId: String(msg.messageServerId || msg.messageClientId || ""),
     clientMsgId: String(msg.messageClientId || ""),
@@ -127,6 +131,7 @@ function convertV2ToMessageEvent(msg: any): NimMessageEvent {
     time: msg.createTime || Date.now(),
     attach: parseV2Attachment(msg),
     ext: msg.serverExtension ? JSON.parse(msg.serverExtension) : undefined,
+    forcePushAccountIds,
     rawMsg: msg,
   };
 }
@@ -154,19 +159,14 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
   // 使用 V2 API
   const v2Client = new nodenim.V2NIMClient();
   
-  const dataPath = getSdkDataPath(creds.account);
-
   // 初始化 SDK (V2)
   const initError = v2Client.init({
-    appkey: creds.appKey,
-    appDataPath: dataPath,
+    appkey: creds.appKey
   });
 
   if (initError) {
     throw new Error(`NIM SDK V2 initialization failed: ${initError.desc}`);
   }
-
-  console.log("[NIM V2] SDK initialized, dataPath:", dataPath);
 
   let loggedIn = false;
   const msgCallbackSet = new Set<(msg: NimMessageEvent) => void>();

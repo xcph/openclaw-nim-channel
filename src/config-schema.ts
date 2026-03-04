@@ -12,6 +12,17 @@ const coerceToString = z.preprocess(
 /**
  * NIM channel configuration schema.
  */
+export const QChatSubConfigSchema = z.object({
+  /** Whether QChat (圈组) functionality is enabled */
+  enabled: z.boolean().optional().default(false),
+
+  /** Server ID 列表（留空自动发现所有已加入 server） */
+  serverIds: z.array(z.string()).optional(),
+});
+
+/**
+ * NIM channel configuration schema.
+ */
 export const NimConfigSchema = z.object({
   /** Whether the NIM channel is enabled */
   enabled: z.boolean().optional().default(false),
@@ -45,6 +56,9 @@ export const NimConfigSchema = z.object({
 
   /** Enable debug logging */
   debug: z.boolean().optional().default(false),
+
+  /** QChat (圈组) sub-configuration */
+  qchat: QChatSubConfigSchema.optional(),
 });
 
 export type { z };
