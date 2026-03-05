@@ -44,7 +44,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "nim-web-sdk-ng": "^10.9.76-alpha.10",
+    "nim-web-sdk-ng": "^10.9.77-alpha.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
