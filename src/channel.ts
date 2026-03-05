@@ -63,7 +63,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
         appKey: { type: "string" },
         account: { type: "string" },
         token: { type: "string" },
-        p2pPolicy: { type: "string", enum: ["allowlist", "open", "disabled"] },
+        p2pPolicy: { type: "string", enum: ["open", "allowlist", "disabled"] },
         allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
         teamPolicy: { type: "string", enum: ["open", "allowlist", "disabled"] },
         teamAllowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
