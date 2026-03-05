@@ -18,7 +18,32 @@ import { getNimRuntime } from "./runtime.js";
 import type { NimConfig, QChatInboundMessage } from "./types.js";
 import { resolveNimCredentials } from "./accounts.js";
 import { sendQChatMessage } from "./qchat-send.js";
-import type { QChatRecvMsgResp } from "node-nim";
+type QChatMessagePayload = {
+  serverId?: string;
+  channelId?: string;
+  fromAccount?: string;
+  fromNick?: string;
+  body?: string;
+  type?: string;
+  msgIdServer?: string;
+  time?: number;
+  mentionAll?: boolean;
+  mentionAccids?: string[];
+  server_id?: string;
+  channel_id?: string;
+  from_accid?: string;
+  from_nick?: string;
+  msg_body?: string;
+  msg_type?: number | string;
+  msg_server_id?: string;
+  timestamp?: number;
+  mention_all?: boolean;
+  mention_accids?: string[];
+};
+
+type QChatRecvMsgResp = {
+  message: QChatMessagePayload;
+};
 
 const CHANNEL_ID = "nim" as const;
 const QCHAT_SURFACE = "nim-qchat" as const;
@@ -34,30 +59,33 @@ export function parseQChatMessage(
   const msg = resp.message;
   if (!msg) return null;
 
-  // Only handle text messages (msg_type = 0)
-  if (msg.msg_type !== undefined && msg.msg_type !== 0) return null;
+  const messageType = msg.type ?? (typeof msg.msg_type === "string" ? msg.msg_type : undefined);
+  const legacyType = typeof msg.msg_type === "number" ? msg.msg_type : undefined;
 
-  const serverId = msg.server_id ?? "";
-  const channelId = msg.channel_id ?? "";
-  const senderAccid = msg.from_accid ?? "";
-  const text = msg.msg_body ?? "";
+  if (messageType && messageType !== "text") return null;
+  if (legacyType !== undefined && legacyType !== 0) return null;
+
+  const serverId = msg.serverId ?? msg.server_id ?? "";
+  const channelId = msg.channelId ?? msg.channel_id ?? "";
+  const senderAccid = msg.fromAccount ?? msg.from_accid ?? "";
+  const text = msg.body ?? msg.msg_body ?? "";
 
   if (!serverId || !channelId || !senderAccid || !text.trim()) return null;
 
   // Detect @-mention: either @all or bot's accid is in the list
-  const mentionAll = msg.mention_all === true;
-  const mentionAccids = msg.mention_accids ?? [];
+  const mentionAll = (msg.mentionAll ?? msg.mention_all) === true;
+  const mentionAccids = msg.mentionAccids ?? msg.mention_accids ?? [];
   const wasMentioned =
     mentionAll || mentionAccids.includes(botAccid);
 
   return {
-    messageId: msg.msg_server_id ?? `${Date.now()}`,
+    messageId: msg.msgIdServer ?? msg.msg_server_id ?? `${Date.now()}`,
     serverId,
     channelId,
     senderAccid,
-    senderNick: msg.from_nick,
+    senderNick: msg.fromNick ?? msg.from_nick,
     text: text.trim(),
-    timestamp: msg.timestamp ?? Date.now(),
+    timestamp: msg.time ?? msg.timestamp ?? Date.now(),
     wasMentioned,
   };
 }
