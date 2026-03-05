@@ -216,31 +216,6 @@ export interface NimClientInstance {
  */
 export type NimTeamPolicy = "open" | "allowlist" | "disabled";
 
-/**
- * QChat server config (per-server access control, Discord guild pattern)
- */
-export interface QChatServerConfig {
-  /** Allow messages from this server */
-  allow?: boolean;
-  /** Require @-mention to trigger */
-  requireMention?: boolean;
-  /** Per-channel config within this server */
-  channels?: Record<string, QChatChannelConfig>;
-  /** Allowed sender accids in this server */
-  allowFrom?: Array<string | number>;
-}
-
-/**
- * QChat channel config (per-channel within a server)
- */
-export interface QChatChannelConfig {
-  /** Allow messages from this channel */
-  allow?: boolean;
-  /** Require @-mention to trigger */
-  requireMention?: boolean;
-  /** Allowed sender accids in this channel */
-  allowFrom?: Array<string | number>;
-}
 // ── QChat (圈组) Types ────────────────────────────────────────────────────────
 
 /**

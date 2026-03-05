@@ -12,38 +12,6 @@ const coerceToString = z.preprocess(
 /** Union type for allow-list entries (string or number from YAML) */
 const AllowEntryArray = z.array(z.union([z.string(), z.number()])).optional();
 
-/**
- * QChat channel config (per-channel within a server).
- * Mirrors Discord's DiscordGuildChannelSchema pattern.
- */
-export const QChatChannelConfigSchema = z.object({
-  /** Allow messages from this channel (default true) */
-  allow: z.boolean().optional(),
-
-  /** Require @-mention to trigger (overrides server-level default) */
-  requireMention: z.boolean().optional(),
-
-  /** Allowed sender accids in this channel */
-  allowFrom: AllowEntryArray,
-});
-
-/**
- * QChat server config (per-server access control).
- * Mirrors Discord's DiscordGuildSchema pattern.
- */
-export const QChatServerConfigSchema = z.object({
-  /** Allow messages from this server (default true) */
-  allow: z.boolean().optional(),
-
-  /** Require @-mention to trigger (default true) */
-  requireMention: z.boolean().optional(),
-
-  /** Per-channel config within this server */
-  channels: z.record(z.string(), QChatChannelConfigSchema.optional()).optional(),
-
-  /** Allowed sender accids in this server */
-  allowFrom: AllowEntryArray,
-});
 
 /**
  * QChat (圈组) sub-configuration.
@@ -58,8 +26,6 @@ export const QChatSubConfigSchema = z.object({
   /** QChat server policy: open (all servers), allowlist (only configured), disabled */
   serverPolicy: z.enum(["open", "allowlist", "disabled"]).optional().default("open"),
 
-  /** Per-server configuration (Discord guild pattern) */
-  servers: z.record(z.string(), QChatServerConfigSchema.optional()).optional(),
 });
 
 /**

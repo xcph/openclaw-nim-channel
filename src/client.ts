@@ -12,8 +12,9 @@ import type {
   NimSessionType,
   NimMessageType,
   NimAttachment,
+  NimP2pPolicy,
 } from "./types.js";
-import { resolveNimCredentials } from "./accounts.js";
+import { resolveNimCredentials, isNimP2pAllowed } from "./accounts.js";
 import * as path from "path";
 import * as os from "os";
 import * as fs from "fs";
@@ -181,6 +182,48 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
   const messageCreator = v2Client.messageCreator;
   const conversationIdUtil = v2Client.conversationIdUtil;
 
+  // 获取好友服务
+  const friendService = v2Client.friendService;
+
+  // 注册好友申请监听 — 根据 p2pPolicy 自动接受好友申请
+  if (friendService) {
+    const p2pPolicy = (cfg.p2pPolicy as NimP2pPolicy) ?? "open";
+    const allowFrom = cfg.allowFrom ?? [];
+
+    friendService.on("friendAddApplication", async (application: any) => {
+      const applicantId = String(application.applicantAccountId ?? "");
+      if (!applicantId) {
+        console.log("[nim] friend request ignored — missing applicant id");
+        return;
+      }
+
+      console.log(`[nim] friend request received — applicant: ${applicantId}`);
+
+      const check = isNimP2pAllowed({
+        p2pPolicy,
+        allowFrom,
+        senderId: applicantId,
+      });
+
+      if (!check.allowed) {
+        console.log(
+          `[nim] friend request not auto-accepted — applicant: ${applicantId}, reason: ${check.reason ?? "policy"}`,
+        );
+        return;
+      }
+
+      try {
+        await friendService.acceptAddApplication(application);
+        console.log(`[nim] friend request auto-accepted — applicant: ${applicantId}`);
+      } catch (err: any) {
+        const errorMessage = err?.message ?? err?.desc ?? String(err);
+        console.error(
+          `[nim] friend request accept failed — applicant: ${applicantId}, error: ${errorMessage}`,
+        );
+      }
+    });
+    console.log(`[nim] friend request listener registered — policy: ${p2pPolicy}`);
+  }
   if (!loginService || !messageService) {
     throw new Error("NIM SDK V2 services not available");
   }
