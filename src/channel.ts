@@ -273,7 +273,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
           onMessage: async (resp) => {
             const raw = resp.message;
             ctx.log?.info(
-              `[qchat] received message — server: ${raw?.server_id ?? "unknown"}, channel: ${raw?.channel_id ?? "unknown"}, sender: ${raw?.from_accid ?? "unknown"}, message id: ${raw?.msg_server_id ?? "unknown"}, timestamp: ${raw?.timestamp ?? "unknown"}`,
+              `[qchat] received message — server: ${raw?.serverId ?? raw?.server_id ?? "unknown"}, channel: ${raw?.channelId ?? raw?.channel_id ?? "unknown"}, sender: ${raw?.fromAccount ?? raw?.from_accid ?? "unknown"}, message id: ${raw?.msgIdServer ?? raw?.msg_server_id ?? "unknown"}, timestamp: ${raw?.time ?? raw?.timestamp ?? "unknown"}`,
             );
             const msg = parseQChatMessage(resp, nimCfg!.account as string);
             if (!msg) {

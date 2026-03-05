@@ -9,11 +9,48 @@
  *   2. activate()      — discover servers & subscribe (call AFTER IM login succeeds)
  */
 
-import type { QChatRecvMsgResp, QChatRecvSystemNotificationResp } from "node-nim";
+type QChatMessagePayload = {
+  serverId?: string;
+  channelId?: string;
+  fromAccount?: string;
+  fromNick?: string;
+  body?: string;
+  type?: string;
+  msgIdServer?: string;
+  time?: number;
+  mentionAll?: boolean;
+  mentionAccids?: string[];
+  server_id?: string;
+  channel_id?: string;
+  from_accid?: string;
+  from_nick?: string;
+  msg_body?: string;
+  msg_type?: number | string;
+  msg_server_id?: string;
+  timestamp?: number;
+  mention_all?: boolean;
+  mention_accids?: string[];
+};
+
+type QChatSystemNotificationPayload = {
+  type?: string;
+  serverId?: string;
+  msg_type?: number | string;
+  server_id?: string;
+};
+
+type QChatRecvMsgResp = {
+  message: QChatMessagePayload;
+};
+
+type QChatRecvSystemNotificationResp = {
+  notification?: QChatSystemNotificationPayload;
+};
 
 export type QChatClientOptions = {
   appKey: string;
   account: string;
+  nim?: unknown;
   /**
    * Server IDs to subscribe to. If empty, the client will auto-discover
    * all joined servers via getServersByPage and subscribe to all of them.
@@ -42,9 +79,8 @@ export type QChatClientOptions = {
  *             after IM login succeeds, because these are active API calls.
  */
 export class QChatClient {
-  // Lazily initialized via ensureQChat() to avoid top-level require of native binary.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private qchat: any = null;
+  private nim: any = null;
   private opts: QChatClientOptions;
   private subscribedServerIds: string[] = [];
   private listenersInitialized = false;
@@ -54,16 +90,73 @@ export class QChatClient {
     this.opts = opts;
   }
 
-  /**
-   * Lazily create QChat instance. This defers the native binary require
-   * until runtime, giving ensureNimSdkBinary a chance to download it first.
-   */
-  private async ensureQChat() {
-    if (!this.qchat) {
-      const { QChat } = await import("node-nim");
-      this.qchat = new QChat();
+  private async ensureNim() {
+    if (!this.nim) {
+      if (this.opts.nim) {
+        this.nim = this.opts.nim;
+      } else {
+        const NIMModule = await import("nim-web-sdk-ng/dist/nodejs/nim.js");
+        const NIM = NIMModule.default;
+        this.nim = NIM.getInstance({
+          appkey: this.opts.appKey,
+          apiVersion: "v2",
+          debugLevel: "off",
+        });
+      }
     }
-    return this.qchat;
+    return this.nim;
+  }
+
+  private normalizeMessage(msg: QChatMessagePayload): QChatMessagePayload {
+    const serverId = msg.serverId ?? msg.server_id;
+    const channelId = msg.channelId ?? msg.channel_id;
+    const fromAccount = msg.fromAccount ?? msg.from_accid;
+    const fromNick = msg.fromNick ?? msg.from_nick;
+    const body = msg.body ?? msg.msg_body;
+    const type = msg.type ?? (typeof msg.msg_type === "string" ? msg.msg_type : undefined);
+    const msgIdServer = msg.msgIdServer ?? msg.msg_server_id;
+    const time = msg.time ?? msg.timestamp;
+    const mentionAll = msg.mentionAll ?? msg.mention_all;
+    const mentionAccids = msg.mentionAccids ?? msg.mention_accids;
+
+    return {
+      ...msg,
+      serverId,
+      channelId,
+      fromAccount,
+      fromNick,
+      body,
+      type,
+      msgIdServer,
+      time,
+      mentionAll,
+      mentionAccids,
+      server_id: serverId,
+      channel_id: channelId,
+      from_accid: fromAccount,
+      from_nick: fromNick,
+      msg_body: body,
+      msg_type: type,
+      msg_server_id: msgIdServer,
+      timestamp: time,
+      mention_all: mentionAll,
+      mention_accids: mentionAccids,
+    };
+  }
+
+  private normalizeSystemNotification(notification: QChatSystemNotificationPayload): QChatSystemNotificationPayload {
+    const serverId = notification.serverId ?? notification.server_id;
+    const type = notification.type ?? (typeof notification.msg_type === "string" ? notification.msg_type : undefined);
+    const legacyType = typeof notification.msg_type === "number" ? notification.msg_type : undefined;
+    const normalizedType = type ?? (legacyType === 8 ? "serverMemberInviteDone" : undefined);
+
+    return {
+      ...notification,
+      serverId,
+      type: normalizedType,
+      server_id: serverId,
+      msg_type: normalizedType,
+    };
   }
 
   /** The accid this client is associated with. */
@@ -91,37 +184,34 @@ export class QChatClient {
     if (this.listenersInitialized) return;
 
     const log = this.opts.log;
-    const qchat = await this.ensureQChat();
+    const nim = await this.ensureNim();
+    const loginService = nim.V2NIMLoginService;
 
-    // Initialize QChat event handler infrastructure
-    qchat.initEventHandlers();
-    log?.info("event handlers initialized — v2 login provides qchat auth");
+    log?.info("event handlers initialized — web sdk handles qchat auth");
 
     // Login status
-    qchat.instance.on("loginStatus", (resp: unknown) => {
+    loginService?.on("onLoginStatus", (resp: unknown) => {
       this.opts.onLoginStatus?.(resp);
     });
 
     // Kicked out
-    qchat.instance.on("kickedOut", (resp: unknown) => {
-      this.opts.onError?.(new Error(`kicked out — reason: ${typeof resp === "object" && resp !== null ? ((resp as any).code ?? (resp as any).reason ?? String(resp)) : String(resp)}`));
+    loginService?.on("onKickedOffline", (resp: { reasonDesc?: string; reason?: string } | null) => {
+      const reason = resp?.reasonDesc ?? resp?.reason ?? String(resp ?? "unknown");
+      this.opts.onError?.(new Error(`kicked out — reason: ${reason}`));
     });
 
     // Message listener (fires for ALL subscribed channels)
-    qchat.message.on("message", (resp: QChatRecvMsgResp) => {
-      this.opts.onMessage?.(resp);
+    nim.qchatMsg?.on("message", (msg: QChatMessagePayload) => {
+      const normalized = this.normalizeMessage(msg);
+      this.opts.onMessage?.({ message: normalized });
     });
 
-    // System notification listener
-    // When the bot is invited to a new server (MemberInviteDone = 8),
-    // automatically subscribe to all channels in that server.
-    qchat.systemNotification.on("notification", (resp: QChatRecvSystemNotificationResp) => {
-      const notification = resp.notification;
+    nim.qchatMsg?.on("systemNotification", (notificationResp: QChatSystemNotificationPayload) => {
+      const notification = this.normalizeSystemNotification(notificationResp ?? {});
       if (!notification) return;
 
-      // kNIMQChatSystemNotificationTypeMemberInviteDone = 8
-      if (notification.msg_type === 8) {
-        const serverId = notification.server_id;
+      if (notification.type === "serverMemberInviteDone") {
+        const serverId = notification.serverId ?? notification.server_id;
         if (!serverId) return;
 
         // Skip if already subscribed
@@ -176,20 +266,20 @@ export class QChatClient {
       return;
     }
 
-    const qchat = await this.ensureQChat();
-
     // Subscribe to ALL channels in each server
-    const resp = await qchat.server.subscribeAllChannel({
-      sub_type: 1, // kNIMQChatSubscribeTypeMsg
-      server_ids: serverIds,
+    const nim = await this.ensureNim();
+    const resp = await nim.qchatServer.subscribeAllChannel({
+      type: 1, // kNIMQChatSubscribeTypeMsg
+      serverIds,
     });
 
-    if (resp.failed_servers && resp.failed_servers.length > 0) {
-      log?.error(`subscribe failed — servers: ${resp.failed_servers.join(", ")}`);
+    const failedServers = resp.failServerIds ?? [];
+    if (failedServers.length > 0) {
+      log?.error(`subscribe failed — servers: ${failedServers.join(", ")}`);
     }
 
     this.subscribedServerIds = serverIds.filter(
-      (id) => !(resp.failed_servers ?? []).includes(id),
+      (id) => !failedServers.includes(id),
     );
     log?.info(`subscribed to all channels — servers: ${this.subscribedServerIds.length}`);
     this.activated = true;
@@ -212,30 +302,29 @@ export class QChatClient {
     let timestamp = 0;
     const PAGE_LIMIT = 100;
 
-    const qchat = await this.ensureQChat();
+    const nim = await this.ensureNim();
 
     for (let page = 0; page < 20; page++) {
-      const resp = await qchat.server.getServersByPage({
+      const resp = await nim.qchatServer.getServersByPage({
         timestamp,
         limit: PAGE_LIMIT,
       });
 
-      const servers = resp.server_list ?? [];
+      const servers = resp.datas ?? [];
       if (servers.length === 0) break;
 
       for (const s of servers) {
-        if (s.server_id) {
-          serverIds.push(s.server_id);
+        if (s.serverId) {
+          serverIds.push(s.serverId);
         }
       }
 
-      // If fewer results than limit, we've reached the end
-      if (servers.length < PAGE_LIMIT) break;
+      const hasMore = resp.listQueryTag?.hasMore ?? servers.length >= PAGE_LIMIT;
+      if (!hasMore) break;
 
-      // Use the last server's create_time as cursor for next page
       const lastServer = servers[servers.length - 1];
-      if (lastServer.create_time) {
-        timestamp = lastServer.create_time;
+      if (lastServer.createTime) {
+        timestamp = lastServer.createTime;
       } else {
         break;
       }
@@ -251,14 +340,14 @@ export class QChatClient {
   private async subscribeServer(serverId: string): Promise<void> {
     const log = this.opts.log;
 
-    const qchat = await this.ensureQChat();
+    const nim = await this.ensureNim();
 
-    const resp = await qchat.server.subscribeAllChannel({
-      sub_type: 1, // kNIMQChatSubscribeTypeMsg
-      server_ids: [serverId],
+    const resp = await nim.qchatServer.subscribeAllChannel({
+      type: 1, // kNIMQChatSubscribeTypeMsg
+      serverIds: [serverId],
     });
 
-    const failed = resp.failed_servers ?? [];
+    const failed = resp.failServerIds ?? [];
     if (failed.includes(serverId)) {
       log?.error(`[sysnotify] subscribe failed — server: ${serverId}`);
       return;
@@ -273,25 +362,18 @@ export class QChatClient {
     channelId: string;
     text: string;
   }): Promise<{ ok: boolean; msgServerId?: string; error?: string }> {
-    const qchat = await this.ensureQChat();
+    const nim = await this.ensureNim();
 
     try {
-      const resp = await qchat.message.send({
-        message: {
-          server_id: params.serverId,
-          channel_id: params.channelId,
-          msg_type: 0, // text
-          msg_body: params.text,
-          resend_flag: false,
-          history_enable: true,
-        },
+      const resp = await nim.qchatMsg.sendMessage({
+        serverId: params.serverId,
+        channelId: params.channelId,
+        type: "text",
+        body: params.text,
       });
-      if (resp.res_code !== undefined && resp.res_code !== 200) {
-        return { ok: false, error: `send failed: code=${resp.res_code}` };
-      }
       return {
         ok: true,
-        msgServerId: resp.message?.msg_server_id ?? undefined,
+        msgServerId: resp.message?.msgIdServer ?? resp.msgIdServer ?? undefined,
       };
     } catch (err) {
       return { ok: false, error: String(err) };
@@ -303,11 +385,11 @@ export class QChatClient {
 
     // Unsubscribe all servers
     if (this.subscribedServerIds.length > 0) {
-      const qchat = await this.ensureQChat();
+      const nim = await this.ensureNim();
       try {
-        await qchat.server.subscribeAllChannel({
-          sub_type: 1,
-          server_ids: [], // empty = unsubscribe all
+        await nim.qchatServer.subscribeAllChannel({
+          type: 1,
+          serverIds: [], // empty = unsubscribe all
         });
       } catch {
         // ignore unsubscribe errors during shutdown

@@ -2,12 +2,11 @@ import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
 import type { NimConfig, NimP2pPolicy, NimTeamPolicy, NimMessageContext, NimMessageEvent, NimMessageType, NimSessionType } from "./types.js";
 import { isNimP2pAllowed, isNimTeamAllowed } from "./accounts.js";
 import { getNimRuntime } from "./runtime.js";
-import { downloadNimMedia, buildNimMediaPayload, inferMediaPlaceholder } from "./media.js";
+import { buildNimMediaPayload, inferMediaPlaceholder } from "./media.js";
 import { createNimReplyDispatcher } from "./reply-dispatcher.js";
 
 /**
- * Map node-nim message type number to typed enum.
- * node-nim msg_type: 0=text, 1=image, 2=audio, 3=video, 4=geo, 5=notification, 6=file, 10=tip, 100=custom
+ * Map message type number to typed enum.
  */
 function mapMessageType(msgType: number): NimMessageType {
   switch (msgType) {
@@ -202,16 +201,13 @@ export async function handleNimMessage(params: {
     if (["image", "file", "audio", "video"].includes(ctx.type)) {
       const attachUrl = message.attach?.url;
       if (attachUrl) {
-        const mediaInfo = await downloadNimMedia({
-          cfg,
+        const mediaInfo = {
+          type: ctx.type as "image" | "file" | "audio" | "video",
           url: attachUrl,
-          filename: message.attach?.name,
-          maxBytes: mediaMaxBytes,
-          log,
-        });
-        if (mediaInfo) {
-          mediaList.push(mediaInfo);
-        }
+          name: message.attach?.name,
+          size: message.attach?.size,
+        };
+        mediaList.push(mediaInfo);
       }
     }
 

@@ -2,7 +2,6 @@ import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
 import { nimPlugin } from "./src/channel.js";
 import { setNimRuntime } from "./src/runtime.js";
-import { ensureNimSdkBinary } from "./src/ensure-sdk.js";
 
 // Export monitor functions
 export { monitorNimProvider, stopNimMonitor, isNimMonitorRunning } from "./src/monitor.js";
@@ -21,7 +20,7 @@ export {
 } from "./src/outbound.js";
 
 // Export media functions
-export { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, downloadNimMedia } from "./src/media.js";
+export { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim } from "./src/media.js";
 
 // Export probe function
 export { probeNim, probeNimWithConnect } from "./src/probe.js";
@@ -65,20 +64,6 @@ const plugin = {
   configSchema: emptyPluginConfigSchema(),
   register(api: OpenClawPluginApi) {
     setNimRuntime(api.runtime);
-
-    // Ensure node-nim native binary is downloaded before channel starts.
-    // openclaw installs plugins with --ignore-scripts, skipping postinstall.
-    api.registerService({
-      id: "node-nim-sdk-ensure",
-      async start() {
-        await ensureNimSdkBinary({
-          logger: {
-            info: (msg) => console.log(`[node-nim] ${msg}`),
-            error: (msg) => console.error(`[node-nim] ${msg}`),
-          },
-        });
-      },
-    });
 
     api.registerChannel({ plugin: nimPlugin });
   },
