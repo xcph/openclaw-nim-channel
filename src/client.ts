@@ -187,22 +187,26 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
 
   // 注册消息接收回调
   messageService.on("receiveMessages", (messages: any[]) => {
-    console.log("[NIM V2] Received messages:", messages.length);
+    console.log(`[nim] received messages — count: ${messages.length}`);
     for (const msg of messages) {
-      console.log("[NIM V2] Message:", JSON.stringify(msg, null, 2));
       const event = convertV2ToMessageEvent(msg);
+      console.log(
+        `[nim] received message — sender: ${event.from}, type: ${event.type}, session: ${event.sessionType}, target: ${event.to}, message id: ${event.msgId}, timestamp: ${event.time}`,
+      );
       msgCallbackSet.forEach((cb) => cb(event));
     }
   });
 
   // 注册发送消息状态回调
   messageService.on("sendMessage", (msg: any) => {
-    console.log("[NIM V2] Send message status:", msg.messageClientId, msg.sendingState);
+    console.log(
+      `[nim] send status update — message id: ${msg.messageClientId ?? "unknown"}, state: ${msg.sendingState}`,
+    );
   });
 
   // 注册登录状态回调
   loginService.on("loginStatus", (status: number) => {
-    console.log("[NIM V2] Login status changed:", status);
+    console.log(`[nim] login status changed — status: ${status}`);
     // V2NIMLoginStatus: 0=LOGOUT, 1=LOGINED, 2=LOGINING
     if (status === 1) {
       loggedIn = true;
@@ -214,13 +218,15 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
   });
 
   loginService.on("kickedOffline", (detail: any) => {
-    console.log("[NIM V2] Kicked offline:", detail);
+    const detailMessage = detail?.reason ?? detail?.desc ?? detail?.message ?? String(detail);
+    console.log(`[nim] kicked offline — reason: ${detailMessage}`);
     loggedIn = false;
     connCallbackSet.forEach((cb) => cb("kickout"));
   });
 
   loginService.on("disconnected", (error: any) => {
-    console.log("[NIM V2] Disconnected:", error);
+    const errorMessage = error?.message ?? error?.desc ?? String(error);
+    console.log(`[nim] disconnected — error: ${errorMessage}`);
     connCallbackSet.forEach((cb) => cb("disconnected"));
   });
 
@@ -231,14 +237,18 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
 
     async login(): Promise<boolean> {
       try {
-        console.log("[NIM V2] Logging in...", creds.account);
+        console.log(`[nim] login started — account: ${creds.account}`);
         await loginService.login(creds.account, creds.token, {});
         loggedIn = true;
         instance.loggedIn = true;
-        console.log("[NIM V2] Login successful");
+        console.log(`[nim] login successful — account: ${creds.account}`);
         return true;
       } catch (error: any) {
-        console.error("[NIM V2] Login failed:", error);
+        const errorMessage = error?.message ?? error?.desc ?? String(error);
+        const errorCode = error?.code ?? error?.res_code;
+        console.error(
+          `[nim] login failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`,
+        );
         return false;
       }
     },
@@ -248,9 +258,10 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
         await loginService.logout();
         loggedIn = false;
         instance.loggedIn = false;
-        console.log("[NIM V2] Logged out");
+        console.log(`[nim] logout complete — account: ${creds.account}`);
       } catch (error) {
-        console.error("[NIM V2] Logout error:", error);
+        const errorMessage = (error as any)?.message ?? String(error);
+        console.error(`[nim] logout failed — error: ${errorMessage}`);
       }
     },
 
@@ -262,18 +273,26 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
         }
 
         const conversationId = buildConversationId(conversationIdUtil, to, sessionType);
-        console.log("[NIM V2] Sending text to:", conversationId, "text:", text.substring(0, 50));
+        console.log(
+          `[nim] sending text — target: ${conversationId}, session: ${sessionType}, length: ${text.length}`,
+        );
 
         const result = await messageService.sendMessage(message, conversationId, {}, () => {});
         
-        console.log("[NIM V2] Send result:", result);
+        console.log(
+          `[nim] text sent — message id: ${result.message?.messageServerId ?? "unknown"}`,
+        );
         return {
           success: true,
           msgId: result.message?.messageServerId,
           clientMsgId: result.message?.messageClientId,
         };
       } catch (error: any) {
-        console.error("[NIM V2] Send text failed:", error);
+        const errorMessage = error?.message ?? error?.desc ?? String(error);
+        const errorCode = error?.code ?? error?.res_code;
+        console.error(
+          `[nim] text send failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`,
+        );
         return {
           success: false,
           error: error.message || String(error),
@@ -289,7 +308,9 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
         }
 
         const conversationId = buildConversationId(conversationIdUtil, to, sessionType);
-        console.log("[NIM V2] Sending image to:", conversationId);
+        console.log(
+          `[nim] sending image — target: ${conversationId}, session: ${sessionType}, file: ${path.basename(filePath)}`,
+        );
 
         const result = await messageService.sendMessage(message, conversationId, {}, () => {});
         
@@ -299,7 +320,11 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
           clientMsgId: result.message?.messageClientId,
         };
       } catch (error: any) {
-        console.error("[NIM V2] Send image failed:", error);
+        const errorMessage = error?.message ?? error?.desc ?? String(error);
+        const errorCode = error?.code ?? error?.res_code;
+        console.error(
+          `[nim] image send failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`,
+        );
         return { success: false, error: error.message || String(error) };
       }
     },
@@ -312,7 +337,9 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
         }
 
         const conversationId = buildConversationId(conversationIdUtil, to, sessionType);
-        console.log("[NIM V2] Sending file to:", conversationId);
+        console.log(
+          `[nim] sending file — target: ${conversationId}, session: ${sessionType}, file: ${path.basename(filePath)}`,
+        );
 
         const result = await messageService.sendMessage(message, conversationId, {}, () => {});
         
@@ -322,7 +349,11 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
           clientMsgId: result.message?.messageClientId,
         };
       } catch (error: any) {
-        console.error("[NIM V2] Send file failed:", error);
+        const errorMessage = error?.message ?? error?.desc ?? String(error);
+        const errorCode = error?.code ?? error?.res_code;
+        console.error(
+          `[nim] file send failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`,
+        );
         return { success: false, error: error.message || String(error) };
       }
     },
@@ -343,7 +374,11 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
           clientMsgId: result.message?.messageClientId,
         };
       } catch (error: any) {
-        console.error("[NIM V2] Send audio failed:", error);
+        const errorMessage = error?.message ?? error?.desc ?? String(error);
+        const errorCode = error?.code ?? error?.res_code;
+        console.error(
+          `[nim] audio send failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`,
+        );
         return { success: false, error: error.message || String(error) };
       }
     },
@@ -364,8 +399,52 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
           clientMsgId: result.message?.messageClientId,
         };
       } catch (error: any) {
-        console.error("[NIM V2] Send video failed:", error);
+        const errorMessage = error?.message ?? error?.desc ?? String(error);
+        const errorCode = error?.code ?? error?.res_code;
+        console.error(
+          `[nim] video send failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`,
+        );
         return { success: false, error: error.message || String(error) };
+      }
+    },
+
+    async replyText(to: string, text: string, originalMsg: unknown, forcePushAccountIds: string[], sessionType: NimSessionType = "p2p"): Promise<NimSendResult> {
+      try {
+        const replyMsg = messageCreator?.createTextMessage(text);
+        if (!replyMsg) {
+          return { success: false, error: "Failed to create reply text message" };
+        }
+
+        const sendParams = {
+          pushConfig: {
+            forcePush: true,
+            forcePushAccountIds,
+          },
+        };
+
+        const conversationId = buildConversationId(conversationIdUtil, to, sessionType);
+        const textPreview = text.slice(0, 60).replace(/\s+/g, " ");
+        console.log(
+          `[nim] sending reply — target: ${conversationId}, session: ${sessionType}, force-push: [${forcePushAccountIds.join(", ")}], text preview: "${textPreview}"`,
+        );
+
+        const result = await messageService.replyMessage(replyMsg, originalMsg as any, sendParams, () => {});
+        console.log(`[nim] reply sent — message id: ${result.message?.messageServerId ?? "unknown"}`);
+        return {
+          success: true,
+          msgId: result.message?.messageServerId,
+          clientMsgId: result.message?.messageClientId,
+        };
+      } catch (error: any) {
+        const errorMessage = error?.message ?? error?.desc ?? String(error);
+        const errorCode = error?.code ?? error?.res_code;
+        console.error(
+          `[nim] reply failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`,
+        );
+        return {
+          success: false,
+          error: error.message || error.desc || String(error),
+        };
       }
     },
 

@@ -108,7 +108,7 @@ export async function handleNimMessage(params: {
   const isTeam = message.sessionType === "team" || message.sessionType === "superTeam";
 
   if (!isP2P && !isTeam) {
-    log(`nim: ignoring message from unsupported session type: ${message.sessionType}`);
+    log(`[nim] ignoring message — session: ${message.sessionType}`);
     return;
   }
 
@@ -116,15 +116,17 @@ export async function handleNimMessage(params: {
   if (isTeam) {
     const forcePushIds = message.forcePushAccountIds ?? [];
     if (!forcePushIds.includes(botAccount)) {
-      log(`nim: ignoring team message — bot not in forcePushAccountIds (ids=${JSON.stringify(forcePushIds)})`);
+      log(`[nim] ignoring team message — reason: bot not in force-push list`);
       return;
     }
-    log(`nim: team message with bot in forcePushAccountIds, processing`);
+    log(`[nim] team message accepted — reason: bot in force-push list`);
   }
 
   const ctx = parseNimMessageEvent(message);
 
-  log(`nim: received ${isTeam ? "team" : "DM"} message from ${ctx.senderId} (type: ${ctx.type})`);
+  log(
+    `[nim] received message — sender: ${ctx.senderId}, type: ${ctx.type}, session: ${ctx.sessionType}, target: ${isTeam ? message.to : ctx.senderId}, message id: ${ctx.id}, timestamp: ${ctx.timestamp}`,
+  );
 
   // Check DM policy (only for P2P)
   if (isP2P) {
@@ -138,7 +140,7 @@ export async function handleNimMessage(params: {
     });
 
     if (!allowed) {
-      log(`nim: sender ${ctx.senderId} not allowed by DM policy`);
+      log(`[nim] dm blocked — sender: ${ctx.senderId}, policy: ${dmPolicy}`);
       return;
     }
   }
@@ -165,7 +167,7 @@ export async function handleNimMessage(params: {
     });
 
     if (!route) {
-      log(`nim: no agent route resolved for peer ${peerId} — skipping`);
+      log(`[nim] route unresolved — peer: ${peerId}`);
       return;
     }
 
@@ -233,15 +235,23 @@ export async function handleNimMessage(params: {
       ...mediaPayload,
     });
 
+    log(
+      `[nim] creating reply dispatcher — target: ${replyTarget}, session: ${sessionType}, sender: ${isTeam ? ctx.senderId : "n/a"}`,
+    );
+
     const { dispatcher, replyOptions, markDispatchIdle } = createNimReplyDispatcher({
       cfg,
       agentId: route.agentId,
       runtime: runtime as RuntimeEnv,
       senderId: replyTarget,
       sessionType,
+      originalRawMsg: isTeam ? message.rawMsg : undefined,
+      originalSenderId: isTeam ? ctx.senderId : undefined,
     });
 
-    log(`nim: dispatching to agent (session=${route.sessionKey}, chatType=${chatType})`);
+    log(
+      `[nim] dispatching to agent — session: ${route.sessionKey}, chat: ${chatType}, agent: ${route.agentId}`,
+    );
 
     const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
       ctx: ctxPayload,
@@ -252,8 +262,15 @@ export async function handleNimMessage(params: {
 
     markDispatchIdle();
 
-    log(`nim: dispatch complete (queuedFinal=${queuedFinal}, replies=${counts.final})`);
+    if (counts.final === 0) {
+      log(`[nim] agent returned no replies — queued: ${queuedFinal}, tool: ${counts.tool}, block: ${counts.block}`);
+    } else {
+      log(`[nim] dispatch complete — final: ${counts.final}, tool: ${counts.tool}, block: ${counts.block}, queued: ${queuedFinal}`);
+    }
   } catch (err) {
-    error(`nim: failed to dispatch message: ${String(err)}`);
+    error(`[nim] dispatch failed — error: ${String(err)}`);
+    if (err instanceof Error && err.stack) {
+      error(`[nim] dispatch stack — error: ${err.stack}`);
+    }
   }
 }

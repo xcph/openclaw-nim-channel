@@ -20,7 +20,7 @@ export async function sendQChatMessage(
 
   const [serverId, channelId] = to.split(":");
   if (!serverId || !channelId) {
-    log.error(`sendQChatMessage: invalid target "${to}"`);
+    log.error(`[qchat] invalid target — value: ${to}`);
     return {
       ok: false,
       messageId: "",
@@ -29,7 +29,7 @@ export async function sendQChatMessage(
   }
 
   if (!sharedQChatClient) {
-    log.error(`sendQChatMessage: no shared client — not connected`);
+    log.error("[qchat] send failed — reason: client not connected");
     return {
       ok: false,
       messageId: "",
@@ -37,12 +37,14 @@ export async function sendQChatMessage(
     };
   }
 
-  log.info(`sendQChatMessage: sending to server=${serverId} channel=${channelId} text=${text.slice(0, 80)}...`);
+  log.info(
+    `[qchat] sending message — server: ${serverId}, channel: ${channelId}, length: ${text.length}`,
+  );
   const result = await sharedQChatClient.sendText({ serverId, channelId, text });
   if (!result.ok) {
-    log.error(`sendQChatMessage: send failed: ${result.error}`);
+    log.error(`[qchat] send failed — error: ${result.error ?? "unknown"}`);
   } else {
-    log.info(`sendQChatMessage: sent ok, msgServerId=${result.msgServerId}`);
+    log.info(`[qchat] message sent — message id: ${result.msgServerId ?? "unknown"}`);
   }
   return {
     ok: result.ok,

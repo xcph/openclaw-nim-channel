@@ -197,7 +197,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       const { monitorNimProvider } = await import("./monitor.js");
       const nimCfg = ctx.cfg.channels?.nim as NimConfig | undefined;
       ctx.setStatus({ accountId: ctx.accountId });
-      ctx.log?.info(`starting NIM provider for account ${nimCfg?.account ?? "unknown"}`);
+      ctx.log?.info(`[nim] provider starting — account: ${nimCfg?.account ?? "unknown"}`);
 
       // Prepare QChat client if configured (listeners + activate handled by monitor)
       const qchatCfg = (nimCfg as Record<string, unknown> | undefined)?.qchat as
@@ -223,7 +223,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
             ? `servers=[${serverIds.join(",")}]`
             : "servers=auto-discover";
 
-        ctx.log?.info(`preparing QChat client (${serverIdsLabel})`);
+        ctx.log?.info(`[qchat] client preparing — ${serverIdsLabel}`);
 
         qchatClient = new QChatClient({
           appKey: nimCfg.appKey as string,
@@ -233,32 +233,31 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
           onMessage: async (resp) => {
             const raw = resp.message;
             ctx.log?.info(
-              `[qchat] raw message: server_id=${raw?.server_id} channel_id=${raw?.channel_id} ` +
-              `from=${raw?.from_accid} type=${raw?.msg_type} mention_all=${raw?.mention_all} ` +
-              `mention_accids=${JSON.stringify(raw?.mention_accids)} body=${(raw?.msg_body ?? "").slice(0, 100)}`
+              `[qchat] received message — server: ${raw?.server_id ?? "unknown"}, channel: ${raw?.channel_id ?? "unknown"}, sender: ${raw?.from_accid ?? "unknown"}, message id: ${raw?.msg_server_id ?? "unknown"}, timestamp: ${raw?.timestamp ?? "unknown"}`,
             );
             const msg = parseQChatMessage(resp, nimCfg!.account as string);
             if (!msg) {
-              ctx.log?.info(`[qchat] message dropped by parseQChatMessage (not text or missing fields)`);
+              ctx.log?.info("[qchat] message dropped — reason: unsupported or missing fields");
               return;
             }
 
             ctx.log?.info(
-              `[qchat] parsed: from=${msg.senderAccid} mentioned=${msg.wasMentioned} ` +
-              `target=${msg.serverId}:${msg.channelId} text=${msg.text.slice(0, 80)}`
+              `[qchat] parsed message — sender: ${msg.senderAccid}, target: ${msg.serverId}:${msg.channelId}, mentioned: ${msg.wasMentioned ? "yes" : "no"}, message id: ${msg.messageId}`,
             );
 
             if (!msg.wasMentioned) {
-              ctx.log?.info(`[qchat] skipped: not @-mentioned`);
+              ctx.log?.info("[qchat] skipped — reason: not mentioned");
               return;
             }
 
             if (msg.senderAccid === (nimCfg!.account as string)) {
-              ctx.log?.info(`[qchat] skipped: message from self`);
+              ctx.log?.info("[qchat] skipped — reason: message from self");
               return;
             }
 
-            ctx.log?.info(`[qchat] dispatching to agent pipeline...`);
+            ctx.log?.info(
+              `[qchat] dispatching to agent — server: ${msg.serverId}, channel: ${msg.channelId}, sender: ${msg.senderAccid}`,
+            );
 
             try {
               await handleQChatInbound({
@@ -270,16 +269,20 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
                 statusSink: (patch) =>
                   ctx.setStatus({ accountId: ctx.accountId, ...patch }),
               });
-              ctx.log?.info(`[qchat] agent pipeline completed`);
+              ctx.log?.info(
+                `[qchat] agent pipeline completed — server: ${msg.serverId}, channel: ${msg.channelId}`,
+              );
             } catch (dispatchErr) {
-              ctx.log?.error(`[qchat] agent pipeline error: ${String(dispatchErr)}`);
+              ctx.log?.error(
+                `[qchat] agent pipeline error — error: ${String(dispatchErr)}`,
+              );
             }
           },
           onLoginStatus: (status) => {
-            ctx.log?.info(`[qchat] login status: ${JSON.stringify(status)}`);
+            ctx.log?.info(`[qchat] login status changed — status: ${typeof status === "object" ? (status as any)?.code ?? String(status) : status}`);
           },
           onError: (err) => {
-            ctx.log?.error(`[qchat] error: ${err.message}`);
+            ctx.log?.error(`[qchat] error — message: ${err.message}`);
           },
         });
 
@@ -291,7 +294,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       if (qchatClient) {
         ctx.abortSignal.addEventListener("abort", () => {
           qchatClient!.stop().catch((err) => {
-            ctx.log?.error(`[qchat] shutdown error: ${String(err)}`);
+            ctx.log?.error(`[qchat] shutdown failed — error: ${String(err)}`);
           });
           setSharedQChatClient(null);
         }, { once: true });

@@ -81,7 +81,7 @@ export class QChatClient {
 
     // Initialize QChat event handler infrastructure
     this.qchat.initEventHandlers();
-    log?.info("QChat event handlers initialized (V2 IM login covers QChat auth)");
+    log?.info("event handlers initialized — v2 login provides qchat auth");
 
     // Login status
     this.qchat.instance.on("loginStatus", (resp: unknown) => {
@@ -90,7 +90,7 @@ export class QChatClient {
 
     // Kicked out
     this.qchat.instance.on("kickedOut", (resp: unknown) => {
-      this.opts.onError?.(new Error(`QChat kicked out: ${JSON.stringify(resp)}`));
+      this.opts.onError?.(new Error(`kicked out — reason: ${typeof resp === "object" && resp !== null ? ((resp as any).code ?? (resp as any).reason ?? String(resp)) : String(resp)}`));
     });
 
     // Message listener (fires for ALL subscribed channels)
@@ -112,24 +112,24 @@ export class QChatClient {
 
         // Skip if already subscribed
         if (this.subscribedServerIds.includes(serverId)) {
-          log?.info(`[sysnotify] MemberInviteDone for server ${serverId}, already subscribed — skipping`);
+          log?.info(`[sysnotify] invite received — server: ${serverId}, status: already subscribed`);
           return;
         }
 
         if (!this.activated) {
-          log?.info(`[sysnotify] MemberInviteDone for server ${serverId}, but not yet activated — queuing`);
+          log?.info(`[sysnotify] invite queued — server: ${serverId}, status: not activated`);
           return;
         }
 
-        log?.info(`[sysnotify] MemberInviteDone — auto-subscribing to all channels in server ${serverId}`);
+        log?.info(`[sysnotify] auto-subscribing — server: ${serverId}`);
         this.subscribeServer(serverId).catch((err) => {
-          log?.error(`[sysnotify] failed to subscribe server ${serverId}: ${String(err)}`);
+          log?.error(`[sysnotify] subscribe failed — server: ${serverId}, error: ${String(err)}`);
         });
       }
     });
 
     this.listenersInitialized = true;
-    log?.info("QChat listeners registered (passive phase complete)");
+    log?.info("listeners registered — phase: passive");
   }
 
   /**
@@ -151,13 +151,13 @@ export class QChatClient {
 
     if (serverIds.length === 0) {
       // Auto-discover all joined servers
-      log?.info("no serverIds configured — discovering joined servers...");
+      log?.info("no servers configured — discovering joined servers");
       serverIds = await this.discoverJoinedServers();
-      log?.info(`discovered ${serverIds.length} server(s): ${serverIds.join(", ")}`);
+      log?.info(`servers discovered — count: ${serverIds.length}, servers: ${serverIds.join(", ")}`);
     }
 
     if (serverIds.length === 0) {
-      log?.info("no servers found — will receive no messages until joining a server");
+      log?.info("no servers found — waiting for server join");
       this.activated = true;
       return;
     }
@@ -169,15 +169,13 @@ export class QChatClient {
     });
 
     if (resp.failed_servers && resp.failed_servers.length > 0) {
-      log?.error(`failed to subscribe to servers: ${resp.failed_servers.join(", ")}`);
+      log?.error(`subscribe failed — servers: ${resp.failed_servers.join(", ")}`);
     }
 
     this.subscribedServerIds = serverIds.filter(
       (id) => !(resp.failed_servers ?? []).includes(id),
     );
-    log?.info(
-      `subscribed to all channels in ${this.subscribedServerIds.length} server(s)`,
-    );
+    log?.info(`subscribed to all channels — servers: ${this.subscribedServerIds.length}`);
     this.activated = true;
   }
 
@@ -242,12 +240,12 @@ export class QChatClient {
 
     const failed = resp.failed_servers ?? [];
     if (failed.includes(serverId)) {
-      log?.error(`[sysnotify] subscribeAllChannel failed for server ${serverId}`);
+      log?.error(`[sysnotify] subscribe failed — server: ${serverId}`);
       return;
     }
 
     this.subscribedServerIds.push(serverId);
-    log?.info(`[sysnotify] subscribed to all channels in server ${serverId} (total: ${this.subscribedServerIds.length})`);
+    log?.info(`[sysnotify] subscribed — server: ${serverId}, total servers: ${this.subscribedServerIds.length}`);
   }
 
   async sendText(params: {

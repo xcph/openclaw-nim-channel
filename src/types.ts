@@ -186,6 +186,8 @@ export interface NimClientInstance {
   logout(): Promise<void>;
   /** 发送文本消息 */
   sendText(to: string, text: string, sessionType?: NimSessionType): Promise<NimSendResult>;
+  /** 回复文本消息（群组中引用原消息并 @发送者） */
+  replyText(to: string, text: string, originalMsg: unknown, forcePushAccountIds: string[], sessionType?: NimSessionType): Promise<NimSendResult>;
   /** 发送图片消息 */
   sendImage(to: string, filePath: string, sessionType?: NimSessionType): Promise<NimSendResult>;
   /** 发送文件消息 */

@@ -195,7 +195,8 @@ export async function downloadNimMedia(params: {
       localPath,
     };
   } catch (error) {
-    log(`nim: failed to download media: ${error instanceof Error ? error.message : String(error)}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    log(`[nim] media download failed — error: ${errorMessage}`);
     return null;
   }
 }

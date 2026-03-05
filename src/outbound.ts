@@ -109,13 +109,13 @@ export async function sendNimOutboundText(params: {
 }): Promise<NimOutboundResult> {
   const { to, text, cfg } = params;
 
-  console.log(`[NIM Outbound] sendText to=${to}, textLen=${text.length}`);
+  console.log(`[nim] outbound text send — target: ${to}, length: ${text.length}`);
 
   try {
     const result = await sendMessageNim({ cfg, to, text });
 
     if (result.success) {
-      console.log(`[NIM Outbound] sendText success, msgId=${result.msgId}`);
+      console.log(`[nim] outbound text sent — message id: ${result.msgId ?? "unknown"}`);
       return {
         channel: "nim",
         ok: true,
@@ -123,7 +123,7 @@ export async function sendNimOutboundText(params: {
         clientMsgId: result.clientMsgId,
       };
     } else {
-      console.error(`[NIM Outbound] sendText failed: ${result.error}`);
+      console.error(`[nim] outbound text failed — error: ${result.error ?? "unknown"}`);
       return {
         channel: "nim",
         ok: false,
@@ -132,7 +132,7 @@ export async function sendNimOutboundText(params: {
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[NIM Outbound] sendText exception: ${errorMsg}`);
+    console.error(`[nim] outbound text exception — error: ${errorMsg}`);
     return {
       channel: "nim",
       ok: false,
@@ -156,7 +156,9 @@ export async function sendNimOutboundMedia(params: {
   const { to, text, mediaUrl, mediaPath, cfg } = params;
   const media = mediaPath || mediaUrl;
 
-  console.log(`[NIM Outbound] sendMedia to=${to}, media=${media}, hasText=${Boolean(text)}`);
+  console.log(
+    `[nim] outbound media send — target: ${to}, media: ${media ?? "none"}, has text: ${text ? "yes" : "no"}`,
+  );
 
   try {
     // Send media if provided
@@ -186,7 +188,7 @@ export async function sendNimOutboundMedia(params: {
       }
 
       if (!mediaResult.success) {
-        console.error(`[NIM Outbound] sendMedia failed: ${mediaResult.error}`);
+        console.error(`[nim] outbound media failed — error: ${mediaResult.error ?? "unknown"}`);
         return {
           channel: "nim",
           ok: false,
@@ -194,7 +196,7 @@ export async function sendNimOutboundMedia(params: {
         };
       }
 
-      console.log(`[NIM Outbound] sendMedia success, msgId=${mediaResult.msgId}`);
+      console.log(`[nim] outbound media sent — message id: ${mediaResult.msgId ?? "unknown"}`);
 
       // If no text, return media result
       if (!text) {
@@ -219,7 +221,7 @@ export async function sendNimOutboundMedia(params: {
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[NIM Outbound] sendMedia exception: ${errorMsg}`);
+    console.error(`[nim] outbound media exception — error: ${errorMsg}`);
     return {
       channel: "nim",
       ok: false,

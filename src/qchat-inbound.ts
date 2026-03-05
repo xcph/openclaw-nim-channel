@@ -135,7 +135,7 @@ export async function handleQChatInbound(params: {
   });
 
   if (!route) {
-    runtime.error?.(`nim-qchat: no agent route resolved for peer ${peerId} — skipping`);
+    runtime.error?.(`[qchat] route unresolved — target: ${peerId}`);
     return;
   }
 
@@ -187,7 +187,7 @@ export async function handleQChatInbound(params: {
     sessionKey: ctxPayload.SessionKey ?? route.sessionKey,
     ctx: ctxPayload,
     onRecordError: (err: unknown) => {
-      runtime.error?.(`nim-qchat: failed updating session meta: ${String(err)}`);
+      runtime.error?.(`[qchat] session update failed — error: ${String(err)}`);
     },
   });
 
@@ -199,14 +199,14 @@ export async function handleQChatInbound(params: {
     accountId,
   });
   const deliverReply = createNormalizedOutboundDeliverer(async (payload) => {
-    runtime.log(`nim-qchat: delivering reply to ${peerId} (${(payload.text ?? "").slice(0, 80)}...)`);
+    runtime.log(`[qchat] delivering reply — target: ${peerId}`);
     await deliverQChatReply({
       payload,
       target: peerId,
       accountId,
       statusSink,
     });
-    runtime.log(`nim-qchat: reply delivered to ${peerId}`);
+    runtime.log(`[qchat] reply delivered — target: ${peerId}`);
   });
 
   // Dispatch through the agent pipeline
@@ -217,7 +217,7 @@ export async function handleQChatInbound(params: {
       ...prefixOptions,
       deliver: deliverReply,
       onError: (err: unknown, info: { kind: string }) => {
-        runtime.error?.(`nim-qchat ${info.kind} reply failed: ${String(err)}`);
+        runtime.error?.(`[qchat] ${info.kind} reply failed — error: ${String(err)}`);
       },
     },
     replyOptions: {
