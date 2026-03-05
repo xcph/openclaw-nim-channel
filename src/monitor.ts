@@ -59,7 +59,7 @@ export async function monitorNimProvider(params: {
     // QChat phase 1: register passive listeners AFTER IM init, BEFORE login
     if (params.qchatClient) {
       console.log("[qchat] listeners registering — phase: pre-login");
-      params.qchatClient.initListeners();
+      await params.qchatClient.initListeners();
     }
 
     // IM 登录

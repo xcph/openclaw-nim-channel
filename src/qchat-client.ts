@@ -9,7 +9,7 @@
  *   2. activate()      — discover servers & subscribe (call AFTER IM login succeeds)
  */
 
-import { QChat, type QChatRecvMsgResp, type QChatRecvSystemNotificationResp } from "node-nim";
+import type { QChatRecvMsgResp, QChatRecvSystemNotificationResp } from "node-nim";
 
 export type QChatClientOptions = {
   appKey: string;
@@ -42,7 +42,9 @@ export type QChatClientOptions = {
  *             after IM login succeeds, because these are active API calls.
  */
 export class QChatClient {
-  private qchat: QChat;
+  // Lazily initialized via ensureQChat() to avoid top-level require of native binary.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private qchat: any = null;
   private opts: QChatClientOptions;
   private subscribedServerIds: string[] = [];
   private listenersInitialized = false;
@@ -50,7 +52,18 @@ export class QChatClient {
 
   constructor(opts: QChatClientOptions) {
     this.opts = opts;
-    this.qchat = new QChat();
+  }
+
+  /**
+   * Lazily create QChat instance. This defers the native binary require
+   * until runtime, giving ensureNimSdkBinary a chance to download it first.
+   */
+  private async ensureQChat() {
+    if (!this.qchat) {
+      const { QChat } = await import("node-nim");
+      this.qchat = new QChat();
+    }
+    return this.qchat;
   }
 
   /** The accid this client is associated with. */
@@ -74,34 +87,35 @@ export class QChatClient {
    * Call this AFTER V2NIMClient.init() but BEFORE loginService.login().
    * Only registers listeners; makes NO outgoing API calls.
    */
-  initListeners(): void {
+  async initListeners(): Promise<void> {
     if (this.listenersInitialized) return;
 
     const log = this.opts.log;
+    const qchat = await this.ensureQChat();
 
     // Initialize QChat event handler infrastructure
-    this.qchat.initEventHandlers();
+    qchat.initEventHandlers();
     log?.info("event handlers initialized — v2 login provides qchat auth");
 
     // Login status
-    this.qchat.instance.on("loginStatus", (resp: unknown) => {
+    qchat.instance.on("loginStatus", (resp: unknown) => {
       this.opts.onLoginStatus?.(resp);
     });
 
     // Kicked out
-    this.qchat.instance.on("kickedOut", (resp: unknown) => {
+    qchat.instance.on("kickedOut", (resp: unknown) => {
       this.opts.onError?.(new Error(`kicked out — reason: ${typeof resp === "object" && resp !== null ? ((resp as any).code ?? (resp as any).reason ?? String(resp)) : String(resp)}`));
     });
 
     // Message listener (fires for ALL subscribed channels)
-    this.qchat.message.on("message", (resp: QChatRecvMsgResp) => {
+    qchat.message.on("message", (resp: QChatRecvMsgResp) => {
       this.opts.onMessage?.(resp);
     });
 
     // System notification listener
     // When the bot is invited to a new server (MemberInviteDone = 8),
     // automatically subscribe to all channels in that server.
-    this.qchat.systemNotification.on("notification", (resp: QChatRecvSystemNotificationResp) => {
+    qchat.systemNotification.on("notification", (resp: QChatRecvSystemNotificationResp) => {
       const notification = resp.notification;
       if (!notification) return;
 
@@ -141,7 +155,7 @@ export class QChatClient {
   async activate(): Promise<void> {
     if (this.activated) return;
     if (!this.listenersInitialized) {
-      this.initListeners();
+      await this.initListeners();
     }
 
     const log = this.opts.log;
@@ -162,8 +176,10 @@ export class QChatClient {
       return;
     }
 
+    const qchat = await this.ensureQChat();
+
     // Subscribe to ALL channels in each server
-    const resp = await this.qchat.server.subscribeAllChannel({
+    const resp = await qchat.server.subscribeAllChannel({
       sub_type: 1, // kNIMQChatSubscribeTypeMsg
       server_ids: serverIds,
     });
@@ -184,7 +200,7 @@ export class QChatClient {
    * Prefer initListeners() + activate() for proper lifecycle control.
    */
   async start(): Promise<void> {
-    this.initListeners();
+    await this.initListeners();
     await this.activate();
   }
 
@@ -196,8 +212,10 @@ export class QChatClient {
     let timestamp = 0;
     const PAGE_LIMIT = 100;
 
+    const qchat = await this.ensureQChat();
+
     for (let page = 0; page < 20; page++) {
-      const resp = await this.qchat.server.getServersByPage({
+      const resp = await qchat.server.getServersByPage({
         timestamp,
         limit: PAGE_LIMIT,
       });
@@ -233,7 +251,9 @@ export class QChatClient {
   private async subscribeServer(serverId: string): Promise<void> {
     const log = this.opts.log;
 
-    const resp = await this.qchat.server.subscribeAllChannel({
+    const qchat = await this.ensureQChat();
+
+    const resp = await qchat.server.subscribeAllChannel({
       sub_type: 1, // kNIMQChatSubscribeTypeMsg
       server_ids: [serverId],
     });
@@ -253,8 +273,10 @@ export class QChatClient {
     channelId: string;
     text: string;
   }): Promise<{ ok: boolean; msgServerId?: string; error?: string }> {
+    const qchat = await this.ensureQChat();
+
     try {
-      const resp = await this.qchat.message.send({
+      const resp = await qchat.message.send({
         message: {
           server_id: params.serverId,
           channel_id: params.channelId,
@@ -281,8 +303,9 @@ export class QChatClient {
 
     // Unsubscribe all servers
     if (this.subscribedServerIds.length > 0) {
+      const qchat = await this.ensureQChat();
       try {
-        await this.qchat.server.subscribeAllChannel({
+        await qchat.server.subscribeAllChannel({
           sub_type: 1,
           server_ids: [], // empty = unsubscribe all
         });
