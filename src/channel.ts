@@ -1,5 +1,5 @@
 import type { ChannelPlugin, OpenClawConfig } from "openclaw/plugin-sdk";
-import type { ResolvedNimAccount, NimConfig } from "./types.js";
+import type { ResolvedNimAccount, NimConfig, NimTeamPolicy, QChatServerConfig, QChatChannelConfig } from "./types.js";
 import { resolveNimAccount, resolveNimCredentials, DEFAULT_NIM_ACCOUNT_ID } from "./accounts.js";
 import { normalizeNimTarget, looksLikeNimId } from "./targets.js";
 import { sendMessageNim } from "./send.js";
@@ -31,17 +31,6 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
   meta: {
     ...meta,
   },
-  pairing: {
-    idLabel: "nimAccountId",
-    normalizeAllowEntry: (entry) => entry.replace(/^(nim|user|account):/i, ""),
-    notifyApproval: async ({ cfg, id }) => {
-      await sendMessageNim({
-        cfg,
-        to: id,
-        text: "Your account has been approved to chat with this bot.",
-      });
-    },
-  },
   capabilities: {
     chatTypes: ["direct", "group"],
     polls: false,
@@ -53,7 +42,8 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
   },
   agentPrompt: {
     messageToolHints: () => [
-      "- NIM targeting: omit `target` to reply to the current conversation (auto-inferred). Explicit targets: `user:<accountId>` or `nim:<accountId>`.",
+      "- NIM targeting: omit `target` to reply to the current conversation (auto-inferred). Explicit targets: `user:<accountId>` for P2P, `team:<teamId>` for team group.",
+      "- For group conversations, always send to the group (do NOT send P2P to individual users unless explicitly asked).",
       "- NIM supports text, image, file, audio, and video messages.",
       "- To send an image: use the `mediaUrl` or `mediaPath` parameter with an image file path (png, jpg, gif, webp).",
       "- To send a file: use `mediaUrl` or `mediaPath` with any file path.",
@@ -73,12 +63,12 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
         appKey: { type: "string" },
         account: { type: "string" },
         token: { type: "string" },
-        dmPolicy: { type: "string", enum: ["open", "allowlist"] },
+        p2pPolicy: { type: "string", enum: ["allowlist", "open", "disabled"] },
         allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
+        teamPolicy: { type: "string", enum: ["open", "allowlist", "disabled"] },
+        teamAllowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
         mediaMaxMb: { type: "number", minimum: 0 },
         textChunkLimit: { type: "integer", minimum: 1 },
-        lbsUrl: { type: "string" },
-        linkUrl: { type: "string" },
         debug: { type: "boolean" },
         qchat: {
           type: "object",
@@ -86,6 +76,29 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
           properties: {
             enabled: { type: "boolean" },
             serverIds: { type: "array", items: { type: "string" } },
+            serverPolicy: { type: "string", enum: ["open", "allowlist", "disabled"] },
+            servers: {
+              type: "object",
+              additionalProperties: {
+                type: "object",
+                properties: {
+                  allow: { type: "boolean" },
+                  requireMention: { type: "boolean" },
+                  allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
+                  channels: {
+                    type: "object",
+                    additionalProperties: {
+                      type: "object",
+                      properties: {
+                        allow: { type: "boolean" },
+                        requireMention: { type: "boolean" },
+                        allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -132,13 +145,56 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
         .map((entry) => entry.toLowerCase()),
   },
   security: {
+    resolveDmPolicy: ({ account }) => ({
+      policy: account.p2pPolicy ?? "open",
+      allowFrom: account.allowFrom ?? [],
+      allowFromPath: "channels.nim.",
+      normalizeEntry: (raw: string) => raw.replace(/^(nim|user|account):/i, ""),
+    }),
     collectWarnings: ({ cfg }) => {
       const nimCfg = cfg.channels?.nim as NimConfig | undefined;
-      const dmPolicy = nimCfg?.dmPolicy ?? "open";
-      if (dmPolicy !== "open") return [];
-      return [
-        `- NIM DMs: dmPolicy="open" allows any user to message. Set channels.nim.dmPolicy="allowlist" + channels.nim.allowFrom to restrict senders.`,
-      ];
+      const warnings: string[] = [];
+
+      // P2P policy warnings
+      const p2pPolicy = nimCfg?.p2pPolicy ?? "open";
+      if (p2pPolicy === "open") {
+        warnings.push(
+          `- NIM P2P: p2pPolicy="open" allows any user to message. Set channels.nim.p2pPolicy="allowlist" + channels.nim.allowFrom to restrict senders.`,
+        );
+      }
+
+      // Team policy warnings
+      const teamPolicy = nimCfg?.teamPolicy ?? "open";
+      if (teamPolicy === "open") {
+        const hasTeamAllowFrom = (nimCfg?.teamAllowFrom ?? []).length > 0;
+        if (!hasTeamAllowFrom) {
+          warnings.push(
+            `- NIM teams: teamPolicy="open" allows any member to trigger (mention-gated). Set channels.nim.teamPolicy="allowlist" + channels.nim.teamAllowFrom to restrict senders.`,
+          );
+        }
+      }
+
+      // QChat server policy warnings
+      const qchatCfg = (nimCfg as Record<string, unknown> | undefined)?.qchat as
+        | { enabled?: boolean; serverPolicy?: string; servers?: Record<string, unknown> }
+        | undefined;
+      if (qchatCfg?.enabled) {
+        const qchatServerPolicy = qchatCfg.serverPolicy ?? "open";
+        const serversConfigured = qchatCfg.servers && Object.keys(qchatCfg.servers).length > 0;
+        if (qchatServerPolicy === "open") {
+          if (serversConfigured) {
+            warnings.push(
+              `- QChat servers: serverPolicy="open" allows any server not explicitly denied to trigger (mention-gated). Set channels.nim.qchat.serverPolicy="allowlist" and configure channels.nim.qchat.servers.`,
+            );
+          } else {
+            warnings.push(
+              `- QChat servers: serverPolicy="open" with no server allowlist; any server can trigger (mention-gated). Set channels.nim.qchat.serverPolicy="allowlist" and configure channels.nim.qchat.servers.`,
+            );
+          }
+        }
+      }
+
+      return warnings;
     },
   },
   setup: {
@@ -158,7 +214,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
     normalizeTarget: normalizeNimTarget,
     targetResolver: {
       looksLikeId: looksLikeNimId,
-      hint: "<accountId|user:accountId|nim:accountId>",
+      hint: "<accountId|user:accountId|team:teamId|superTeam:teamId>",
     },
   },
   outbound: nimOutboundConfig,
@@ -201,7 +257,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
 
       // Prepare QChat client if configured (listeners + activate handled by monitor)
       const qchatCfg = (nimCfg as Record<string, unknown> | undefined)?.qchat as
-        | { enabled?: boolean; serverIds?: string[] }
+        | { enabled?: boolean; serverIds?: string[]; serverPolicy?: string; servers?: Record<string, QChatServerConfig> }
         | undefined;
 
       let qchatClient: QChatClient | null = null;
@@ -244,14 +300,79 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
             ctx.log?.info(
               `[qchat] parsed message — sender: ${msg.senderAccid}, target: ${msg.serverId}:${msg.channelId}, mentioned: ${msg.wasMentioned ? "yes" : "no"}, message id: ${msg.messageId}`,
             );
-
-            if (!msg.wasMentioned) {
-              ctx.log?.info("[qchat] skipped — reason: not mentioned");
+            if (msg.senderAccid === (nimCfg!.account as string)) {
+              ctx.log?.info("[qchat] skipped — reason: message from self");
               return;
             }
 
-            if (msg.senderAccid === (nimCfg!.account as string)) {
-              ctx.log?.info("[qchat] skipped — reason: message from self");
+            // ── QChat access control (server/channel pattern) ──
+            const qchatServerPolicy = (qchatCfg?.serverPolicy ?? "open") as NimTeamPolicy;
+            const serverEntries = qchatCfg?.servers ?? {};
+            const serversConfigured = Object.keys(serverEntries).length > 0;
+
+            if (qchatServerPolicy === "disabled") {
+              ctx.log?.info("[qchat] skipped — reason: serverPolicy is disabled");
+              return;
+            }
+
+            // Resolve server config: by ID, then wildcard "*"
+            const serverCfg: QChatServerConfig | undefined =
+              serverEntries[msg.serverId] ?? serverEntries["*"] ?? undefined;
+
+            if (qchatServerPolicy === "allowlist") {
+              if (!serverCfg) {
+                ctx.log?.info(`[qchat] skipped — reason: server ${msg.serverId} not in allowlist`);
+                return;
+              }
+              if (serverCfg.allow === false) {
+                ctx.log?.info(`[qchat] skipped — reason: server ${msg.serverId} explicitly denied`);
+                return;
+              }
+
+              // Check channel within server
+              const channelEntries = serverCfg.channels ?? {};
+              const channelsConfigured = Object.keys(channelEntries).length > 0;
+              if (channelsConfigured) {
+                const channelCfg: QChatChannelConfig | undefined =
+                  channelEntries[msg.channelId] ?? channelEntries["*"] ?? undefined;
+                if (!channelCfg || channelCfg.allow === false) {
+                  ctx.log?.info(`[qchat] skipped — reason: channel ${msg.channelId} not in server allowlist`);
+                  return;
+                }
+
+                // Per-channel sender allowFrom
+                const chAllowFrom = channelCfg.allowFrom ?? [];
+                if (chAllowFrom.length > 0) {
+                  const senderOk = chAllowFrom.some(
+                    (e) => String(e).toLowerCase() === msg.senderAccid.toLowerCase(),
+                  );
+                  if (!senderOk) {
+                    ctx.log?.info(`[qchat] skipped — reason: sender ${msg.senderAccid} not in channel allowFrom`);
+                    return;
+                  }
+                }
+              }
+
+              // Per-server sender allowFrom
+              const srvAllowFrom = serverCfg.allowFrom ?? [];
+              if (srvAllowFrom.length > 0) {
+                const senderOk = srvAllowFrom.some(
+                  (e) => String(e).toLowerCase() === msg.senderAccid.toLowerCase(),
+                );
+                if (!senderOk) {
+                  ctx.log?.info(`[qchat] skipped — reason: sender ${msg.senderAccid} not in server allowFrom`);
+                  return;
+                }
+              }
+            }
+
+            // Check mention requirement (server/channel level, default true)
+            const requireMention =
+              (serverCfg?.channels?.[msg.channelId] as QChatChannelConfig | undefined)?.requireMention
+              ?? serverCfg?.requireMention
+              ?? true;
+            if (requireMention && !msg.wasMentioned) {
+              ctx.log?.info("[qchat] skipped — reason: mention required but not mentioned");
               return;
             }
 

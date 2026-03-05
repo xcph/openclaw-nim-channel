@@ -1,6 +1,6 @@
 /**
- * Normalize a NIM target to a plain account ID.
- * Strips common prefixes like "nim:", "user:", etc.
+ * Normalize a NIM target to a plain ID, stripping known prefixes.
+ * Handles: nim:, user:, account:, p2p:, team:, superTeam:
  */
 export function normalizeNimTarget(target: string): string | null {
   if (!target || typeof target !== "string") {
@@ -9,10 +9,10 @@ export function normalizeNimTarget(target: string): string | null {
 
   let normalized = target.trim();
 
-  // Remove common prefixes
-  const prefixes = ["nim:", "user:", "account:", "p2p:"];
+  // Remove common prefixes (order matters: longer prefixes first)
+  const prefixes = ["superTeam:", "nim:qchat:", "nim:", "user:", "account:", "p2p:", "team:"];
   for (const prefix of prefixes) {
-    if (normalized.toLowerCase().startsWith(prefix)) {
+    if (normalized.toLowerCase().startsWith(prefix.toLowerCase())) {
       normalized = normalized.slice(prefix.length);
       break;
     }
@@ -28,12 +28,45 @@ export function normalizeNimTarget(target: string): string | null {
 }
 
 /**
- * Check if a string looks like a NIM account ID.
- * NIM account IDs are alphanumeric strings, typically 1-32 characters.
+ * Parse a NIM target string into an ID and session type.
+ * Detects team: and superTeam: prefixes to determine session type.
+ * Returns "p2p" for plain targets or user:/nim:/p2p: prefixes.
+ */
+export function parseNimTarget(target: string): { id: string; sessionType: "p2p" | "team" | "superTeam" } | null {
+  if (!target || typeof target !== "string") {
+    return null;
+  }
+
+  const trimmed = target.trim().toLowerCase();
+
+  if (trimmed.startsWith("superteam:")) {
+    const id = target.trim().slice("superTeam:".length).trim();
+    return id ? { id, sessionType: "superTeam" } : null;
+  }
+
+  if (trimmed.startsWith("team:")) {
+    const id = target.trim().slice("team:".length).trim();
+    return id ? { id, sessionType: "team" } : null;
+  }
+
+  const id = normalizeNimTarget(target);
+  return id ? { id, sessionType: "p2p" } : null;
+}
+
+/**
+ * Check if a string looks like a NIM target (account ID, team ID, etc.).
+ * Accepts plain IDs and prefixed forms: user:, nim:, team:, superTeam:
  */
 export function looksLikeNimId(value: string): boolean {
   if (!value || typeof value !== "string") {
     return false;
+  }
+
+  // Accept prefixed team/superTeam targets (numeric IDs)
+  const lc = value.trim().toLowerCase();
+  if (lc.startsWith("team:") || lc.startsWith("superteam:")) {
+    const parsed = parseNimTarget(value);
+    return parsed !== null && parsed.id.length > 0;
   }
 
   const normalized = normalizeNimTarget(value);
@@ -41,7 +74,7 @@ export function looksLikeNimId(value: string): boolean {
     return false;
   }
 
-  // NIM account IDs: alphanumeric, underscores, 1-32 chars
+  // NIM account/team IDs: alphanumeric, underscores, or purely numeric
   return /^[a-zA-Z0-9_]{1,32}$/.test(normalized);
 }
 

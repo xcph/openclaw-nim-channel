@@ -1,5 +1,5 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type { NimConfig, ResolvedNimAccount, NimDmPolicy } from "./types.js";
+import type { NimConfig, ResolvedNimAccount, NimP2pPolicy, NimTeamPolicy } from "./types.js";
 
 /**
  * Default account ID for NIM (single account mode).
@@ -20,7 +20,6 @@ function coerceToString(value: unknown): string {
 /**
  * Resolve NIM credentials from configuration.
  * Returns null if required credentials are missing.
- * Automatically converts numeric values to strings (YAML may parse them as numbers).
  */
 export function resolveNimCredentials(
   cfg: NimConfig | undefined,
@@ -36,7 +35,7 @@ export function resolveNimCredentials(
 }
 
 /**
- * Resolve NIM account information from Clawdbot configuration.
+ * Resolve NIM account information from OpenClaw configuration.
  */
 export function resolveNimAccount(params: {
   cfg: OpenClawConfig;
@@ -47,13 +46,33 @@ export function resolveNimAccount(params: {
 
   return {
     id: DEFAULT_NIM_ACCOUNT_ID,
+    accountId: DEFAULT_NIM_ACCOUNT_ID,
     appKey: creds?.appKey ?? coerceToString(nimCfg?.appKey),
     account: creds?.account ?? coerceToString(nimCfg?.account),
     token: creds?.token ?? "",
     enabled: nimCfg?.enabled ?? false,
-    dmPolicy: (nimCfg?.dmPolicy as NimDmPolicy) ?? "open",
+    configured: Boolean(creds),
+    p2pPolicy: (nimCfg?.p2pPolicy as NimP2pPolicy) ?? "open",
     allowFrom: nimCfg?.allowFrom ?? [],
+    teamPolicy: (nimCfg?.teamPolicy as NimTeamPolicy) ?? "open",
+    teamAllowFrom: nimCfg?.teamAllowFrom ?? [],
+    config: nimCfg ?? ({} as NimConfig),
   };
+}
+
+/**
+ * Normalize an allow-list into a set for fast matching.
+ * Supports wildcard "*" detection.
+ */
+export function normalizeNimAllowFrom(
+  configAllowFrom: Array<string | number>,
+): { hasWildcard: boolean; hasEntries: boolean; entries: Set<string> } {
+  const combined = (configAllowFrom ?? []).map((v) => String(v).trim().toLowerCase()).filter(Boolean);
+
+  const hasWildcard = combined.includes("*");
+  const entries = new Set(combined.filter((e) => e !== "*"));
+
+  return { hasWildcard, hasEntries: entries.size > 0, entries };
 }
 
 /**
@@ -62,50 +81,87 @@ export function resolveNimAccount(params: {
 export function resolveNimAllowlistMatch(params: {
   allowFrom: Array<string | number>;
   senderId: string;
-}): { allowed: boolean; matchedEntry?: string | number } {
-  const { allowFrom, senderId } = params;
+}): { allowed: boolean; matchedEntry?: string; matchSource?: string } {
+  const { senderId } = params;
+  const { hasWildcard, entries } = normalizeNimAllowFrom(
+    params.allowFrom,
+  );
 
-  if (!allowFrom || allowFrom.length === 0) {
-    return { allowed: false };
+  if (hasWildcard) {
+    return { allowed: true, matchedEntry: "*", matchSource: "wildcard" };
   }
 
   const normalizedSenderId = senderId.toLowerCase();
-
-  for (const entry of allowFrom) {
-    const normalizedEntry = String(entry).toLowerCase();
-    if (normalizedEntry === normalizedSenderId) {
-      return { allowed: true, matchedEntry: entry };
-    }
+  if (entries.has(normalizedSenderId)) {
+    return { allowed: true, matchedEntry: normalizedSenderId, matchSource: "id" };
   }
 
   return { allowed: false };
 }
 
 /**
- * Check if DM is allowed based on policy and sender.
+ * Check if P2P message is allowed based on policy and sender.
+ * Modes: open → allowlist → disabled.
+ *
+ * Returns:
+ * - { allowed: true } — proceed with message processing
+ * - { allowed: false, reason: "blocked" } — silently block
+ * - { allowed: false, reason: "disabled" } — P2P disabled
  */
-export function isNimDmAllowed(params: {
-  dmPolicy: "open" | "pairing" | "allowlist";
+export function isNimP2pAllowed(params: {
+  p2pPolicy: NimP2pPolicy;
   allowFrom: Array<string | number>;
   senderId: string;
-}): boolean {
-  const { dmPolicy, allowFrom, senderId } = params;
+}): { allowed: boolean; reason?: "blocked" | "disabled" } {
+  const { p2pPolicy, senderId } = params;
 
-  if (dmPolicy === "open") {
+  if (p2pPolicy === "disabled") {
+    return { allowed: false, reason: "disabled" };
+  }
+
+  if (p2pPolicy === "open") {
+    return { allowed: true };
+  }
+
+  // "allowlist" — check the allowlist
+  const match = resolveNimAllowlistMatch({
+    allowFrom: params.allowFrom,
+    senderId,
+  });
+
+  if (match.allowed) {
+    return { allowed: true };
+  }
+
+  // allowlist mode — silent block
+  return { allowed: false, reason: "blocked" };
+}
+
+/**
+ * Check if a team message sender is allowed based on team policy.
+ */
+export function isNimTeamAllowed(params: {
+  teamPolicy: NimTeamPolicy;
+  teamAllowFrom: Array<string | number>;
+  senderId: string;
+}): boolean {
+  const { teamPolicy, teamAllowFrom, senderId } = params;
+
+  if (teamPolicy === "disabled") {
+    return false;
+  }
+
+  if (teamPolicy === "open") {
     return true;
   }
 
-  if (dmPolicy === "allowlist") {
-    const match = resolveNimAllowlistMatch({ allowFrom, senderId });
-    return match.allowed;
+  // "allowlist" — check teamAllowFrom
+  if (!teamAllowFrom || teamAllowFrom.length === 0) {
+    return false;
   }
 
-  // "pairing" mode - could implement pairing logic here
-  if (dmPolicy === "pairing") {
-    // For now, treat pairing as allowlist
-    const match = resolveNimAllowlistMatch({ allowFrom, senderId });
-    return match.allowed;
-  }
-
-  return false;
+  const normalizedSenderId = senderId.toLowerCase();
+  return teamAllowFrom.some(
+    (entry) => String(entry).trim().toLowerCase() === normalizedSenderId,
+  );
 }

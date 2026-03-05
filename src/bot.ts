@@ -1,6 +1,6 @@
 import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
-import type { NimConfig, NimMessageContext, NimMessageEvent, NimMessageType, NimSessionType } from "./types.js";
-import { isNimDmAllowed } from "./accounts.js";
+import type { NimConfig, NimP2pPolicy, NimTeamPolicy, NimMessageContext, NimMessageEvent, NimMessageType, NimSessionType } from "./types.js";
+import { isNimP2pAllowed, isNimTeamAllowed } from "./accounts.js";
 import { getNimRuntime } from "./runtime.js";
 import { downloadNimMedia, buildNimMediaPayload, inferMediaPlaceholder } from "./media.js";
 import { createNimReplyDispatcher } from "./reply-dispatcher.js";
@@ -128,22 +128,36 @@ export async function handleNimMessage(params: {
     `[nim] received message — sender: ${ctx.senderId}, type: ${ctx.type}, session: ${ctx.sessionType}, target: ${isTeam ? message.to : ctx.senderId}, message id: ${ctx.id}, timestamp: ${ctx.timestamp}`,
   );
 
-  // Check DM policy (only for P2P)
+  // ── Access control ──
   if (isP2P) {
-    const dmPolicy = nimCfg?.dmPolicy ?? "open";
-    const allowFrom = nimCfg?.allowFrom ?? [];
+    // P2P policy: open / allowlist / disabled
+    const p2pPolicy = (nimCfg?.p2pPolicy ?? "open") as NimP2pPolicy;
+    const configAllowFrom = nimCfg?.allowFrom ?? [];
 
-    const allowed = isNimDmAllowed({
-      dmPolicy,
-      allowFrom,
+    const result = isNimP2pAllowed({
+      p2pPolicy,
+      allowFrom: configAllowFrom,
       senderId: ctx.senderId,
     });
 
-    if (!allowed) {
-      log(`[nim] dm blocked — sender: ${ctx.senderId}, policy: ${dmPolicy}`);
+    if (!result.allowed) {
+      if (result.reason === "disabled") {
+        log(`[nim] p2p disabled — sender: ${ctx.senderId}`);
+      } else {
+        log(`[nim] p2p blocked — sender: ${ctx.senderId}, policy: ${p2pPolicy}`);
+      }
       return;
     }
   }
+
+    // Team policy: open / allowlist / disabled
+    const teamPolicy = (nimCfg?.teamPolicy ?? "open") as NimTeamPolicy;
+    const teamAllowFrom = nimCfg?.teamAllowFrom ?? [];
+
+    if (!isNimTeamAllowed({ teamPolicy, teamAllowFrom, senderId: ctx.senderId })) {
+      log(`[nim] team sender blocked — sender: ${ctx.senderId}, policy: ${teamPolicy}`);
+      return;
+    }
 
   try {
     const core = getNimRuntime();

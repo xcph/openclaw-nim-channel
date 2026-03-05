@@ -95,8 +95,8 @@ channels:
     appKey: "your-app-key"
     account: "your-bot-account-id"
     token: "your-auth-token"
-    dmPolicy: "open"  # or "allowlist"
-    allowFrom:        # Required if dmPolicy is "allowlist"
+    p2pPolicy: "open"  # or "allowlist"
+    allowFrom:         # Required if p2pPolicy is "allowlist"
       - "allowed-user-1"
       - "allowed-user-2"
     mediaMaxMb: 30    # Max media file size in MB
@@ -111,12 +111,12 @@ channels:
 | `appKey` | string | - | NIM application AppKey (required) |
 | `account` | string | - | Bot account ID (required) |
 | `token` | string | - | Authentication token (required) |
-| `dmPolicy` | string | `"open"` | DM access policy: `"open"` or `"allowlist"` |
+| `p2pPolicy` | string | `"open"` | P2P access policy: `"open"`, `"allowlist"`, or `"disabled"` |
 | `allowFrom` | array | `[]` | List of allowed sender IDs (when using allowlist) |
+| `teamPolicy` | string | `"open"` | Team message access policy: `"open"`, `"allowlist"`, or `"disabled"` |
+| `teamAllowFrom` | array | `[]` | List of allowed sender IDs in team conversations |
 | `mediaMaxMb` | number | `30` | Maximum media file size in MB |
 | `textChunkLimit` | number | `4000` | Maximum characters per message chunk |
-| `lbsUrl` | string | - | Custom LBS server URL (for private deployment) |
-| `linkUrl` | string | - | Custom Link server URL (for private deployment) |
 | `debug` | boolean | `false` | Enable SDK debug logging |
 
 ## Start the Bot

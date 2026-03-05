@@ -37,7 +37,7 @@ export type {
   NimMediaInfo,
   NimMessageEvent,
   NimMessageType,
-  NimDmPolicy,
+  NimP2pPolicy,
   ResolvedNimAccount,
   QChatConfig,
   QChatInboundMessage,
@@ -45,7 +45,7 @@ export type {
 
 // Export utility functions
 export { normalizeNimTarget, looksLikeNimId, formatNimTarget } from "./src/targets.js";
-export { resolveNimCredentials, resolveNimAccount, isNimDmAllowed } from "./src/accounts.js";
+export { resolveNimCredentials, resolveNimAccount, isNimP2pAllowed } from "./src/accounts.js";
 
 // Export QChat functions
 export { sendQChatMessage, setSharedQChatClient, getSharedQChatClient } from "./src/qchat-send.js";
