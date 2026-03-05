@@ -207,6 +207,9 @@ export interface NimClientInstance {
   offMessage(callback: (msg: NimMessageEvent) => void): void;
   /** 注册连接状态回调 */
   onConnectionChange(callback: (state: string) => void): void;
+  /** 底层 NIM SDK 实例（用于 QChat 等复用） */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  nativeNim: any;
   /** 销毁客户端 */
   destroy(): Promise<void>;
 }

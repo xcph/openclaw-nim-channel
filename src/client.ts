@@ -145,8 +145,8 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
   const NIMModule = await import("nim-web-sdk-ng/dist/nodejs/nim.js");
   const NIM = NIMModule.default;
   
-  // 使用 getInstance 获取单例
-  const nim = NIM.getInstance({
+  // 使用 new 创建新实例以支持多实例
+  const nim = new NIM({
     appkey: creds.appKey,
     apiVersion: "v2",
     debugLevel: cfg.debug ? "debug" : "off",
@@ -258,6 +258,7 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
     initialized: true,
     loggedIn: false,
     account: creds.account,
+    nativeNim: nim,
 
     async login(): Promise<boolean> {
       try {

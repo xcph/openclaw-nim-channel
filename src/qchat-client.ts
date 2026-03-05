@@ -90,18 +90,20 @@ export class QChatClient {
     this.opts = opts;
   }
 
-  private async ensureNim() {
+  /**
+   * 设置复用的 NIM SDK 实例（避免重复创建）。
+   * 应在 initListeners() 之前调用。
+   */
+  setNim(nim: unknown): void {
+    this.nim = nim;
+  }
+
+  private ensureNim() {
     if (!this.nim) {
       if (this.opts.nim) {
         this.nim = this.opts.nim;
       } else {
-        const NIMModule = await import("nim-web-sdk-ng/dist/nodejs/nim.js");
-        const NIM = NIMModule.default;
-        this.nim = NIM.getInstance({
-          appkey: this.opts.appKey,
-          apiVersion: "v2",
-          debugLevel: "off",
-        });
+        throw new Error("QChatClient requires a NIM instance — call setNim() or pass opts.nim before use");
       }
     }
     return this.nim;
@@ -184,7 +186,7 @@ export class QChatClient {
     if (this.listenersInitialized) return;
 
     const log = this.opts.log;
-    const nim = await this.ensureNim();
+    const nim = this.ensureNim();
     const loginService = nim.V2NIMLoginService;
 
     log?.info("event handlers initialized — web sdk handles qchat auth");
@@ -267,7 +269,7 @@ export class QChatClient {
     }
 
     // Subscribe to ALL channels in each server
-    const nim = await this.ensureNim();
+    const nim = this.ensureNim();
     const resp = await nim.qchatServer.subscribeAllChannel({
       type: 1, // kNIMQChatSubscribeTypeMsg
       serverIds,
@@ -302,7 +304,7 @@ export class QChatClient {
     let timestamp = 0;
     const PAGE_LIMIT = 100;
 
-    const nim = await this.ensureNim();
+    const nim = this.ensureNim();
 
     for (let page = 0; page < 20; page++) {
       const resp = await nim.qchatServer.getServersByPage({
@@ -340,7 +342,7 @@ export class QChatClient {
   private async subscribeServer(serverId: string): Promise<void> {
     const log = this.opts.log;
 
-    const nim = await this.ensureNim();
+    const nim = this.ensureNim();
 
     const resp = await nim.qchatServer.subscribeAllChannel({
       type: 1, // kNIMQChatSubscribeTypeMsg
@@ -362,7 +364,7 @@ export class QChatClient {
     channelId: string;
     text: string;
   }): Promise<{ ok: boolean; msgServerId?: string; error?: string }> {
-    const nim = await this.ensureNim();
+    const nim = this.ensureNim();
 
     try {
       const resp = await nim.qchatMsg.sendMessage({
@@ -385,7 +387,7 @@ export class QChatClient {
 
     // Unsubscribe all servers
     if (this.subscribedServerIds.length > 0) {
-      const nim = await this.ensureNim();
+      const nim = this.ensureNim();
       try {
         await nim.qchatServer.subscribeAllChannel({
           type: 1,

@@ -57,7 +57,9 @@ export async function monitorNimProvider(params: {
     const client = await createNimClient(nimCfg);
 
     // QChat phase 1: register passive listeners AFTER IM init, BEFORE login
+    // 复用 IM 创建的 NIM 实例，避免重复创建
     if (params.qchatClient) {
+      params.qchatClient.setNim(client.nativeNim);
       console.log("[qchat] listeners registering — phase: pre-login");
       await params.qchatClient.initListeners();
     }
