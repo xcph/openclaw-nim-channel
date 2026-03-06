@@ -244,4 +244,6 @@ export interface QChatInboundMessage {
   timestamp: number;
   /** true if @all or the bot's accid is in mention_accids */
   wasMentioned: boolean;
+  /** Raw QChat message object from SDK, used for reply-to reference */
+  rawMessage?: unknown;
 }

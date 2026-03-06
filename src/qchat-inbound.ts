@@ -87,6 +87,7 @@ export function parseQChatMessage(
     text: text.trim(),
     timestamp: msg.time ?? msg.timestamp ?? Date.now(),
     wasMentioned,
+    rawMessage: msg,
   };
 }
 
@@ -94,6 +95,7 @@ async function deliverQChatReply(params: {
   payload: OutboundReplyPayload;
   target: string;
   accountId: string;
+  replyMessage?: unknown;
   statusSink?: (patch: { lastOutboundAt?: number }) => void;
 }): Promise<void> {
   const combined = formatTextWithAttachmentLinks(
@@ -104,6 +106,7 @@ async function deliverQChatReply(params: {
 
   await sendQChatMessage(params.target, combined, {
     accountId: params.accountId,
+    replyMessage: params.replyMessage,
   });
   params.statusSink?.({ lastOutboundAt: Date.now() });
 }
@@ -232,6 +235,7 @@ export async function handleQChatInbound(params: {
       payload,
       target: peerId,
       accountId,
+      replyMessage: message.rawMessage,
       statusSink,
     });
     runtime.log(`[qchat] reply delivered — target: ${peerId}`);

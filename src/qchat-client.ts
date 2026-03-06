@@ -382,6 +382,32 @@ export class QChatClient {
     }
   }
 
+  async replyText(params: {
+    serverId: string;
+    channelId: string;
+    text: string;
+    /** The original QChatMessage object to reply to */
+    replyMessage: unknown;
+  }): Promise<{ ok: boolean; msgServerId?: string; error?: string }> {
+    const nim = this.ensureNim();
+
+    try {
+      const resp = await nim.qchatMsg.replyMessage({
+        serverId: params.serverId,
+        channelId: params.channelId,
+        type: "text",
+        body: params.text,
+        replyMessage: params.replyMessage,
+      });
+      return {
+        ok: true,
+        msgServerId: resp.message?.msgIdServer ?? resp.msgIdServer ?? undefined,
+      };
+    } catch (err) {
+      return { ok: false, error: String(err) };
+    }
+  }
+
   async stop(): Promise<void> {
     if (!this.activated) return;
 

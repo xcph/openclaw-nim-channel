@@ -14,7 +14,7 @@ let sharedQChatClient: QChatClient | null = null;
 export async function sendQChatMessage(
   to: string,
   text: string,
-  opts?: { accountId?: string },
+  opts?: { accountId?: string; replyMessage?: unknown },
 ): Promise<{ ok: boolean; messageId: string; error?: Error }> {
   const log = getNimRuntime().logging.getChildLogger({ channel: "nim-qchat" });
 
@@ -37,10 +37,14 @@ export async function sendQChatMessage(
     };
   }
 
+  const isReply = !!opts?.replyMessage;
   log.info(
-    `[qchat] sending message — server: ${serverId}, channel: ${channelId}, length: ${text.length}`,
+    `[qchat] sending ${isReply ? "reply" : "message"} — server: ${serverId}, channel: ${channelId}, length: ${text.length}`,
   );
-  const result = await sharedQChatClient.sendText({ serverId, channelId, text });
+
+  const result = isReply
+    ? await sharedQChatClient.replyText({ serverId, channelId, text, replyMessage: opts!.replyMessage! })
+    : await sharedQChatClient.sendText({ serverId, channelId, text });
   if (!result.ok) {
     log.error(`[qchat] send failed — error: ${result.error ?? "unknown"}`);
   } else {
