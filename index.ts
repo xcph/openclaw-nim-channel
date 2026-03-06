@@ -20,7 +20,7 @@ export {
 } from "./src/outbound.js";
 
 // Export media functions
-export { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, downloadNimMedia } from "./src/media.js";
+export { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim } from "./src/media.js";
 
 // Export probe function
 export { probeNim, probeNimWithConnect } from "./src/probe.js";
@@ -37,13 +37,20 @@ export type {
   NimMediaInfo,
   NimMessageEvent,
   NimMessageType,
-  NimDmPolicy,
+  NimP2pPolicy,
   ResolvedNimAccount,
+  QChatConfig,
+  QChatInboundMessage,
 } from "./src/types.js";
 
 // Export utility functions
 export { normalizeNimTarget, looksLikeNimId, formatNimTarget } from "./src/targets.js";
-export { resolveNimCredentials, resolveNimAccount, isNimDmAllowed } from "./src/accounts.js";
+export { resolveNimCredentials, resolveNimAccount, isNimP2pAllowed } from "./src/accounts.js";
+
+// Export QChat functions
+export { sendQChatMessage, setSharedQChatClient, getSharedQChatClient } from "./src/qchat-send.js";
+export { parseQChatMessage, handleQChatInbound } from "./src/qchat-inbound.js";
+export { QChatClient } from "./src/qchat-client.js";
 
 /**
  * OpenClaw NIM Plugin
@@ -57,6 +64,7 @@ const plugin = {
   configSchema: emptyPluginConfigSchema(),
   register(api: OpenClawPluginApi) {
     setNimRuntime(api.runtime);
+
     api.registerChannel({ plugin: nimPlugin });
   },
 };

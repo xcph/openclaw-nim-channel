@@ -1,13 +1,12 @@
 import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
-import type { NimConfig, NimMessageContext, NimMessageEvent, NimMessageType, NimSessionType } from "./types.js";
-import { isNimDmAllowed } from "./accounts.js";
+import type { NimConfig, NimP2pPolicy, NimTeamPolicy, NimMessageContext, NimMessageEvent, NimMessageType, NimSessionType } from "./types.js";
+import { isNimP2pAllowed, isNimTeamAllowed } from "./accounts.js";
 import { getNimRuntime } from "./runtime.js";
-import { downloadNimMedia, buildNimMediaPayload, inferMediaPlaceholder } from "./media.js";
+import { buildNimMediaPayload, inferMediaPlaceholder } from "./media.js";
 import { createNimReplyDispatcher } from "./reply-dispatcher.js";
 
 /**
- * Map node-nim message type number to typed enum.
- * node-nim msg_type: 0=text, 1=image, 2=audio, 3=video, 4=geo, 5=notification, 6=file, 10=tip, 100=custom
+ * Map message type number to typed enum.
  */
 function mapMessageType(msgType: number): NimMessageType {
   switch (msgType) {
@@ -29,21 +28,6 @@ function mapMessageType(msgType: number): NimMessageType {
       return "tip";
     case 100:
       return "custom";
-    default:
-      return "unknown";
-  }
-}
-
-/**
- * Get session type name from number.
- * node-nim session_type: 0=p2p, 1=team
- */
-function getSessionTypeName(sessionType: number): "p2p" | "team" | "unknown" {
-  switch (sessionType) {
-    case 0:
-      return "p2p";
-    case 1:
-      return "team";
     default:
       return "unknown";
   }
@@ -105,6 +89,8 @@ export function parseNimMessageEvent(message: NimMessageEvent): NimMessageContex
 
 /**
  * Handle an incoming NIM message.
+ * Supports P2P (DM) and team (group) messages.
+ * Team messages are only processed when forcePushAccountIds includes the bot account.
  */
 export async function handleNimMessage(params: {
   cfg: OpenClawConfig;
@@ -115,49 +101,95 @@ export async function handleNimMessage(params: {
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;
   const log = runtime?.log ?? console.log;
   const error = runtime?.error ?? console.error;
+  const botAccount = nimCfg?.account ? String(nimCfg.account) : "";
 
-  // Only process P2P messages (DM only for now)
-  if (message.sessionType !== "p2p") {
-    log(`nim: ignoring non-P2P message from session type: ${message.sessionType}`);
+  const isP2P = message.sessionType === "p2p";
+  const isTeam = message.sessionType === "team" || message.sessionType === "superTeam";
+
+  if (!isP2P && !isTeam) {
+    log(`[nim] ignoring message — session: ${message.sessionType}`);
     return;
+  }
+
+  // For team messages, only process when forcePushAccountIds includes the bot
+  if (isTeam) {
+    const forcePushIds = message.forcePushAccountIds ?? [];
+    if (!forcePushIds.includes(botAccount)) {
+      log(`[nim] ignoring team message — reason: bot not in force-push list`);
+      return;
+    }
+    log(`[nim] team message accepted — reason: bot in force-push list`);
   }
 
   const ctx = parseNimMessageEvent(message);
 
-  log(`nim: received message from ${ctx.senderId} (type: ${ctx.type})`);
+  log(
+    `[nim] received message — sender: ${ctx.senderId}, type: ${ctx.type}, session: ${ctx.sessionType}, target: ${isTeam ? message.to : ctx.senderId}, message id: ${ctx.id}, timestamp: ${ctx.timestamp}`,
+  );
 
-  // Check DM policy
-  const dmPolicy = nimCfg?.dmPolicy ?? "open";
-  const allowFrom = nimCfg?.allowFrom ?? [];
+  // ── Access control ──
+  if (isP2P) {
+    // P2P policy: open / allowlist / disabled
+    const p2pPolicy = (nimCfg?.p2p?.policy ?? "open") as NimP2pPolicy;
+    const configAllowFrom = nimCfg?.p2p?.allowFrom ?? [];
 
-  const allowed = isNimDmAllowed({
-    dmPolicy,
-    allowFrom,
-    senderId: ctx.senderId,
-  });
+    const result = isNimP2pAllowed({
+      p2pPolicy,
+      allowFrom: configAllowFrom,
+      senderId: ctx.senderId,
+    });
 
-  if (!allowed) {
-    log(`nim: sender ${ctx.senderId} not allowed by DM policy`);
-    return;
+    if (!result.allowed) {
+      if (result.reason === "disabled") {
+        log(`[nim] p2p disabled — sender: ${ctx.senderId}`);
+      } else {
+        log(`[nim] p2p blocked — sender: ${ctx.senderId}, policy: ${p2pPolicy}`);
+      }
+      return;
+    }
+  }
+
+  if (isTeam) {
+    // Team policy: open / allowlist (by group ID + optional sender) / disabled
+    const teamPolicy = (nimCfg?.team?.policy ?? "open") as NimTeamPolicy;
+    const teamIds = nimCfg?.team?.allowFrom ?? [];
+
+    if (!isNimTeamAllowed({ teamPolicy, teamIds, groupId: message.to, senderId: ctx.senderId, sessionType: message.sessionType as "team" | "superTeam" })) {
+      log(`[nim] team message blocked — group: ${message.to}, sender: ${ctx.senderId}, policy: ${teamPolicy}`);
+      return;
+    }
   }
 
   try {
     const core = getNimRuntime();
 
+    // For P2P: reply target is the sender; for team: reply target is the team/group ID
+    const replyTarget = isTeam ? message.to : ctx.senderId;
     const nimFrom = `nim:${ctx.senderId}`;
-    const nimTo = `user:${ctx.senderId}`;
+    const nimTo = isTeam ? `team:${message.to}` : `user:${ctx.senderId}`;
+    const chatType = isTeam ? "group" : "direct";
+    const peerKind = isTeam ? "group" : "dm";
+    const peerId = isTeam ? message.to : ctx.senderId;
+    const sessionType: NimSessionType = isTeam ? message.sessionType : "p2p";
 
     const route = core.channel.routing.resolveAgentRoute({
       cfg,
       channel: "nim",
       peer: {
-        kind: "dm",
-        id: ctx.senderId,
+        kind: peerKind,
+        id: peerId,
       },
     });
 
+    if (!route) {
+      log(`[nim] route unresolved — peer: ${peerId}`);
+      return;
+    }
+
     const preview = ctx.text.replace(/\s+/g, " ").slice(0, 160);
-    const inboundLabel = `NIM DM from ${ctx.senderId}`;
+    const inboundLabel = isTeam
+      ? `NIM team message from ${ctx.senderId} in ${message.to}`
+      : `NIM DM from ${ctx.senderId}`;
 
     core.system.enqueueSystemEvent(`${inboundLabel}: ${preview}`, {
       sessionKey: route.sessionKey,
@@ -165,22 +197,19 @@ export async function handleNimMessage(params: {
     });
 
     // Handle media if present
-    const mediaMaxBytes = (nimCfg?.mediaMaxMb ?? 30) * 1024 * 1024;
+    const mediaMaxBytes = (nimCfg?.advanced?.mediaMaxMb ?? 30) * 1024 * 1024;
     const mediaList = [];
 
     if (["image", "file", "audio", "video"].includes(ctx.type)) {
       const attachUrl = message.attach?.url;
       if (attachUrl) {
-        const mediaInfo = await downloadNimMedia({
-          cfg,
+        const mediaInfo = {
+          type: ctx.type as "image" | "file" | "audio" | "video",
           url: attachUrl,
-          filename: message.attach?.name,
-          maxBytes: mediaMaxBytes,
-          log,
-        });
-        if (mediaInfo) {
-          mediaList.push(mediaInfo);
-        }
+          name: message.attach?.name,
+          size: message.attach?.size,
+        };
+        mediaList.push(mediaInfo);
       }
     }
 
@@ -204,7 +233,7 @@ export async function handleNimMessage(params: {
       To: nimTo,
       SessionKey: route.sessionKey,
       AccountId: route.accountId,
-      ChatType: "direct",
+      ChatType: chatType,
       SenderName: ctx.senderId,
       SenderId: ctx.senderId,
       Provider: "nim" as const,
@@ -214,19 +243,27 @@ export async function handleNimMessage(params: {
       CommandAuthorized: true,
       OriginatingChannel: "nim" as const,
       OriginatingTo: nimTo,
+      ...(isTeam ? { GroupSubject: message.to, WasMentioned: true } : {}),
       ...mediaPayload,
     });
 
-    log(`nim: ====== mediapayload ==== ${JSON.stringify(route.mediaPayload)}`);
+    log(
+      `[nim] creating reply dispatcher — target: ${replyTarget}, session: ${sessionType}, sender: ${isTeam ? ctx.senderId : "n/a"}`,
+    );
 
     const { dispatcher, replyOptions, markDispatchIdle } = createNimReplyDispatcher({
       cfg,
       agentId: route.agentId,
       runtime: runtime as RuntimeEnv,
-      senderId: ctx.senderId,
+      senderId: replyTarget,
+      sessionType,
+      originalRawMsg: isTeam ? message.rawMsg : undefined,
+      originalSenderId: isTeam ? ctx.senderId : undefined,
     });
 
-    log(`nim: dispatching to agent (session=${route.sessionKey})`);
+    log(
+      `[nim] dispatching to agent — session: ${route.sessionKey}, chat: ${chatType}, agent: ${route.agentId}`,
+    );
 
     const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
       ctx: ctxPayload,
@@ -237,8 +274,15 @@ export async function handleNimMessage(params: {
 
     markDispatchIdle();
 
-    log(`nim: dispatch complete (queuedFinal=${queuedFinal}, replies=${counts.final})`);
+    if (counts.final === 0) {
+      log(`[nim] agent returned no replies — queued: ${queuedFinal}, tool: ${counts.tool}, block: ${counts.block}`);
+    } else {
+      log(`[nim] dispatch complete — final: ${counts.final}, tool: ${counts.tool}, block: ${counts.block}, queued: ${queuedFinal}`);
+    }
   } catch (err) {
-    error(`nim: failed to dispatch message: ${String(err)}`);
+    error(`[nim] dispatch failed — error: ${String(err)}`);
+    if (err instanceof Error && err.stack) {
+      error(`[nim] dispatch stack — error: ${err.stack}`);
+    }
   }
 }

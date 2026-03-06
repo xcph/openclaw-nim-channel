@@ -45,6 +45,57 @@ export async function sendMessageNim(params: {
 }
 
 /**
+ * 回复群组消息（引用原消息 + 强制推送给 @ 的人）
+ */
+export async function replyMessageNim(params: {
+  cfg: OpenClawConfig;
+  to: string;
+  text: string;
+  originalMsg: unknown;
+  forcePushAccountIds: string[];
+  sessionType?: NimSessionType;
+}): Promise<NimSendResult> {
+  const { cfg, to, text, originalMsg, forcePushAccountIds, sessionType = "team" } = params;
+  const nimCfg = cfg.channels?.nim as NimConfig;
+
+  if (!nimCfg) {
+    console.log("[nim] reply skipped — channel not configured");
+    return { success: false, error: "NIM channel not configured" };
+  }
+
+  const targetId = normalizeNimTarget(to);
+  console.log(
+    `[nim] reply requested — target: ${targetId}, session: ${sessionType}, force-push: [${forcePushAccountIds.join(", ")}]`,
+  );
+
+  try {
+    let client = getCachedNimClient(nimCfg);
+    console.log(
+      `[nim] reply client status — cached: ${client ? "yes" : "no"}, logged in: ${client?.loggedIn ? "yes" : "no"}`,
+    );
+    if (!client || !client.loggedIn) {
+      console.log("[nim] reply client initializing");
+      client = await createNimClient(nimCfg);
+      await client.login();
+    }
+
+    console.log(`[nim] sending reply — target: ${targetId}, session: ${sessionType}`);
+    const result = await client.replyText(targetId, text, originalMsg, forcePushAccountIds, sessionType);
+    console.log(
+      `[nim] reply completed — message id: ${result.msgId ?? "unknown"}, status: ${result.success ? "sent" : "failed"}`,
+    );
+    return result;
+  } catch (error) {
+    const errorMessage = (error as any)?.message ?? String(error);
+    console.error(`[nim] reply exception — error: ${errorMessage}`);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
  * 发送长消息（自动分割）
  */
 export async function sendLongMessageNim(params: {

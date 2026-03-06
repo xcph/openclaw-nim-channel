@@ -55,6 +55,8 @@ export interface NimMessageEvent {
   attach?: NimAttachment;
   /** 扩展字段 */
   ext?: Record<string, unknown>;
+  /** 强制推送目标账号列表 (群消息中用于判断是否 @了当前账号) */
+  forcePushAccountIds?: string[];
   /** 原始消息对象 */
   rawMsg?: unknown;
 }
@@ -151,21 +153,26 @@ export interface NimProbeResult {
 }
 
 /**
- * NIM DM 策略
+ * NIM P2P 策略
  */
-export type NimDmPolicy = "open" | "pairing" | "allowlist";
+export type NimP2pPolicy = "open" | "allowlist" | "disabled";
 
 /**
  * 解析后的 NIM 账户配置
  */
 export interface ResolvedNimAccount {
   id: string;
+  accountId: string;
   appKey: string;
   account: string;
   token: string;
   enabled: boolean;
-  dmPolicy: NimDmPolicy;
+  configured: boolean;
+  p2pPolicy: NimP2pPolicy;
   allowFrom: Array<string | number>;
+  teamPolicy: NimTeamPolicy;
+  teamIds: Array<string | number>;
+  config: NimConfig;
 }
 
 /**
@@ -184,6 +191,8 @@ export interface NimClientInstance {
   logout(): Promise<void>;
   /** 发送文本消息 */
   sendText(to: string, text: string, sessionType?: NimSessionType): Promise<NimSendResult>;
+  /** 回复文本消息（群组中引用原消息并 @发送者） */
+  replyText(to: string, text: string, originalMsg: unknown, forcePushAccountIds: string[], sessionType?: NimSessionType): Promise<NimSendResult>;
   /** 发送图片消息 */
   sendImage(to: string, filePath: string, sessionType?: NimSessionType): Promise<NimSendResult>;
   /** 发送文件消息 */
@@ -198,6 +207,53 @@ export interface NimClientInstance {
   offMessage(callback: (msg: NimMessageEvent) => void): void;
   /** 注册连接状态回调 */
   onConnectionChange(callback: (state: string) => void): void;
+  /** 更新 P2P 好友申请自动同意策略（config reload 时调用） */
+  updateP2pPolicy(policy: NimP2pPolicy, allowFrom: Array<string | number>): void;
+  /** 底层 NIM SDK 实例（用于 QChat 等复用） */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  nativeNim: any;
   /** 销毁客户端 */
   destroy(): Promise<void>;
+}
+
+/**
+ * NIM team policy (for team/superTeam messages)
+ */
+export type NimTeamPolicy = "open" | "allowlist" | "disabled";
+
+// ── QChat (圈组) Types ────────────────────────────────────────────────────────
+
+/**
+ * QChat 配置（嵌套在 channels.nim.qchat 下）
+ */
+export interface QChatConfig {
+  /**
+   * 入站消息策略。
+   *   open      — 接受所有 @-mentioned 消息（默认）
+   *   allowlist — 只接受匹配 allowFrom 条目的消息
+   *   disabled  — 拒绝所有入站 QChat 消息
+   */
+  policy?: "open" | "allowlist" | "disabled";
+  /**
+   * 入站消息白名单，同时控制服务器订阅和自动同意邀请（为空则全部放行）。
+   * 格式: "serverId" | "serverId|channelId" | "serverId|channelId|accountId" | "serverId||accountId"
+   */
+  allowFrom?: Array<string | number>;
+}
+
+/**
+ * QChat 入站消息（解析后的简化结构）
+ */
+export interface QChatInboundMessage {
+  messageId: string;
+  serverId: string;
+  channelId: string;
+  senderAccid: string;
+  senderNick?: string;
+  text: string;
+  timestamp: number;
+  /** true if @all or the bot's accid is in mention_accids */
+  wasMentioned: boolean;
+  /** Raw QChat message object from SDK, used for reply-to reference */
+  rawMessage?: unknown;
 }

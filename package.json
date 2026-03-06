@@ -1,6 +1,6 @@
 {
   "name": "openclaw-nim",
-  "version": "0.1.1",
+  "version": "0.3.0-beta.6",
   "type": "module",
   "description": "OpenClaw NIM (NetEase IM) channel plugin",
   "license": "MIT",
@@ -44,7 +44,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "node-nim": "^10.9.72",
+    "nim-web-sdk-ng": "^10.9.77-alpha.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
