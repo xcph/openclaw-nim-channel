@@ -269,6 +269,8 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
           appKey: nimCfg.appKey as string,
           account: nimCfg.account as string,
           serverIds: serverIds.length > 0 ? serverIds : undefined,
+          serverPolicy: (qchatCfg?.serverPolicy ?? "open") as "open" | "allowlist" | "disabled",
+          serverAllowlist: (qchatCfg?.serverIds ?? []).map(String),
           log: qchatLogAdapter,
           onMessage: async (resp) => {
             const raw = resp.message;

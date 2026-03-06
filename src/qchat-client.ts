@@ -37,6 +37,16 @@ type QChatSystemNotificationPayload = {
   serverId?: string;
   msg_type?: number | string;
   server_id?: string;
+  /** Inviter's account ID (present in serverMemberInvite notifications) */
+  fromAccount?: string;
+  from_accid?: string;
+  /** Notification attach data (contains serverInfo, requestId, etc.) */
+  attach?: {
+    type?: string;
+    serverInfo?: { serverId?: string };
+    requestId?: string;
+    [key: string]: unknown;
+  };
 };
 
 type QChatRecvMsgResp = {
@@ -56,6 +66,17 @@ export type QChatClientOptions = {
    * all joined servers via getServersByPage and subscribe to all of them.
    */
   serverIds?: string[];
+  /**
+   * Server invite acceptance policy:
+   *  - "open": auto-accept all server invites
+   *  - "allowlist": auto-accept only if server ID is in serverAllowlist
+   *  - "disabled": ignore invites (do not auto-accept)
+   */
+  serverPolicy?: "open" | "allowlist" | "disabled";
+  /**
+   * List of server IDs to auto-accept invites from (used when serverPolicy is "allowlist").
+   */
+  serverAllowlist?: string[];
   onMessage?: (msg: QChatRecvMsgResp) => void | Promise<void>;
   onLoginStatus?: (status: unknown) => void;
   onError?: (error: Error) => void;
@@ -150,7 +171,7 @@ export class QChatClient {
     const serverId = notification.serverId ?? notification.server_id;
     const type = notification.type ?? (typeof notification.msg_type === "string" ? notification.msg_type : undefined);
     const legacyType = typeof notification.msg_type === "number" ? notification.msg_type : undefined;
-    const normalizedType = type ?? (legacyType === 8 ? "serverMemberInviteDone" : undefined);
+    const normalizedType = type ?? (legacyType === 1 ? "serverMemberInvite" : legacyType === 8 ? "serverMemberInviteDone" : undefined);
 
     return {
       ...notification,
@@ -211,6 +232,45 @@ export class QChatClient {
     nim.qchatMsg?.on("systemNotification", (notificationResp: QChatSystemNotificationPayload) => {
       const notification = this.normalizeSystemNotification(notificationResp ?? {});
       if (!notification) return;
+
+
+      // Auto-accept server invite based on serverPolicy
+      if (notification.type === "serverMemberInvite") {
+        const serverId = notification.serverId ?? notification.server_id
+          ?? notification.attach?.serverInfo?.serverId;
+        const inviterAccid = notification.fromAccount ?? notification.from_accid;
+        const requestId = notification.attach?.requestId as string | undefined;
+
+        if (!serverId || !inviterAccid || !requestId) {
+          log?.info(`[sysnotify] server invite ignored — missing fields (server: ${serverId ?? "n/a"}, inviter: ${inviterAccid ?? "n/a"}, requestId: ${requestId ?? "n/a"})`);
+          return;
+        }
+
+        const policy = this.opts.serverPolicy ?? "open";
+        const allowlist = this.opts.serverAllowlist ?? [];
+
+        if (policy === "disabled") {
+          log?.info(`[sysnotify] server invite ignored — server: ${serverId}, reason: serverPolicy is disabled`);
+          return;
+        }
+
+        if (policy === "allowlist" && !allowlist.includes(serverId)) {
+          log?.info(`[sysnotify] server invite ignored — server: ${serverId}, reason: not in serverAllowlist`);
+          return;
+        }
+
+        log?.info(`[sysnotify] auto-accepting server invite — server: ${serverId}, inviter: ${inviterAccid}, policy: ${policy}`);
+        nim.qchatServer.acceptServerInvite({
+          serverId,
+          accid: inviterAccid,
+          recordInfo: { requestId },
+        }).then(() => {
+          log?.info(`[sysnotify] server invite accepted — server: ${serverId}`);
+        }).catch((err: unknown) => {
+          log?.error(`[sysnotify] server invite accept failed — server: ${serverId}, error: ${String(err)}`);
+        });
+        return;
+      }
 
       if (notification.type === "serverMemberInviteDone") {
         const serverId = notification.serverId ?? notification.server_id;
