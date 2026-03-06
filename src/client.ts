@@ -149,7 +149,7 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
   const nim = new NIM({
     appkey: creds.appKey,
     apiVersion: "v2",
-    debugLevel: cfg.debug ? "debug" : "off",
+    debugLevel: cfg.advanced?.debug ? "debug" : "off",
   });
 
   let loggedIn = false;
@@ -165,10 +165,12 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
   const messageCreator = nim.V2NIMMessageCreator;
   const friendService = nim.V2NIMFriendService;
 
-  // 注册好友申请监听 — 根据 p2pPolicy 自动接受好友申请
+  // Mutable policy state — updated via updateP2pPolicy() when config reloads.
+  // The friend request listener reads these on every request to avoid stale closures.
+  let liveP2pPolicy = (cfg.p2p?.policy as NimP2pPolicy) ?? "open";
+  let liveP2pAllowFrom: Array<string | number> = cfg.p2p?.allowFrom ?? [];
+
   if (friendService) {
-    const p2pPolicy = (cfg.p2pPolicy as NimP2pPolicy) ?? "open";
-    const allowFrom = cfg.allowFrom ?? [];
 
     friendService.on("onFriendAddApplication", async (application: any) => {
       const applicantId = String(application.applicantAccountId ?? "");
@@ -180,8 +182,8 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
       console.log(`[nim] friend request received — applicant: ${applicantId}`);
 
       const check = isNimP2pAllowed({
-        p2pPolicy,
-        allowFrom,
+        p2pPolicy: liveP2pPolicy,
+        allowFrom: liveP2pAllowFrom,
         senderId: applicantId,
       });
 
@@ -202,7 +204,9 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
         );
       }
     });
-    console.log(`[nim] friend request listener registered — policy: ${p2pPolicy}`);
+    console.log(
+      `[nim] friend request listener registered — policy: ${liveP2pPolicy}`,
+    );
   }
 
   if (!loginService || !messageService) {
@@ -254,11 +258,17 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
     connCallbackSet.forEach((cb) => cb("disconnected"));
   });
 
+
   const instance: NimClientInstance = {
     initialized: true,
     loggedIn: false,
     account: creds.account,
     nativeNim: nim,
+
+    updateP2pPolicy(policy: NimP2pPolicy, allowFrom: Array<string | number>) {
+      liveP2pPolicy = policy;
+      liveP2pAllowFrom = allowFrom;
+    },
 
     async login(): Promise<boolean> {
       try {
@@ -454,9 +464,8 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
         };
 
         const conversationId = buildConversationId(nim, to, sessionType);
-        const textPreview = text.slice(0, 60).replace(/\s+/g, " ");
         console.log(
-          `[nim] sending reply — target: ${conversationId}, session: ${sessionType}, force-push: [${forcePushAccountIds.join(", ")}], text preview: "${textPreview}"`,
+          `[nim] sending reply — target: ${conversationId}, session: ${sessionType}, force-push: [${forcePushAccountIds.join(", ")}]`,
         );
 
         const result = await messageService.replyMessage(replyMsg, originalMsg as any, sendParams);

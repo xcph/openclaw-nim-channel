@@ -7,6 +7,17 @@ import { QChatClient } from "./qchat-client.js";
 
 let sharedQChatClient: QChatClient | null = null;
 
+/** Live policy flag — updated by channel.ts on every gateway start/reload. */
+let qchatReplyEnabled = true;
+
+export function setQchatReplyEnabled(enabled: boolean): void {
+  qchatReplyEnabled = enabled;
+}
+
+export function isQchatReplyEnabled(): boolean {
+  return qchatReplyEnabled;
+}
+
 /**
  * Send a text message to a QChat channel.
  * Target format: "serverId:channelId"
@@ -17,6 +28,13 @@ export async function sendQChatMessage(
   opts?: { accountId?: string; replyMessage?: unknown },
 ): Promise<{ ok: boolean; messageId: string; error?: Error }> {
   const log = getNimRuntime().logging.getChildLogger({ channel: "nim-qchat" });
+
+  // Hard gate: reject all sends when policy is disabled, regardless of
+  // which dispatch context triggered this (catches in-flight agents from prior messages)
+  if (!qchatReplyEnabled) {
+    log.info(`[qchat] send suppressed — reason: policy is disabled, target: ${to}`);
+    return { ok: true, messageId: "" };
+  }
 
   const [serverId, channelId] = to.split(":");
   if (!serverId || !channelId) {

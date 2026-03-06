@@ -329,7 +329,7 @@ export async function nimOutbound(params: NimOutboundOptions): Promise<void> {
 
   // Send text if provided
   if (text) {
-    const chunkLimit = nimCfg?.textChunkLimit ?? DEFAULT_TEXT_CHUNK_LIMIT;
+    const chunkLimit = nimCfg?.advanced?.textChunkLimit ?? DEFAULT_TEXT_CHUNK_LIMIT;
     const chunks = splitMessageIntoChunks(text, chunkLimit);
 
     for (const chunk of chunks) {

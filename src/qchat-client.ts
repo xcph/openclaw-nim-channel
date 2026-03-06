@@ -106,6 +106,10 @@ export class QChatClient {
   private subscribedServerIds: string[] = [];
   private listenersInitialized = false;
   private activated = false;
+  private stopped = false;
+  // Store bound handlers so we can remove them on stop()
+  private messageHandler: ((msg: QChatMessagePayload) => void) | null = null;
+  private systemNotificationHandler: ((resp: QChatSystemNotificationPayload) => void) | null = null;
 
   constructor(opts: QChatClientOptions) {
     this.opts = opts;
@@ -224,12 +228,19 @@ export class QChatClient {
     });
 
     // Message listener (fires for ALL subscribed channels)
-    nim.qchatMsg?.on("message", (msg: QChatMessagePayload) => {
+    if (!nim.qchatMsg) {
+      log?.error("nim.qchatMsg is not available on this SDK instance — QChat message events will NOT be received. Ensure nim-web-sdk-ng supports QChat APIs.");
+    }
+
+    this.messageHandler = (msg: QChatMessagePayload) => {
+      if (this.stopped) return;
       const normalized = this.normalizeMessage(msg);
       this.opts.onMessage?.({ message: normalized });
-    });
+    };
+    nim.qchatMsg?.on("message", this.messageHandler);
 
-    nim.qchatMsg?.on("systemNotification", (notificationResp: QChatSystemNotificationPayload) => {
+    this.systemNotificationHandler = (notificationResp: QChatSystemNotificationPayload) => {
+      if (this.stopped) return;
       const notification = this.normalizeSystemNotification(notificationResp ?? {});
       if (!notification) return;
 
@@ -292,8 +303,8 @@ export class QChatClient {
           log?.error(`[sysnotify] subscribe failed — server: ${serverId}, error: ${String(err)}`);
         });
       }
-    });
-
+    };
+    nim.qchatMsg?.on("systemNotification", this.systemNotificationHandler);
     this.listenersInitialized = true;
     log?.info("listeners registered — phase: passive");
   }
@@ -469,7 +480,23 @@ export class QChatClient {
   }
 
   async stop(): Promise<void> {
-    if (!this.activated) return;
+    // Mark stopped immediately — prevents any in-flight callbacks from processing.
+    this.stopped = true;
+
+    if (!this.activated && !this.listenersInitialized) return;
+
+    // Remove event listeners from the shared NIM instance to prevent
+    // listener accumulation across gateway restarts (config reloads).
+    if (this.nim?.qchatMsg) {
+      if (this.messageHandler) {
+        this.nim.qchatMsg.off("message", this.messageHandler);
+        this.messageHandler = null;
+      }
+      if (this.systemNotificationHandler) {
+        this.nim.qchatMsg.off("systemNotification", this.systemNotificationHandler);
+        this.systemNotificationHandler = null;
+      }
+    }
 
     // Unsubscribe all servers
     if (this.subscribedServerIds.length > 0) {
@@ -485,5 +512,6 @@ export class QChatClient {
     }
 
     this.activated = false;
+    this.listenersInitialized = false;
   }
 }

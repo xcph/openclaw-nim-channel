@@ -12,20 +12,82 @@ const coerceToString = z.preprocess(
 /** Union type for allow-list entries (string or number from YAML) */
 const AllowEntryArray = z.array(z.union([z.string(), z.number()])).optional();
 
+/**
+ * P2P (私聊) sub-configuration.
+ */
+export const P2pSubConfigSchema = z.object({
+  /**
+   * Access policy.
+   *   open      — accept messages from anyone (default)
+   *   allowlist — only accept senders listed in allowFrom
+   *   disabled  — reject all P2P messages
+   */
+  policy: z.enum(["open", "allowlist", "disabled"]).optional().default("open"),
+
+  /** Allowed sender IDs (used when policy="allowlist") */
+  allowFrom: AllowEntryArray,
+});
+
+/**
+ * Team (群组) sub-configuration.
+ */
+export const TeamSubConfigSchema = z.object({
+  /**
+   * Access policy.
+   *   open      — accept messages from any group (default)
+   *   allowlist — only accept groups (and optionally senders) listed in allowFrom
+   *   disabled  — reject all team messages
+   */
+  policy: z.enum(["open", "allowlist", "disabled"]).optional().default("open"),
+
+  /**
+   * Allowlist entries (used when policy="allowlist").
+   * Supported formats (case-insensitive):
+   *   "groupId"           — any sender in this group
+   *   "groupId|accountId" — specific sender in this group
+   */
+  allowFrom: AllowEntryArray,
+});
+
+/**
+ * Advanced (基础设置) sub-configuration.
+ */
+export const AdvancedSubConfigSchema = z.object({
+  /** Maximum media file size in MB */
+  mediaMaxMb: z.number().min(0).optional().default(30),
+
+  /** Text chunk limit for splitting long messages */
+  textChunkLimit: z.number().min(1).optional().default(4000),
+
+  /** Enable debug logging */
+  debug: z.boolean().optional().default(false),
+});
 
 /**
  * QChat (圈组) sub-configuration.
  */
 export const QChatSubConfigSchema = z.object({
-  /** Whether QChat (圈组) functionality is enabled */
-  enabled: z.boolean().optional().default(false),
+  /**
+   * Inbound message policy.
+   *   open      — accept all @-mentioned messages (default)
+   *   allowlist — only accept messages matching allowFrom entries
+   *   disabled  — reject all inbound QChat messages
+   */
+  policy: z.enum(["open", "allowlist", "disabled"]).optional().default("open"),
 
-  /** Server ID list (empty = auto-discover all joined servers) */
-  serverIds: z.array(z.string()).optional(),
-
-  /** QChat server policy: open (all servers), allowlist (only configured), disabled */
-  serverPolicy: z.enum(["open", "allowlist", "disabled"]).optional().default("open"),
-
+  /**
+   * Inbound message allowlist. Controls both message filtering and server invite auto-accept.
+   * Empty = accept all @-mentioned messages and auto-accept all server invites.
+   *
+   * Supported formats (case-insensitive):
+   *   "serverId"                     — any channel, any sender in this server
+   *   "serverId|channelId"           — any sender in this server+channel
+   *   "serverId|channelId|accountId" — specific sender in this server+channel
+   *   "serverId||accountId"          — specific sender in any channel of this server
+   *
+   * Server IDs present in any entry are also used for subscription and invite auto-accept.
+   */
+  allowFrom: AllowEntryArray,
 });
 
 /**
@@ -44,27 +106,14 @@ export const NimConfigSchema = z.object({
   /** Authentication token (coerced from number if needed) */
   token: coerceToString.optional(),
 
-  /** P2P access policy: open (default), allowlist, disabled */
-  p2pPolicy: z.enum(["allowlist", "open", "disabled"]).optional().default("open"),
+  /** P2P (私聊) sub-configuration */
+  p2p: P2pSubConfigSchema.optional(),
 
-  /** List of allowed sender IDs for DM (used by allowlist policy) */
-  allowFrom: AllowEntryArray,
+  /** Team (群组) sub-configuration */
+  team: TeamSubConfigSchema.optional(),
 
-  /** Team (team/superTeam) access policy */
-  teamPolicy: z.enum(["open", "allowlist", "disabled"]).optional().default("open"),
-
-  /** Allowed sender IDs in team conversations */
-  teamAllowFrom: AllowEntryArray,
-
-  /** Maximum media file size in MB */
-  mediaMaxMb: z.number().min(0).optional().default(30),
-
-  /** Text chunk limit for splitting long messages */
-  textChunkLimit: z.number().min(1).optional().default(4000),
-
-
-  /** Enable debug logging */
-  debug: z.boolean().optional().default(false),
+  /** Advanced (基础设置) sub-configuration */
+  advanced: AdvancedSubConfigSchema.optional(),
 
   /** QChat (圈组) sub-configuration */
   qchat: QChatSubConfigSchema.optional(),

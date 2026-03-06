@@ -6,8 +6,9 @@ import { sendMessageNim } from "./send.js";
 import { probeNim } from "./probe.js";
 import { nimOutboundConfig } from "./outbound.js";
 import { QChatClient } from "./qchat-client.js";
-import { setSharedQChatClient } from "./qchat-send.js";
+import { setSharedQChatClient, setQchatReplyEnabled } from "./qchat-send.js";
 import { parseQChatMessage, handleQChatInbound } from "./qchat-inbound.js";
+import { isQChatAllowed } from "./accounts.js";
 
 /**
  * Channel plugin metadata.
@@ -63,23 +64,59 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
         appKey: { type: "string" },
         account: { type: "string" },
         token: { type: "string" },
-        p2pPolicy: { type: "string", enum: ["open", "allowlist", "disabled"] },
-        allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
-        teamPolicy: { type: "string", enum: ["open", "allowlist", "disabled"] },
-        teamAllowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
-        mediaMaxMb: { type: "number", minimum: 0 },
-        textChunkLimit: { type: "integer", minimum: 1 },
-        debug: { type: "boolean" },
+        p2p: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            policy: { type: "string", enum: ["open", "allowlist", "disabled"] },
+            allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
+          },
+        },
+        team: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            policy: { type: "string", enum: ["open", "allowlist", "disabled"] },
+            allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
+          },
+        },
+        advanced: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            mediaMaxMb: { type: "number", minimum: 0 },
+            textChunkLimit: { type: "integer", minimum: 1 },
+            debug: { type: "boolean" },
+          },
+        },
         qchat: {
           type: "object",
           additionalProperties: false,
           properties: {
-            enabled: { type: "boolean" },
-            serverIds: { type: "array", items: { type: "string" } },
-            serverPolicy: { type: "string", enum: ["open", "allowlist", "disabled"] },
+            policy: { type: "string", enum: ["open", "allowlist", "disabled"] },
+            allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
           },
         },
       },
+    },
+    uiHints: {
+      enabled:         { order: 1,  label: "Enable" },
+      appKey:          { order: 2,  label: "App Key" },
+      account:         { order: 3,  label: "Account ID" },
+      token:           { order: 4,  label: "Token", sensitive: true },
+      p2p:             { order: 10, label: "P2P" },
+      "p2p.policy":    { order: 11, label: "Message Policy" },
+      "p2p.allowFrom": { order: 12, label: "Account Allowlist" },
+      team:             { order: 20, label: "Team" },
+      "team.policy":    { order: 21, label: "Message Policy" },
+      "team.allowFrom": { order: 22, label: "Team Allowlist" },
+      qchat:             { order: 30, label: "QChat" },
+      "qchat.policy":    { order: 31, label: "Message Policy" },
+      "qchat.allowFrom": { order: 32, label: "Server / Channel / Account Allowlist" },
+      advanced:                  { order: 40, label: "Advanced", advanced: true },
+      "advanced.mediaMaxMb":     { order: 41, label: "Max Media Size (MB)" },
+      "advanced.textChunkLimit": { order: 42, label: "Text Chunk Limit" },
+      "advanced.debug":          { order: 43, label: "Debug Mode", advanced: true },
     },
   },
   config: {
@@ -115,7 +152,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       configured: account.configured,
     }),
     resolveAllowFrom: ({ cfg }) =>
-      (cfg.channels?.nim as NimConfig | undefined)?.allowFrom ?? [],
+      (cfg.channels?.nim as NimConfig | undefined)?.p2p?.allowFrom ?? [],
     formatAllowFrom: ({ allowFrom }) =>
       allowFrom
         .map((entry) => String(entry).trim())
@@ -126,7 +163,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
     resolveDmPolicy: ({ account }) => ({
       policy: account.p2pPolicy ?? "open",
       allowFrom: account.allowFrom ?? [],
-      allowFromPath: "channels.nim.",
+      allowFromPath: "channels.nim.p2p.",
       normalizeEntry: (raw: string) => raw.replace(/^(nim|user|account):/i, ""),
     }),
     collectWarnings: ({ cfg }) => {
@@ -134,41 +171,31 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       const warnings: string[] = [];
 
       // P2P policy warnings
-      const p2pPolicy = nimCfg?.p2pPolicy ?? "open";
+      const p2pPolicy = nimCfg?.p2p?.policy ?? "open";
       if (p2pPolicy === "open") {
         warnings.push(
-          `- NIM P2P: p2pPolicy="open" allows any user to message. Set channels.nim.p2pPolicy="allowlist" + channels.nim.allowFrom to restrict senders.`,
+          `- NIM P2P: p2p.policy="open" allows any user to message. Set channels.nim.p2p.policy="allowlist" + channels.nim.p2p.allowFrom to restrict senders.`,
         );
       }
 
       // Team policy warnings
-      const teamPolicy = nimCfg?.teamPolicy ?? "open";
+      const teamPolicy = nimCfg?.team?.policy ?? "open";
       if (teamPolicy === "open") {
-        const hasTeamAllowFrom = (nimCfg?.teamAllowFrom ?? []).length > 0;
-        if (!hasTeamAllowFrom) {
-          warnings.push(
-            `- NIM teams: teamPolicy="open" allows any member to trigger (mention-gated). Set channels.nim.teamPolicy="allowlist" + channels.nim.teamAllowFrom to restrict senders.`,
-          );
-        }
+        warnings.push(
+          `- NIM teams: team.policy="open" allows any group to trigger (mention-gated). Set channels.nim.team.policy="allowlist" + channels.nim.team.allowFrom to restrict by group ID.`,
+        );
       }
 
-      // QChat server policy warnings
+      // QChat warnings
       const qchatCfg = (nimCfg as Record<string, unknown> | undefined)?.qchat as
-        | { enabled?: boolean; serverPolicy?: string; serverIds?: string[] }
+        | { policy?: string; allowFrom?: unknown[] }
         | undefined;
-      if (qchatCfg?.enabled) {
-        const qchatServerPolicy = qchatCfg.serverPolicy ?? "open";
-        if (qchatServerPolicy === "open") {
-          const hasServerIds = (qchatCfg.serverIds ?? []).length > 0;
-          if (hasServerIds) {
-            warnings.push(
-              `- QChat: serverPolicy="open" allows any server to trigger (mention-gated). Set channels.nim.qchat.serverPolicy="allowlist" to restrict to configured serverIds.`,
-            );
-          } else {
-            warnings.push(
-              `- QChat: serverPolicy="open" with no serverIds; any server can trigger (mention-gated). Set channels.nim.qchat.serverPolicy="allowlist" and configure channels.nim.qchat.serverIds.`,
-            );
-          }
+      if (qchatCfg) {
+        const qchatPolicy = qchatCfg.policy ?? "open";
+        if (qchatPolicy === "open") {
+          warnings.push(
+            `- QChat: policy="open" accepts all @-mentioned messages and auto-accepts all server invites. Set channels.nim.qchat.policy="allowlist" + channels.nim.qchat.allowFrom to restrict.`,
+          );
         }
       }
 
@@ -239,14 +266,30 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       ctx.setStatus({ accountId: ctx.accountId });
       ctx.log?.info(`[nim] provider starting — account: ${nimCfg?.account ?? "unknown"}`);
 
-      // Prepare QChat client if configured (listeners + activate handled by monitor)
+      // Prepare QChat client (listeners + activate handled by monitor).
+      // QChat always starts when credentials are available — policy only controls reply behavior.
       const qchatCfg = (nimCfg as Record<string, unknown> | undefined)?.qchat as
-        | { enabled?: boolean; serverIds?: string[]; serverPolicy?: string }
+        | { policy?: string; allowFrom?: Array<string | number> }
         | undefined;
+
+      const qchatPolicy = (qchatCfg?.policy ?? "open") as "open" | "allowlist" | "disabled";
+      const qchatAllowFrom = qchatCfg?.allowFrom ?? [];
+
+      // Write live reply flag immediately — all in-flight dispatches check this at send time.
+      // "allowlist" with empty allowFrom is treated as disabled — must not enable replies.
+      const isEffectivelyDisabled = qchatPolicy === "disabled" || (qchatPolicy === "allowlist" && qchatAllowFrom.length === 0);
+      setQchatReplyEnabled(!isEffectivelyDisabled);
+      ctx.log?.info(`[qchat] reply enabled: ${!isEffectivelyDisabled} — policy: ${qchatPolicy}, allowFrom count: ${qchatAllowFrom.length}`);
+
+      // Abort guard: when gateway restarts (config reload), the old onMessage callback must
+      // immediately stop processing. Without this, stale closures from previous gateway
+      // instances continue handling messages with outdated policy.
+      let gatewayAborted = false;
+      ctx.abortSignal.addEventListener("abort", () => { gatewayAborted = true; }, { once: true });
 
       let qchatClient: QChatClient | null = null;
 
-      if (qchatCfg?.enabled && nimCfg?.appKey && nimCfg?.account) {
+      if (nimCfg?.appKey && nimCfg?.account) {
         const qchatLogAdapter = ctx.log
           ? {
               info: (msg: string) => ctx.log!.info(`[qchat] ${msg}`),
@@ -257,20 +300,29 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
             }
           : undefined;
 
-        const serverIds = qchatCfg.serverIds ?? [];
-        const serverIdsLabel =
-          serverIds.length > 0
-            ? `servers=[${serverIds.join(",")}]`
-            : "servers=auto-discover";
+        // Derive server IDs from allowFrom entries (first "|"-segment of each entry).
+        // Used for subscription and server invite auto-accept.
+        const allowFrom = qchatCfg?.allowFrom ?? [];
+        const derivedServerIds = qchatPolicy === "allowlist"
+          ? [...new Set(
+              allowFrom
+                .map((e) => String(e).split("|")[0].trim())
+                .filter(Boolean),
+            )]
+          : [];
+
+        const serverIdsLabel = derivedServerIds.length > 0
+          ? `servers=[${derivedServerIds.join(",")}]`
+          : "servers=auto-discover";
 
         ctx.log?.info(`[qchat] client preparing — ${serverIdsLabel}`);
 
         qchatClient = new QChatClient({
           appKey: nimCfg.appKey as string,
           account: nimCfg.account as string,
-          serverIds: serverIds.length > 0 ? serverIds : undefined,
-          serverPolicy: (qchatCfg?.serverPolicy ?? "open") as "open" | "allowlist" | "disabled",
-          serverAllowlist: (qchatCfg?.serverIds ?? []).map(String),
+          serverIds: derivedServerIds.length > 0 ? derivedServerIds : undefined,
+          serverPolicy: qchatPolicy,
+          serverAllowlist: derivedServerIds,
           log: qchatLogAdapter,
           onMessage: async (resp) => {
             const raw = resp.message;
@@ -286,30 +338,46 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
             ctx.log?.info(
               `[qchat] parsed message — sender: ${msg.senderAccid}, target: ${msg.serverId}:${msg.channelId}, mentioned: ${msg.wasMentioned ? "yes" : "no"}, message id: ${msg.messageId}`,
             );
+
             if (msg.senderAccid === (nimCfg!.account as string)) {
               ctx.log?.info("[qchat] skipped — reason: message from self");
               return;
             }
 
-            // ── QChat access control ──
-            const qchatServerPolicy = (qchatCfg?.serverPolicy ?? "open") as NimTeamPolicy;
-            const allowedServerIds = qchatCfg?.serverIds ?? [];
 
-            if (qchatServerPolicy === "disabled") {
-              ctx.log?.info("[qchat] skipped — reason: serverPolicy is disabled");
-              return;
-            }
+            // Guard: if this gateway instance was aborted (config reload / shutdown),
+            // stop processing immediately. The new instance will handle messages.
+            if (gatewayAborted) return;
 
-            if (qchatServerPolicy === "allowlist") {
-              if (allowedServerIds.length === 0 || !allowedServerIds.includes(msg.serverId)) {
-                ctx.log?.info(`[qchat] skipped — reason: server ${msg.serverId} not in serverIds allowlist`);
-                return;
+            // Policy gate — re-read LIVE config on every message to avoid stale closure.
+            // This is the authoritative gate; qchat-inbound.ts should NOT duplicate this check.
+            const liveNimCfg = ctx.cfg.channels?.nim as NimConfig | undefined;
+            const liveQchatCfg = (liveNimCfg as Record<string, unknown> | undefined)?.qchat as
+              | { policy?: string; allowFrom?: Array<string | number> }
+              | undefined;
+            const livePolicy = (liveQchatCfg?.policy ?? "open") as "open" | "allowlist" | "disabled";
+            const liveAllowFrom = liveQchatCfg?.allowFrom ?? [];
+
+            const policyResult = isQChatAllowed({
+              policy: livePolicy,
+              allowFrom: liveAllowFrom,
+              serverId: msg.serverId,
+              channelId: msg.channelId,
+              senderAccid: msg.senderAccid,
+            });
+
+            ctx.log?.info(
+              `[qchat] policy check — policy: ${livePolicy}, server: ${msg.serverId}, channel: ${msg.channelId}, sender: ${msg.senderAccid}`,
+            );
+
+            if (!policyResult.allowed) {
+              const blocked = policyResult as Exclude<typeof policyResult, { allowed: true }>;
+              if (blocked.reason === "disabled") {
+                ctx.log?.info(`[qchat] dispatch skipped — reason: policy disabled, server: ${msg.serverId}, channel: ${msg.channelId}, sender: ${msg.senderAccid}`);
+                ctx.setStatus({ accountId: ctx.accountId, lastInboundAt: msg.timestamp });
+              } else {
+                ctx.log?.info(`[qchat] dispatch skipped — reason: no matching allowFrom entry, server: ${msg.serverId}, channel: ${msg.channelId}, sender: ${msg.senderAccid}, allowFrom: [${blocked.allowFrom.join(", ")}]`);
               }
-            }
-
-            // Mention check (always required for QChat)
-            if (!msg.wasMentioned) {
-              ctx.log?.info("[qchat] skipped — reason: mention required but not mentioned");
               return;
             }
 
@@ -355,6 +423,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
             ctx.log?.error(`[qchat] shutdown failed — error: ${String(err)}`);
           });
           setSharedQChatClient(null);
+          setQchatReplyEnabled(false);
         }, { once: true });
       }
 

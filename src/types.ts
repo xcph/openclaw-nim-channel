@@ -171,7 +171,7 @@ export interface ResolvedNimAccount {
   p2pPolicy: NimP2pPolicy;
   allowFrom: Array<string | number>;
   teamPolicy: NimTeamPolicy;
-  teamAllowFrom: Array<string | number>;
+  teamIds: Array<string | number>;
   config: NimConfig;
 }
 
@@ -207,6 +207,8 @@ export interface NimClientInstance {
   offMessage(callback: (msg: NimMessageEvent) => void): void;
   /** 注册连接状态回调 */
   onConnectionChange(callback: (state: string) => void): void;
+  /** 更新 P2P 好友申请自动同意策略（config reload 时调用） */
+  updateP2pPolicy(policy: NimP2pPolicy, allowFrom: Array<string | number>): void;
   /** 底层 NIM SDK 实例（用于 QChat 等复用） */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   nativeNim: any;
@@ -225,10 +227,18 @@ export type NimTeamPolicy = "open" | "allowlist" | "disabled";
  * QChat 配置（嵌套在 channels.nim.qchat 下）
  */
 export interface QChatConfig {
-  /** 是否启用圈组功能 */
-  enabled?: boolean;
-  /** 要订阅的 Server ID 列表（留空自动发现所有已加入 server） */
-  serverIds?: string[];
+  /**
+   * 入站消息策略。
+   *   open      — 接受所有 @-mentioned 消息（默认）
+   *   allowlist — 只接受匹配 allowFrom 条目的消息
+   *   disabled  — 拒绝所有入站 QChat 消息
+   */
+  policy?: "open" | "allowlist" | "disabled";
+  /**
+   * 入站消息白名单，同时控制服务器订阅和自动同意邀请（为空则全部放行）。
+   * 格式: "serverId" | "serverId|channelId" | "serverId|channelId|accountId" | "serverId||accountId"
+   */
+  allowFrom?: Array<string | number>;
 }
 
 /**

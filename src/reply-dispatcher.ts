@@ -32,7 +32,7 @@ export function createNimReplyDispatcher(params: {
   const { cfg, runtime, senderId, sessionType = "p2p", originalRawMsg, originalSenderId } = params;
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;
   const log = runtime?.log ?? console.log;
-  const chunkLimit = nimCfg?.textChunkLimit ?? 4000;
+  const chunkLimit = nimCfg?.advanced?.textChunkLimit ?? 4000;
 
   // Get the core runtime which has the full channel.reply interface
   const core = getNimRuntime();

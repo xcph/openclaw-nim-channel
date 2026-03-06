@@ -3,7 +3,7 @@
  */
 
 import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
-import type { NimConfig, NimClientInstance, NimMessageEvent } from "./types.js";
+import type { NimConfig, NimClientInstance, NimMessageEvent, NimP2pPolicy } from "./types.js";
 import { createNimClient, clearNimClientCache } from "./client.js";
 import { resolveNimCredentials } from "./accounts.js";
 import { handleNimMessage } from "./bot.js";
@@ -56,6 +56,11 @@ export async function monitorNimProvider(params: {
     // 创建客户端（IM 初始化）
     const client = await createNimClient(nimCfg);
 
+    // Sync P2P policy to the cached client — ensures the friend request listener
+    // always uses the latest policy, even when the client is reused from cache.
+    const liveP2pPolicy = (nimCfg.p2p?.policy as NimP2pPolicy) ?? "open";
+    const liveP2pAllowFrom = nimCfg.p2p?.allowFrom ?? [];
+    client.updateP2pPolicy(liveP2pPolicy, liveP2pAllowFrom);
     // QChat phase 1: register passive listeners AFTER IM init, BEFORE login
     // 复用 IM 创建的 NIM 实例，避免重复创建
     if (params.qchatClient) {

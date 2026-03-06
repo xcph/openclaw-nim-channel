@@ -52,10 +52,10 @@ export function resolveNimAccount(params: {
     token: creds?.token ?? "",
     enabled: nimCfg?.enabled ?? false,
     configured: Boolean(creds),
-    p2pPolicy: (nimCfg?.p2pPolicy as NimP2pPolicy) ?? "open",
-    allowFrom: nimCfg?.allowFrom ?? [],
-    teamPolicy: (nimCfg?.teamPolicy as NimTeamPolicy) ?? "open",
-    teamAllowFrom: nimCfg?.teamAllowFrom ?? [],
+    p2pPolicy: (nimCfg?.p2p?.policy as NimP2pPolicy) ?? "open",
+    allowFrom: nimCfg?.p2p?.allowFrom ?? [],
+    teamPolicy: (nimCfg?.team?.policy as NimTeamPolicy) ?? "open",
+    teamIds: nimCfg?.team?.allowFrom ?? [],
     config: nimCfg ?? ({} as NimConfig),
   };
 }
@@ -83,9 +83,7 @@ export function resolveNimAllowlistMatch(params: {
   senderId: string;
 }): { allowed: boolean; matchedEntry?: string; matchSource?: string } {
   const { senderId } = params;
-  const { hasWildcard, entries } = normalizeNimAllowFrom(
-    params.allowFrom,
-  );
+  const { hasWildcard, entries } = normalizeNimAllowFrom(params.allowFrom);
 
   if (hasWildcard) {
     return { allowed: true, matchedEntry: "*", matchSource: "wildcard" };
@@ -123,6 +121,11 @@ export function isNimP2pAllowed(params: {
     return { allowed: true };
   }
 
+  // "allowlist" with empty list — treat as disabled
+  if (!params.allowFrom || params.allowFrom.length === 0) {
+    return { allowed: false, reason: "disabled" };
+  }
+
   // "allowlist" — check the allowlist
   const match = resolveNimAllowlistMatch({
     allowFrom: params.allowFrom,
@@ -138,30 +141,119 @@ export function isNimP2pAllowed(params: {
 }
 
 /**
- * Check if a team message sender is allowed based on team policy.
+ * Check if a team message is allowed based on team policy, group ID, sender, and session type.
+ *
+ * teamIds entry formats (case-insensitive):
+ *   "teamId"               — allow any sender in this team (matches both team and superTeam)
+ *   "teamId|accountId"     — allow only this sender in this team (matches both)
+ *   "1|teamId"             — allow any sender, only regular team (高级群)
+ *   "2|teamId"             — allow any sender, only super team (超大群)
+ *   "1|teamId|accountId"   — specific sender, only regular team
+ *   "2|teamId|accountId"   — specific sender, only super team
+ *
+ * Modes:
+ *   open      → accept all groups
+ *   allowlist → only groups (and optionally senders) matching teamIds entries
+ *   disabled  → reject all team messages
  */
 export function isNimTeamAllowed(params: {
   teamPolicy: NimTeamPolicy;
-  teamAllowFrom: Array<string | number>;
+  teamIds: Array<string | number>;
+  groupId: string;
   senderId: string;
+  sessionType: "team" | "superTeam";
 }): boolean {
-  const { teamPolicy, teamAllowFrom, senderId } = params;
+  const { teamPolicy, teamIds, groupId, senderId, sessionType } = params;
 
-  if (teamPolicy === "disabled") {
-    return false;
-  }
+  if (teamPolicy === "disabled") return false;
+  if (teamPolicy === "open") return true;
 
-  if (teamPolicy === "open") {
+  // "allowlist" with empty list — treat as disabled
+  if (!teamIds || teamIds.length === 0) return false;
+
+  const nGroupId = groupId.toLowerCase();
+  const nSenderId = senderId.toLowerCase();
+
+  return teamIds.some((entry) => {
+    const parts = String(entry).split("|");
+    const first = parts[0].trim();
+
+    let entryType: string | null = null;
+    let entryTeamId: string;
+    let entrySender: string;
+
+    if (first === "1" || first === "2") {
+      // Type-prefixed entry: "1|teamId" or "2|superTeamId" (with optional sender)
+      entryType = first;
+      entryTeamId = (parts[1] ?? "").trim().toLowerCase();
+      entrySender = (parts[2] ?? "").trim().toLowerCase();
+    } else {
+      // No type prefix — matches both team and superTeam
+      entryTeamId = first.toLowerCase();
+      entrySender = (parts[1] ?? "").trim().toLowerCase();
+    }
+
+    // If entry has a type prefix, enforce session type match
+    if (entryType !== null) {
+      const expectedType = entryType === "1" ? "team" : "superTeam";
+      if (sessionType !== expectedType) return false;
+    }
+
+    if (entryTeamId !== nGroupId) return false;
+    return !entrySender || entrySender === nSenderId;
+  });
+}
+
+/**
+ * Check if a QChat inbound message is allowed based on policy and allowFrom entries.
+ *
+ * Modes:
+ *   open      → accept all (beyond the @-mention gate)
+ *   allowlist → only messages matching allowFrom entries
+ *   disabled  → reject all inbound QChat messages
+ *
+ * allowFrom entry formats (case-insensitive):
+ *   "serverId"                     — any channel, any sender in this server
+ *   "serverId|channelId"           — any sender in this server+channel
+ *   "serverId|channelId|accountId" — specific sender in this server+channel
+ *   "serverId||accountId"          — specific sender in any channel of this server
+ */
+export type QChatBlockReason =
+  | { allowed: true }
+  | { allowed: false; reason: "disabled" }
+  | { allowed: false; reason: "no_match"; allowFrom: Array<string | number> };
+
+export function isQChatAllowed(params: {
+  policy: "open" | "allowlist" | "disabled";
+  allowFrom: Array<string | number>;
+  serverId: string;
+  channelId: string;
+  senderAccid: string;
+}): QChatBlockReason {
+  const { policy, allowFrom, serverId, channelId, senderAccid } = params;
+
+  if (policy === "disabled") return { allowed: false, reason: "disabled" };
+  if (policy === "open") return { allowed: true };
+
+  // "allowlist" with empty list — treat as disabled
+  if (!allowFrom || allowFrom.length === 0) return { allowed: false, reason: "disabled" };
+
+  const nServer = serverId.toLowerCase();
+  const nChannel = channelId.toLowerCase();
+  const nSender = senderAccid.toLowerCase();
+
+  const matched = allowFrom.some((entry) => {
+    const parts = String(entry).split("|");
+    const entryServer = parts[0].trim().toLowerCase();
+    const entryChannel = (parts[1] ?? "").trim().toLowerCase();
+    const entrySender = (parts[2] ?? "").trim().toLowerCase();
+
+    if (entryServer !== nServer) return false;
+    if (entryChannel && entryChannel !== nChannel) return false;
+    if (entrySender && entrySender !== nSender) return false;
     return true;
-  }
+  });
 
-  // "allowlist" — check teamAllowFrom
-  if (!teamAllowFrom || teamAllowFrom.length === 0) {
-    return false;
-  }
-
-  const normalizedSenderId = senderId.toLowerCase();
-  return teamAllowFrom.some(
-    (entry) => String(entry).trim().toLowerCase() === normalizedSenderId,
-  );
+  if (matched) return { allowed: true };
+  return { allowed: false, reason: "no_match", allowFrom };
 }

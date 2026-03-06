@@ -16,7 +16,7 @@ import {
 } from "openclaw/plugin-sdk";
 import { getNimRuntime } from "./runtime.js";
 import type { NimConfig, QChatInboundMessage } from "./types.js";
-import { resolveNimCredentials } from "./accounts.js";
+import { isQChatAllowed } from "./accounts.js";
 import { sendQChatMessage } from "./qchat-send.js";
 type QChatMessagePayload = {
   serverId?: string;
@@ -142,6 +142,10 @@ export async function handleQChatInbound(params: {
   // @-mention gate — only respond when the bot is explicitly @-mentioned
   if (!message.wasMentioned) return;
 
+  // NOTE: Policy gate is handled upstream in channel.ts onMessage callback.
+  // This function is only called after the policy check passes.
+  // No duplicate policy check needed here.
+
   const senderDisplay = message.senderNick ?? message.senderAccid;
   // Reply target = the server:channel where the message was received
   const peerId = `${message.serverId}:${message.channelId}`;
@@ -230,6 +234,29 @@ export async function handleQChatInbound(params: {
     accountId,
   });
   const deliverReply = createNormalizedOutboundDeliverer(async (payload) => {
+    // Re-check policy at delivery time — guards against in-flight dispatches
+    // that were initiated before the policy was changed.
+    const liveNimCfg = config.channels?.nim as NimConfig | undefined;
+    const liveQchatCfg = liveNimCfg?.qchat as
+      | { policy?: string; allowFrom?: Array<string | number> }
+      | undefined;
+    const livePolicy = (liveQchatCfg?.policy ?? "open") as "open" | "allowlist" | "disabled";
+    const liveAllowFrom = liveQchatCfg?.allowFrom ?? [];
+
+    // Use the full isQChatAllowed check — catches both literal "disabled" AND
+    // "allowlist" with empty allowFrom (which is treated as disabled).
+    const deliveryCheck = isQChatAllowed({
+      policy: livePolicy,
+      allowFrom: liveAllowFrom,
+      serverId: message.serverId,
+      channelId: message.channelId,
+      senderAccid: message.senderAccid,
+    });
+    if (!deliveryCheck.allowed) {
+      runtime.log(`[qchat] reply suppressed — reason: policy now blocks delivery (policy: ${livePolicy}), target: ${peerId}`);
+      return;
+    }
+
     runtime.log(`[qchat] delivering reply — target: ${peerId}`);
     await deliverQChatReply({
       payload,

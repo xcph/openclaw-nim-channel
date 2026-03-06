@@ -130,8 +130,8 @@ export async function handleNimMessage(params: {
   // ── Access control ──
   if (isP2P) {
     // P2P policy: open / allowlist / disabled
-    const p2pPolicy = (nimCfg?.p2pPolicy ?? "open") as NimP2pPolicy;
-    const configAllowFrom = nimCfg?.allowFrom ?? [];
+    const p2pPolicy = (nimCfg?.p2p?.policy ?? "open") as NimP2pPolicy;
+    const configAllowFrom = nimCfg?.p2p?.allowFrom ?? [];
 
     const result = isNimP2pAllowed({
       p2pPolicy,
@@ -149,14 +149,16 @@ export async function handleNimMessage(params: {
     }
   }
 
-    // Team policy: open / allowlist / disabled
-    const teamPolicy = (nimCfg?.teamPolicy ?? "open") as NimTeamPolicy;
-    const teamAllowFrom = nimCfg?.teamAllowFrom ?? [];
+  if (isTeam) {
+    // Team policy: open / allowlist (by group ID + optional sender) / disabled
+    const teamPolicy = (nimCfg?.team?.policy ?? "open") as NimTeamPolicy;
+    const teamIds = nimCfg?.team?.allowFrom ?? [];
 
-    if (!isNimTeamAllowed({ teamPolicy, teamAllowFrom, senderId: ctx.senderId })) {
-      log(`[nim] team sender blocked — sender: ${ctx.senderId}, policy: ${teamPolicy}`);
+    if (!isNimTeamAllowed({ teamPolicy, teamIds, groupId: message.to, senderId: ctx.senderId, sessionType: message.sessionType as "team" | "superTeam" })) {
+      log(`[nim] team message blocked — group: ${message.to}, sender: ${ctx.senderId}, policy: ${teamPolicy}`);
       return;
     }
+  }
 
   try {
     const core = getNimRuntime();
@@ -195,7 +197,7 @@ export async function handleNimMessage(params: {
     });
 
     // Handle media if present
-    const mediaMaxBytes = (nimCfg?.mediaMaxMb ?? 30) * 1024 * 1024;
+    const mediaMaxBytes = (nimCfg?.advanced?.mediaMaxMb ?? 30) * 1024 * 1024;
     const mediaList = [];
 
     if (["image", "file", "audio", "video"].includes(ctx.type)) {
