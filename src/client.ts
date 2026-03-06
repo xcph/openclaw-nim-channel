@@ -263,7 +263,9 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
     async login(): Promise<boolean> {
       try {
         console.log(`[nim] login started — account: ${creds.account}`);
-        await loginService.login(creds.account, creds.token);
+        await loginService.login(creds.account, creds.token, {
+          aiBot: 1
+        });
         loggedIn = true;
         instance.loggedIn = true;
         console.log(`[nim] login successful — account: ${creds.account}`);
