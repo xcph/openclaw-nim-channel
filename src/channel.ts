@@ -87,6 +87,10 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
             mediaMaxMb: { type: "number", minimum: 0 },
             textChunkLimit: { type: "integer", minimum: 1 },
             debug: { type: "boolean" },
+            lbsUrls: { type: "array", items: { type: "string" } },
+            linkUrl: { type: "string" },
+            nosUploadLbs: { type: "string" },
+            nosDownloadUrl: { type: "string" },
           },
         },
         qchat: {
@@ -117,6 +121,10 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       "advanced.mediaMaxMb":     { order: 41, label: "Max Media Size (MB)" },
       "advanced.textChunkLimit": { order: 42, label: "Text Chunk Limit" },
       "advanced.debug":          { order: 43, label: "Debug Mode", advanced: true },
+      "advanced.lbsUrls":       { order: 50, label: "LBS URLs (Private Deploy)", advanced: true },
+      "advanced.linkUrl":       { order: 51, label: "Link Server URL (Private Deploy)", advanced: true },
+      "advanced.nosUploadLbs":  { order: 52, label: "NOS Upload LBS (Private Deploy)", advanced: true },
+      "advanced.nosDownloadUrl": { order: 53, label: "NOS Download URL (Private Deploy)", advanced: true },
     },
   },
   config: {

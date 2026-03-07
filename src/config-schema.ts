@@ -61,6 +61,18 @@ export const AdvancedSubConfigSchema = z.object({
 
   /** Enable debug logging */
   debug: z.boolean().optional().default(false),
+
+  /** Custom LBS (Location-Based Service) URLs for private deployment */
+  lbsUrls: z.array(z.string()).optional(),
+
+  /** Backup WebSocket server address for private deployment */
+  linkUrl: z.string().optional(),
+
+  /** NOS upload LBS address for private deployment */
+  nosUploadLbs: z.string().optional(),
+
+  /** NOS download base URL for private deployment */
+  nosDownloadUrl: z.string().optional(),
 });
 
 /**

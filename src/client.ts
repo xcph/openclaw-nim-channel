@@ -145,12 +145,43 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
   const NIMModule = await import("nim-web-sdk-ng/dist/nodejs/nim.js");
   const NIM = NIMModule.default;
   
-  // 使用 new 创建新实例以支持多实例
+  // Build privatization login config if any custom URLs are set
+  const loginServiceConfig: Record<string, unknown> = {};
+  if (cfg.advanced?.lbsUrls && cfg.advanced.lbsUrls.length > 0) {
+    loginServiceConfig.lbsUrls = cfg.advanced.lbsUrls;
+  }
+  if (cfg.advanced?.linkUrl) {
+    loginServiceConfig.linkUrl = cfg.advanced.linkUrl;
+  }
+
+  // Build NOS config if any custom URLs are set
+  const nosConfig: Record<string, unknown> = {};
+  if (cfg.advanced?.nosUploadLbs) {
+    nosConfig.nosUploadLbs = cfg.advanced.nosUploadLbs;
+  }
+  if (cfg.advanced?.nosDownloadUrl) {
+    nosConfig.nosDownloadUrl = cfg.advanced.nosDownloadUrl;
+  }
+
+  const otherOptions: Record<string, unknown> = {};
+  if (Object.keys(loginServiceConfig).length > 0) {
+    otherOptions.V2NIMLoginServiceConfig = loginServiceConfig;
+  }
+  if (Object.keys(nosConfig).length > 0) {
+    otherOptions.cloudStorageConfig = nosConfig;
+  }
+
   const nim = new NIM({
-    appkey: creds.appKey,
-    apiVersion: "v2",
-    debugLevel: cfg.advanced?.debug ? "debug" : "off",
-  });
+      appkey: creds.appKey,
+      apiVersion: "v2",
+      debugLevel: cfg.advanced?.debug ? "debug" : "off",
+    },
+    Object.keys(otherOptions).length > 0 ? otherOptions : undefined,
+  );
+
+  if (Object.keys(otherOptions).length > 0) {
+    console.log(`[nim] privatization config applied — lbsUrls: ${cfg.advanced?.lbsUrls?.length ?? 0}, linkUrl: ${cfg.advanced?.linkUrl ? "set" : "unset"}, nosUploadLbs: ${cfg.advanced?.nosUploadLbs ? "set" : "unset"}, nosDownloadUrl: ${cfg.advanced?.nosDownloadUrl ? "set" : "unset"}`);
+  }
 
   let loggedIn = false;
   const msgCallbackSet = new Set<(msg: NimMessageEvent) => void>();
