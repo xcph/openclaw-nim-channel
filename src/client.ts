@@ -145,30 +145,20 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
   const NIMModule = await import("nim-web-sdk-ng/dist/nodejs/nim.js");
   const NIM = NIMModule.default;
   
-  // Build privatization login config if any custom URLs are set
-  const loginServiceConfig: Record<string, unknown> = {};
-  if (cfg.advanced?.lbsUrls && cfg.advanced.lbsUrls.length > 0) {
-    loginServiceConfig.lbsUrls = cfg.advanced.lbsUrls;
-  }
-  if (cfg.advanced?.linkUrl) {
-    loginServiceConfig.linkUrl = cfg.advanced.linkUrl;
-  }
-
-  // Build NOS config if any custom URLs are set
-  const nosConfig: Record<string, unknown> = {};
-  if (cfg.advanced?.nosUploadLbs) {
-    nosConfig.nosUploadLbs = cfg.advanced.nosUploadLbs;
-  }
-  if (cfg.advanced?.nosDownloadUrl) {
-    nosConfig.nosDownloadUrl = cfg.advanced.nosDownloadUrl;
-  }
+  // Build privateConf from NIMOtherOptionsPrivateConfig fields (excluding data reporting)
+  const privateConf: Record<string, unknown> = {};
+  const adv = cfg.advanced;
+  if (adv?.weblbsUrl) privateConf.weblbsUrl = adv.weblbsUrl;
+  if (adv?.link_web) privateConf.link_web = adv.link_web;
+  if (adv?.nos_uploader) privateConf.nos_uploader = adv.nos_uploader;
+  if (adv?.nos_downloader_v2) privateConf.nos_downloader_v2 = adv.nos_downloader_v2;
+  if (adv?.nosSsl !== undefined) privateConf.nosSsl = adv.nosSsl;
+  if (adv?.nos_accelerate) privateConf.nos_accelerate = adv.nos_accelerate;
+  if (adv?.nos_accelerate_host !== undefined) privateConf.nos_accelerate_host = adv.nos_accelerate_host;
 
   const otherOptions: Record<string, unknown> = {};
-  if (Object.keys(loginServiceConfig).length > 0) {
-    otherOptions.V2NIMLoginServiceConfig = loginServiceConfig;
-  }
-  if (Object.keys(nosConfig).length > 0) {
-    otherOptions.cloudStorageConfig = nosConfig;
+  if (Object.keys(privateConf).length > 0) {
+    otherOptions.privateConf = privateConf;
   }
 
   const nim = new NIM({
@@ -179,8 +169,8 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
     Object.keys(otherOptions).length > 0 ? otherOptions : undefined,
   );
 
-  if (Object.keys(otherOptions).length > 0) {
-    console.log(`[nim] privatization config applied — lbsUrls: ${cfg.advanced?.lbsUrls?.length ?? 0}, linkUrl: ${cfg.advanced?.linkUrl ? "set" : "unset"}, nosUploadLbs: ${cfg.advanced?.nosUploadLbs ? "set" : "unset"}, nosDownloadUrl: ${cfg.advanced?.nosDownloadUrl ? "set" : "unset"}`);
+  if (Object.keys(privateConf).length > 0) {
+    console.log(`[nim] privateConf applied — keys: ${Object.keys(privateConf).join(", ")}`);
   }
 
   let loggedIn = false;

@@ -7,6 +7,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0-beta.1] - 2026-03-09
+
+### Added
+- Private deployment (privatization) configuration via `NIMOtherOptionsPrivateConfig`: supports custom LBS URL (`weblbsUrl`), WebSocket link address (`link_web`), NOS upload URL (`nos_uploader`), NOS download URL format (`nos_downloader_v2`), NOS HTTPS toggle (`nosSsl`), CDN accelerate URL (`nos_accelerate`), and CDN accelerate host (`nos_accelerate_host`)
+- All privatization parameters are exposed under `advanced` config, except data reporting fields (`compassDataEndpoint`, `enableCompass`) which are intentionally excluded
+
+### Changed
+- Configuration examples in README converted from YAML to JSON to match OpenClaw's actual config format
+
 ## [0.3.0-beta.6] - 2026-03-06
 
 ### Added
