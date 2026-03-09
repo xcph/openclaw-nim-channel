@@ -80,7 +80,7 @@ openclaw config set channels.nim.enabled true
 
 ```bash
 openclaw config set channels.nim.advanced.weblbsUrl "https://your-lbs.example.com"
-openclaw config set channels.nim.advanced.link_web "wss://your-link.example.com"
+openclaw config set channels.nim.advanced.link_web "weblink.netease.im:443"
 openclaw config set channels.nim.advanced.nos_uploader "https://your-nos-upload.example.com"
 openclaw config set channels.nim.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
 openclaw config set channels.nim.advanced.nosSsl true
@@ -130,7 +130,7 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
         "textChunkLimit": 4000,
         "debug": false,
         "weblbsUrl": "https://your-lbs.example.com",
-        "link_web": "wss://your-link.example.com",
+        "link_web": "weblink.netease.im:443",
         "nos_uploader": "https://your-nos-upload.example.com",
         "nos_downloader_v2": "https://your-nos-download.example.com/{bucket}/{object}",
         "nosSsl": true,
