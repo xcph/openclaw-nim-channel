@@ -13,6 +13,7 @@
 - 🔐 AppKey + Token 认证
 - 🔄 自动重连处理
 - 📝 长消息自动分片
+- 🔒 私有化部署支持，可自定义服务器地址
 
 ## 安装
 
@@ -75,47 +76,58 @@ openclaw config set channels.nim.token "your-auth-token"
 openclaw config set channels.nim.enabled true
 ```
 
-### 完整配置（YAML）
+### 完整配置（JSON）
 
-```yaml
-channels:
-  nim:
-    enabled: true
-    appKey: "your-app-key"
-    account: "your-bot-account-id"
-    token: "your-auth-token"
+```json
+{
+  "channels": {
+    "nim": {
+      "enabled": true,
+      "appKey": "your-app-key",
+      "account": "your-bot-account-id",
+      "token": "your-auth-token",
 
-    # P2P 单聊设置
-    p2p:
-      policy: open          # open | allowlist | disabled
-      allowFrom:            # policy="allowlist" 时必填
-        - "user_abc"
-        - "user_xyz"
+      "p2p": {
+        "policy": "open",
+        "allowFrom": ["user_abc", "user_xyz"]
+      },
 
-    # 群组聊天设置
-    team:
-      policy: open          # open | allowlist | disabled
-      allowFrom:            # policy="allowlist" 时必填
-        - "groupId_1"                # 该群任意发送者（高级群或超大群均匹配）
-        - "groupId_2|user_abc"       # 仅 user_abc 在该群中
-        - "1|groupId_3"              # 任意发送者，仅高级群
-        - "2|groupId_4"              # 任意发送者，仅超大群
-        - "1|groupId_5|user_xyz"     # 仅 user_xyz，仅高级群
+      "team": {
+        "policy": "open",
+        "allowFrom": [
+          "groupId_1",
+          "groupId_2|user_abc",
+          "1|groupId_3",
+          "2|groupId_4",
+          "1|groupId_5|user_xyz"
+        ]
+      },
 
-    # 圈组设置
-    qchat:
-      policy: open          # open | allowlist | disabled
-      allowFrom:            # policy="allowlist" 时必填
-        - "serverId_1"                          # 该服务器下所有频道、所有发送者
-        - "serverId_2|channelId_1"              # 该服务器+频道下所有发送者
-        - "serverId_2|channelId_2|user_abc"     # 仅 user_abc 在该服务器+频道
-        - "serverId_3||user_xyz"                # 仅 user_xyz 在该服务器下任意频道
+      "qchat": {
+        "policy": "open",
+        "allowFrom": [
+          "serverId_1",
+          "serverId_2|channelId_1",
+          "serverId_2|channelId_2|user_abc",
+          "serverId_3||user_xyz"
+        ]
+      },
 
-    # 高级设置
-    advanced:
-      mediaMaxMb: 30        # 最大媒体文件大小（MB，默认 30）
-      textChunkLimit: 4000  # 每条消息最大字符数（默认 4000）
-      debug: false          # 启用 SDK 调试日志（默认 false）
+      "advanced": {
+        "mediaMaxMb": 30,
+        "textChunkLimit": 4000,
+        "debug": false,
+        "weblbsUrl": "https://your-lbs.example.com",
+        "link_web": "wss://your-link.example.com",
+        "nos_uploader": "https://your-nos-upload.example.com",
+        "nos_downloader_v2": "https://your-nos-download.example.com/{bucket}/{object}",
+        "nosSsl": true,
+        "nos_accelerate": "https://your-cdn.example.com/{bucket}/{object}",
+        "nos_accelerate_host": "your-cdn.example.com"
+      }
+    }
+  }
+}
 ```
 
 ### 配置参考
@@ -199,6 +211,13 @@ channels:
 | `mediaMaxMb` | number | `30` | 最大媒体文件大小（MB） |
 | `textChunkLimit` | number | `4000` | 每条消息最大字符数 |
 | `debug` | boolean | `false` | 启用 SDK 调试日志 |
+| `weblbsUrl` | string | — | LBS 地址（私有化部署） |
+| `link_web` | string | — | WebSocket/TCP 连接地址（私有化部署） |
+| `nos_uploader` | string | — | NOS 上传地址（私有化部署） |
+| `nos_downloader_v2` | string | — | NOS 下载地址格式（私有化部署） |
+| `nosSsl` | boolean | — | NOS 下载是否启用 HTTPS（私有化部署） |
+| `nos_accelerate` | string | — | CDN 加速 URL 格式（私有化部署） |
+| `nos_accelerate_host` | string | — | CDN 加速命中域名（私有化部署） |
 
 ## 获取凭证
 

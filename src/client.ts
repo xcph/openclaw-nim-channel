@@ -145,12 +145,33 @@ export async function createNimClient(cfg: NimConfig): Promise<NimClientInstance
   const NIMModule = await import("nim-web-sdk-ng/dist/nodejs/nim.js");
   const NIM = NIMModule.default;
   
-  // 使用 new 创建新实例以支持多实例
+  // Build privateConf from NIMOtherOptionsPrivateConfig fields (excluding data reporting)
+  const privateConf: Record<string, unknown> = {};
+  const adv = cfg.advanced;
+  if (adv?.weblbsUrl) privateConf.weblbsUrl = adv.weblbsUrl;
+  if (adv?.link_web) privateConf.link_web = adv.link_web;
+  if (adv?.nos_uploader) privateConf.nos_uploader = adv.nos_uploader;
+  if (adv?.nos_downloader_v2) privateConf.nos_downloader_v2 = adv.nos_downloader_v2;
+  if (adv?.nosSsl !== undefined) privateConf.nosSsl = adv.nosSsl;
+  if (adv?.nos_accelerate) privateConf.nos_accelerate = adv.nos_accelerate;
+  if (adv?.nos_accelerate_host !== undefined) privateConf.nos_accelerate_host = adv.nos_accelerate_host;
+
+  const otherOptions: Record<string, unknown> = {};
+  if (Object.keys(privateConf).length > 0) {
+    otherOptions.privateConf = privateConf;
+  }
+
   const nim = new NIM({
-    appkey: creds.appKey,
-    apiVersion: "v2",
-    debugLevel: cfg.advanced?.debug ? "debug" : "off",
-  });
+      appkey: creds.appKey,
+      apiVersion: "v2",
+      debugLevel: cfg.advanced?.debug ? "debug" : "off",
+    },
+    Object.keys(otherOptions).length > 0 ? otherOptions : undefined,
+  );
+
+  if (Object.keys(privateConf).length > 0) {
+    console.log(`[nim] privateConf applied — keys: ${Object.keys(privateConf).join(", ")}`);
+  }
 
   let loggedIn = false;
   const msgCallbackSet = new Set<(msg: NimMessageEvent) => void>();

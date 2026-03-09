@@ -7,6 +7,15 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0-beta.1] - 2026-03-09
+
+### 新增
+- 私有化部署配置（基于 `NIMOtherOptionsPrivateConfig`）：支持自定义 LBS 地址（`weblbsUrl`）、WebSocket 连接地址（`link_web`）、NOS 上传地址（`nos_uploader`）、NOS 下载地址格式（`nos_downloader_v2`）、NOS HTTPS 开关（`nosSsl`）、CDN 加速 URL（`nos_accelerate`）、CDN 加速域名（`nos_accelerate_host`）
+- 所有私有化参数均在 `advanced` 配置下暴露，数据上报字段（`compassDataEndpoint`、`enableCompass`）已排除
+
+### 变更
+- README 中的配置示例从 YAML 格式改为 JSON 格式，与 OpenClaw 实际配置格式保持一致
+
 ## [0.3.0-beta.6] - 2026-03-06
 
 ### 新增
