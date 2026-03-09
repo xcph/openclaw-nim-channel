@@ -76,6 +76,18 @@ openclaw config set channels.nim.token "your-auth-token"
 openclaw config set channels.nim.enabled true
 ```
 
+#### 私有化部署配置（CLI）
+
+```bash
+openclaw config set channels.nim.advanced.weblbsUrl "https://your-lbs.example.com"
+openclaw config set channels.nim.advanced.link_web "wss://your-link.example.com"
+openclaw config set channels.nim.advanced.nos_uploader "https://your-nos-upload.example.com"
+openclaw config set channels.nim.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
+openclaw config set channels.nim.advanced.nosSsl true
+openclaw config set channels.nim.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
+openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.com"
+```
+
 ### 完整配置（JSON）
 
 ```json
