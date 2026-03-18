@@ -18,6 +18,8 @@ import { getNimRuntime } from "./runtime.js";
 import type { NimConfig, QChatInboundMessage } from "./types.js";
 import { isQChatAllowed } from "./accounts.js";
 import { sendQChatMessage } from "./qchat-send.js";
+import { resolveQChatChannelName, resolveUserNick, buildConversationLabel } from "./name-resolver.js";
+import { getCachedNimClient } from "./client.js";
 type QChatMessagePayload = {
   serverId?: string;
   channelId?: string;
@@ -87,6 +89,7 @@ export function parseQChatMessage(
     text: text.trim(),
     timestamp: msg.time ?? msg.timestamp ?? Date.now(),
     wasMentioned,
+    mentionAccids: mentionAccids,
     rawMessage: msg,
   };
 }
@@ -146,9 +149,37 @@ export async function handleQChatInbound(params: {
   // This function is only called after the policy check passes.
   // No duplicate policy check needed here.
 
-  const senderDisplay = message.senderNick ?? message.senderAccid;
   // Reply target = the server:channel where the message was received
   const peerId = `${message.serverId}:${message.channelId}`;
+
+  // ── Resolve display names ──
+  const nimCfg = config.channels?.nim as NimConfig | undefined;
+  const nimClient = nimCfg ? getCachedNimClient(nimCfg) : undefined;
+  const nativeNim = nimClient?.nativeNim;
+
+  const senderDisplay = nativeNim
+    ? await resolveUserNick(nativeNim, message.senderAccid, message.senderNick)
+    : (message.senderNick ?? message.senderAccid);
+
+  const channelDisplayName = nativeNim
+    ? await resolveQChatChannelName(nativeNim, message.serverId, message.channelId)
+    : peerId;
+
+  const conversationLabel = buildConversationLabel("qchat", channelDisplayName);
+
+  // ── Resolve @-mention accids to nicknames in message text ──
+  let resolvedBody = rawBody;
+  const mentionAccids = message.mentionAccids ?? [];
+  if (mentionAccids.length > 0 && nativeNim) {
+    for (const accid of mentionAccids) {
+      if (resolvedBody.includes(`@${accid}`)) {
+        const nick = await resolveUserNick(nativeNim, accid);
+        if (nick && nick !== accid) {
+          resolvedBody = resolvedBody.split(`@${accid}`).join(`@${nick}`);
+        }
+      }
+    }
+  }
 
   // Record inbound activity
   core.channel.activity.record({
@@ -164,8 +195,8 @@ export async function handleQChatInbound(params: {
     channel: CHANNEL_ID,
     accountId,
     peer: {
-      kind: "group",
-      id: peerId,
+      kind: "dm",
+      id: `qchat-${peerId}`,
     },
   });
 
@@ -173,6 +204,13 @@ export async function handleQChatInbound(params: {
     runtime.error?.(`[qchat] route unresolved — target: ${peerId}`);
     return;
   }
+
+  // ── System event (matches bot.ts pattern) ──
+  const inboundLabel = ` From ${senderDisplay} in ${channelDisplayName}`;
+  core.system.enqueueSystemEvent(`${inboundLabel}`, {
+    sessionKey: route.sessionKey,
+    contextKey: `nim:qchat:message:${peerId}:${message.messageId}`,
+  });
 
   // Build envelope
   const storePath = core.channel.session.resolveStorePath(config.session?.store, {
@@ -189,23 +227,22 @@ export async function handleQChatInbound(params: {
     timestamp: message.timestamp,
     previousTimestamp,
     envelope: envelopeOptions,
-    body: rawBody,
+    body: resolvedBody,
   });
 
   // Finalize inbound context
   const ctxPayload = core.channel.reply.finalizeInboundContext({
     Body: body,
-    RawBody: rawBody,
-    CommandBody: rawBody,
-    From: `nim:qchat:${message.senderAccid}`,
+    RawBody: resolvedBody,
+    CommandBody: resolvedBody,
+    From: `nim:${message.senderAccid}`,
     To: `nim:qchat:${peerId}`,
     SessionKey: route.sessionKey,
     AccountId: route.accountId,
-    ChatType: "group",
-    ConversationLabel: `server:${message.serverId}/channel:${message.channelId}`,
+    ChatType: "direct",
+    ConversationLabel: conversationLabel,
     SenderName: senderDisplay,
     SenderId: message.senderAccid,
-    GroupSubject: peerId,
     Provider: CHANNEL_ID,
     Surface: QCHAT_SURFACE,
     WasMentioned: true,
