@@ -7,6 +7,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-03-18
+
+### Added
+- **Name resolver module** (`name-resolver.ts`): resolves user nicknames, team names, and QChat channel names via NIM SDK V2 API with in-memory TTL cache (5 min)
+- Conversation labels now display human-readable names: `云信·单聊·<nickname>`, `云信·群聊·<team name>`, `云信·圈组·<channel name>` instead of raw IDs
+- `fromNick` field on `NimMessageEvent` — extracts sender nickname directly from SDK message objects
+- `mentionAccids` field on `QChatInboundMessage` — exposes the list of @-mentioned account IDs
+- QChat inbound @-mention resolution: replaces `@accid` with `@nickname` in message body before dispatching to agent
+- QChat inbound system events with resolved display names (matching the bot.ts pattern)
+- Session recording via `core.channel.session.recordInboundSession()` for NIM P2P and team messages
+
+### Changed
+- **Breaking:** Reply dispatch migrated from `createNimReplyDispatcher` + `dispatchReplyFromConfig` to `createNormalizedOutboundDeliverer` + `dispatchReplyWithBufferedBlockDispatcher` (aligned with QChat pattern)
+- **Breaking:** P2P and team messages now use `ChatType: "direct"` and `PeerKind: "dm"` uniformly; team peer IDs prefixed with `team-` for disambiguation
+- **Breaking:** QChat inbound `ChatType` changed from `"group"` to `"direct"`; peer IDs prefixed with `qchat-`; `GroupSubject` removed from QChat context payload
+- **Breaking:** QChat `From` field simplified from `nim:qchat:<accid>` to `nim:<accid>`
+- `SenderName` now displays resolved nicknames instead of raw account IDs
+- `ConversationLabel` uses human-readable conversation labels (e.g. `云信·群聊·<name>`) instead of raw IDs
+- Agent envelope formatting removed from bot.ts — `Body` now passes raw text directly
+- System event labels updated to use resolved display names
+
+### Removed
+- `reply-dispatcher.ts` usage — replaced by inline `createNormalizedOutboundDeliverer`
+- Message content preview from system event labels (privacy improvement)
+
+## [0.4.0-beta.3] - 2026-03-12
+
+### Changed
+- Fixed `link_web` example value from `wss://your-link.example.com` to `weblink.netease.im:443` in README CLI and JSON examples to match NIM SDK's expected format (host:port, not WebSocket URL)
+
+## [0.4.0-beta.2] - 2026-03-10
+
+### Added
+- Private deployment CLI configuration examples in README — added `openclaw config set` commands for all privatization fields (`weblbsUrl`, `link_web`, `nos_uploader`, `nos_downloader_v2`, `nosSsl`, `nos_accelerate`, `nos_accelerate_host`)
+
 ## [0.4.0-beta.1] - 2026-03-09
 
 ### Added

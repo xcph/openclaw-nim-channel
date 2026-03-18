@@ -7,6 +7,41 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] - 2026-03-18
+
+### 新增
+- **名称解析模块**（`name-resolver.ts`）：通过 NIM SDK V2 API 解析用户昵称、群名称、圈组频道名称，内置内存 TTL 缓存（5 分钟）
+- 会话标签现在显示可读名称：`云信·单聊·<昵称>`、`云信·群聊·<群名>`、`云信·圈组·<频道名>` 替代原始 ID
+- `NimMessageEvent` 新增 `fromNick` 字段 — 直接从 SDK 消息对象提取发送者昵称
+- `QChatInboundMessage` 新增 `mentionAccids` 字段 — 暴露消息中 @提及的账号 ID 列表
+- 圈组入站消息 @提及解析：在分发给 Agent 前，将消息体中的 `@accid` 替换为 `@昵称`
+- 圈组入站系统事件，使用解析后的显示名称（与 bot.ts 保持一致）
+- 通过 `core.channel.session.recordInboundSession()` 记录 NIM 单聊和群聊的入站会话
+
+### 变更
+- **破坏性变更：** 回复分发从 `createNimReplyDispatcher` + `dispatchReplyFromConfig` 迁移至 `createNormalizedOutboundDeliverer` + `dispatchReplyWithBufferedBlockDispatcher`（与圈组模式对齐）
+- **破坏性变更：** 单聊和群聊统一使用 `ChatType: "direct"` 和 `PeerKind: "dm"`；群聊 peer ID 添加 `team-` 前缀以区分
+- **破坏性变更：** 圈组入站 `ChatType` 从 `"group"` 变更为 `"direct"`；peer ID 添加 `qchat-` 前缀；圈组上下文载荷移除 `GroupSubject`
+- **破坏性变更：** 圈组 `From` 字段从 `nim:qchat:<accid>` 简化为 `nim:<accid>`
+- `SenderName` 现在显示解析后的昵称而非原始账号 ID
+- `ConversationLabel` 使用可读的会话标签（如 `云信·群聊·<名称>`）替代原始 ID
+- bot.ts 中移除 Agent 信封格式化 — `Body` 直接传递原始文本
+- 系统事件标签使用解析后的显示名称
+
+### 移除
+- 不再使用 `reply-dispatcher.ts` — 由内联的 `createNormalizedOutboundDeliverer` 替代
+- 系统事件标签中移除消息内容预览（隐私保护）
+
+## [0.4.0-beta.3] - 2026-03-12
+
+### 变更
+- 修正 README 中 `link_web` 示例值：从 `wss://your-link.example.com` 改为 `weblink.netease.im:443`，与 NIM SDK 预期格式（host:port）一致
+
+## [0.4.0-beta.2] - 2026-03-10
+
+### 新增
+- README 中新增私有化部署 CLI 配置示例 — 为所有私有化字段添加 `openclaw config set` 命令示例（`weblbsUrl`、`link_web`、`nos_uploader`、`nos_downloader_v2`、`nosSsl`、`nos_accelerate`、`nos_accelerate_host`）
+
 ## [0.4.0-beta.1] - 2026-03-09
 
 ### 新增
