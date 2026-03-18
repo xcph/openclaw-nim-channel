@@ -61,6 +61,27 @@ export const AdvancedSubConfigSchema = z.object({
 
   /** Enable debug logging */
   debug: z.boolean().optional().default(false),
+
+  /** Private deployment: custom LBS URL */
+  weblbsUrl: z.string().optional(),
+
+  /** Private deployment: default WebSocket/TCP link address */
+  link_web: z.string().optional(),
+
+  /** Private deployment: NOS upload address */
+  nos_uploader: z.string().optional(),
+
+  /** Private deployment: NOS download URL format */
+  nos_downloader_v2: z.string().optional(),
+
+  /** Private deployment: whether NOS download uses HTTPS */
+  nosSsl: z.boolean().optional(),
+
+  /** Private deployment: CDN accelerate URL format */
+  nos_accelerate: z.string().optional(),
+
+  /** Private deployment: CDN accelerate host domain (empty string to disable) */
+  nos_accelerate_host: z.string().optional(),
 });
 
 /**

@@ -1,9 +1,19 @@
-import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
+import {
+  createNormalizedOutboundDeliverer,
+  createReplyPrefixOptions,
+  formatTextWithAttachmentLinks,
+  resolveOutboundMediaUrls,
+  type OpenClawConfig,
+  type OutboundReplyPayload,
+  type RuntimeEnv,
+} from "openclaw/plugin-sdk";
 import type { NimConfig, NimP2pPolicy, NimTeamPolicy, NimMessageContext, NimMessageEvent, NimMessageType, NimSessionType } from "./types.js";
 import { isNimP2pAllowed, isNimTeamAllowed } from "./accounts.js";
 import { getNimRuntime } from "./runtime.js";
 import { buildNimMediaPayload, inferMediaPlaceholder } from "./media.js";
-import { createNimReplyDispatcher } from "./reply-dispatcher.js";
+import { sendMessageNim, replyMessageNim, splitMessageIntoChunks } from "./send.js";
+import { resolveUserNick, resolveTeamName, buildConversationLabel } from "./name-resolver.js";
+import { getCachedNimClient } from "./client.js";
 
 /**
  * Map message type number to typed enum.
@@ -167,9 +177,9 @@ export async function handleNimMessage(params: {
     const replyTarget = isTeam ? message.to : ctx.senderId;
     const nimFrom = `nim:${ctx.senderId}`;
     const nimTo = isTeam ? `team:${message.to}` : `user:${ctx.senderId}`;
-    const chatType = isTeam ? "group" : "direct";
-    const peerKind = isTeam ? "group" : "dm";
-    const peerId = isTeam ? message.to : ctx.senderId;
+    const chatType = "direct";
+    const peerKind = "dm";
+    const peerId = isTeam ? `team-${message.to}` : ctx.senderId;
     const sessionType: NimSessionType = isTeam ? message.sessionType : "p2p";
 
     const route = core.channel.routing.resolveAgentRoute({
@@ -185,16 +195,6 @@ export async function handleNimMessage(params: {
       log(`[nim] route unresolved — peer: ${peerId}`);
       return;
     }
-
-    const preview = ctx.text.replace(/\s+/g, " ").slice(0, 160);
-    const inboundLabel = isTeam
-      ? `NIM team message from ${ctx.senderId} in ${message.to}`
-      : `NIM DM from ${ctx.senderId}`;
-
-    core.system.enqueueSystemEvent(`${inboundLabel}: ${preview}`, {
-      sessionKey: route.sessionKey,
-      contextKey: `nim:message:${ctx.sessionId}:${ctx.id}`,
-    });
 
     // Handle media if present
     const mediaMaxBytes = (nimCfg?.advanced?.mediaMaxMb ?? 30) * 1024 * 1024;
@@ -215,18 +215,43 @@ export async function handleNimMessage(params: {
 
     const mediaPayload = buildNimMediaPayload(mediaList);
 
-    const envelopeOptions = core.channel.reply.resolveEnvelopeFormatOptions(cfg);
+    // ── Resolve display names ──
+    // (must happen before system event so labels use nicknames)
+    const nimClient = getCachedNimClient(nimCfg!);
+    const nativeNim = nimClient?.nativeNim;
 
-    const body = core.channel.reply.formatAgentEnvelope({
-      channel: "NIM",
-      from: ctx.senderId,
-      timestamp: new Date(ctx.timestamp),
-      envelope: envelopeOptions,
-      body: ctx.text,
+    const senderDisplayName = nativeNim
+      ? await resolveUserNick(nativeNim, ctx.senderId, message.fromNick)
+      : (message.fromNick || ctx.senderId);
+
+    let conversationLabel: string;
+    let groupSubject: string | undefined;
+    let teamName: string | undefined;
+
+    if (isTeam) {
+      teamName = nativeNim
+        ? await resolveTeamName(nativeNim, message.to, message.sessionType as "team" | "superTeam")
+        : message.to;
+      log(`[nim] resolved team name — teamId: ${message.to}, teamName: ${teamName}, hasNativeNim: ${!!nativeNim}`);
+      conversationLabel = buildConversationLabel("team", teamName);
+      groupSubject = buildConversationLabel("team", teamName);
+    } else {
+      conversationLabel = buildConversationLabel("p2p", senderDisplayName);
+    }
+
+    // ── System event (uses resolved display names) ──
+    const preview = ctx.text.replace(/\s+/g, " ").slice(0, 160);
+    const inboundLabel = isTeam
+      ? ` From ${senderDisplayName} in ${teamName ?? message.to}`
+      : ` From ${senderDisplayName}`;
+
+    core.system.enqueueSystemEvent(`${inboundLabel}`, {
+      sessionKey: route.sessionKey,
+      contextKey: `nim:message:${ctx.sessionId}:${ctx.id}`,
     });
 
     const ctxPayload = core.channel.reply.finalizeInboundContext({
-      Body: body,
+      Body: ctx.text,
       RawBody: ctx.text,
       CommandBody: ctx.text,
       From: nimFrom,
@@ -234,7 +259,8 @@ export async function handleNimMessage(params: {
       SessionKey: route.sessionKey,
       AccountId: route.accountId,
       ChatType: chatType,
-      SenderName: ctx.senderId,
+      ConversationLabel: conversationLabel,
+      SenderName: senderDisplayName,
       SenderId: ctx.senderId,
       Provider: "nim" as const,
       Surface: "nim" as const,
@@ -243,42 +269,90 @@ export async function handleNimMessage(params: {
       CommandAuthorized: true,
       OriginatingChannel: "nim" as const,
       OriginatingTo: nimTo,
-      ...(isTeam ? { GroupSubject: message.to, WasMentioned: true } : {}),
+      ...(isTeam ? { GroupSubject: groupSubject ?? message.to, WasMentioned: true } : {}),
       ...mediaPayload,
     });
 
-    log(
-      `[nim] creating reply dispatcher — target: ${replyTarget}, session: ${sessionType}, sender: ${isTeam ? ctx.senderId : "n/a"}`,
-    );
+    // ── Record inbound session ──
+    const storePath = core.channel.session.resolveStorePath(cfg.session?.store, {
+      agentId: route.agentId,
+    });
 
-    const { dispatcher, replyOptions, markDispatchIdle } = createNimReplyDispatcher({
+    await core.channel.session.recordInboundSession({
+      storePath,
+      sessionKey: ctxPayload.SessionKey ?? route.sessionKey,
+      ctx: ctxPayload,
+      onRecordError: (err: unknown) => {
+        error(`[nim] session update failed — error: ${String(err)}`);
+      },
+    });
+
+    // ── Build reply deliverer ──
+    const accountId = route.accountId;
+    const chunkLimit = nimCfg?.advanced?.textChunkLimit ?? 4000;
+    const { onModelSelected, ...prefixOptions } = createReplyPrefixOptions({
       cfg,
       agentId: route.agentId,
-      runtime: runtime as RuntimeEnv,
-      senderId: replyTarget,
-      sessionType,
-      originalRawMsg: isTeam ? message.rawMsg : undefined,
-      originalSenderId: isTeam ? ctx.senderId : undefined,
+      channel: "nim",
+      accountId,
+    });
+
+    const deliverReply = createNormalizedOutboundDeliverer(async (payload: OutboundReplyPayload) => {
+      const combined = formatTextWithAttachmentLinks(
+        payload.text,
+        resolveOutboundMediaUrls(payload),
+      );
+      if (!combined) return;
+
+      log(`[nim] delivering reply — target: ${replyTarget}, session: ${sessionType}`);
+
+      const isTeamReply = isTeam && message.rawMsg && ctx.senderId;
+      const chunks = splitMessageIntoChunks(combined, chunkLimit);
+
+      for (const chunk of chunks) {
+        if (isTeamReply) {
+          await replyMessageNim({
+            cfg,
+            to: replyTarget,
+            text: chunk,
+            originalMsg: message.rawMsg,
+            forcePushAccountIds: [ctx.senderId],
+            sessionType,
+          });
+        } else {
+          await sendMessageNim({
+            cfg,
+            to: replyTarget,
+            text: chunk,
+            sessionType,
+          });
+        }
+      }
+
+      log(`[nim] reply delivered — target: ${replyTarget}`);
     });
 
     log(
       `[nim] dispatching to agent — session: ${route.sessionKey}, chat: ${chatType}, agent: ${route.agentId}`,
     );
 
-    const { queuedFinal, counts } = await core.channel.reply.dispatchReplyFromConfig({
+    // ── Dispatch through agent pipeline (same pattern as QChat) ──
+    await core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
       ctx: ctxPayload,
       cfg,
-      dispatcher,
-      replyOptions,
+      dispatcherOptions: {
+        ...prefixOptions,
+        deliver: deliverReply,
+        onError: (err: unknown, info: { kind: string }) => {
+          error(`[nim] ${info.kind} reply failed — error: ${String(err)}`);
+        },
+      },
+      replyOptions: {
+        onModelSelected,
+      },
     });
 
-    markDispatchIdle();
-
-    if (counts.final === 0) {
-      log(`[nim] agent returned no replies — queued: ${queuedFinal}, tool: ${counts.tool}, block: ${counts.block}`);
-    } else {
-      log(`[nim] dispatch complete — final: ${counts.final}, tool: ${counts.tool}, block: ${counts.block}, queued: ${queuedFinal}`);
-    }
+    log(`[nim] dispatch complete — session: ${route.sessionKey}`);
   } catch (err) {
     error(`[nim] dispatch failed — error: ${String(err)}`);
     if (err instanceof Error && err.stack) {

@@ -13,6 +13,7 @@ A [OpenClaw](https://openclaw.ai/) channel plugin for NetEase IM (网易云信),
 - 🔐 AppKey + Token authentication
 - 🔄 Automatic reconnection handling
 - 📝 Message chunking for long responses
+- 🔒 Private deployment (privatization) support with custom server URLs
 
 ## Installation
 
@@ -75,47 +76,70 @@ openclaw config set channels.nim.token "your-auth-token"
 openclaw config set channels.nim.enabled true
 ```
 
-### Full Configuration (YAML)
+#### Private Deployment (CLI)
 
-```yaml
-channels:
-  nim:
-    enabled: true
-    appKey: "your-app-key"
-    account: "your-bot-account-id"
-    token: "your-auth-token"
+```bash
+openclaw config set channels.nim.advanced.weblbsUrl "https://your-lbs.example.com"
+openclaw config set channels.nim.advanced.link_web "weblink.netease.im:443"
+openclaw config set channels.nim.advanced.nos_uploader "https://your-nos-upload.example.com"
+openclaw config set channels.nim.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
+openclaw config set channels.nim.advanced.nosSsl true
+openclaw config set channels.nim.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
+openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.com"
+```
 
-    # P2P private chat settings
-    p2p:
-      policy: open          # open | allowlist | disabled
-      allowFrom:            # Required when policy="allowlist"
-        - "user_abc"
-        - "user_xyz"
+### Full Configuration (JSON)
 
-    # Team group chat settings
-    team:
-      policy: open          # open | allowlist | disabled
-      allowFrom:            # Required when policy="allowlist"
-        - "groupId_1"                # Any sender in this team (regular or super)
-        - "groupId_2|user_abc"       # Only user_abc in this team
-        - "1|groupId_3"              # Any sender, regular team only (高级群)
-        - "2|groupId_4"              # Any sender, super team only (超大群)
-        - "1|groupId_5|user_xyz"     # Only user_xyz, regular team only
+```json
+{
+  "channels": {
+    "nim": {
+      "enabled": true,
+      "appKey": "your-app-key",
+      "account": "your-bot-account-id",
+      "token": "your-auth-token",
 
-    # QChat (圈组) circle group settings
-    qchat:
-      policy: open          # open | allowlist | disabled
-      allowFrom:            # Required when policy="allowlist"
-        - "serverId_1"                          # Any channel, any sender in this server
-        - "serverId_2|channelId_1"              # Any sender in this server+channel
-        - "serverId_2|channelId_2|user_abc"     # Only user_abc in this server+channel
-        - "serverId_3||user_xyz"                # Only user_xyz in any channel of this server
+      "p2p": {
+        "policy": "open",
+        "allowFrom": ["user_abc", "user_xyz"]
+      },
 
-    # Advanced settings
-    advanced:
-      mediaMaxMb: 30        # Max media file size in MB (default: 30)
-      textChunkLimit: 4000  # Max characters per message chunk (default: 4000)
-      debug: false          # Enable SDK debug logging (default: false)
+      "team": {
+        "policy": "open",
+        "allowFrom": [
+          "groupId_1",
+          "groupId_2|user_abc",
+          "1|groupId_3",
+          "2|groupId_4",
+          "1|groupId_5|user_xyz"
+        ]
+      },
+
+      "qchat": {
+        "policy": "open",
+        "allowFrom": [
+          "serverId_1",
+          "serverId_2|channelId_1",
+          "serverId_2|channelId_2|user_abc",
+          "serverId_3||user_xyz"
+        ]
+      },
+
+      "advanced": {
+        "mediaMaxMb": 30,
+        "textChunkLimit": 4000,
+        "debug": false,
+        "weblbsUrl": "https://your-lbs.example.com",
+        "link_web": "weblink.netease.im:443",
+        "nos_uploader": "https://your-nos-upload.example.com",
+        "nos_downloader_v2": "https://your-nos-download.example.com/{bucket}/{object}",
+        "nosSsl": true,
+        "nos_accelerate": "https://your-cdn.example.com/{bucket}/{object}",
+        "nos_accelerate_host": "your-cdn.example.com"
+      }
+    }
+  }
+}
 ```
 
 ### Configuration Reference
@@ -192,13 +216,20 @@ The `allowFrom` list (when `policy="allowlist"`) also controls:
   - `allowlist` — auto-accept only invites from server IDs in the `allowFrom` list; empty list rejects all
   - `disabled` — do not auto-accept any invites
 
-#### `advanced` — Advanced Settings (基础设置)
+#### `advanced` — Advanced Settings
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `mediaMaxMb` | number | `30` | Max media file size in MB |
 | `textChunkLimit` | number | `4000` | Max characters per message chunk |
 | `debug` | boolean | `false` | Enable SDK debug logging |
+| `weblbsUrl` | string | — | LBS URL (private deployment) |
+| `link_web` | string | — | WebSocket/TCP link address (private deployment) |
+| `nos_uploader` | string | — | NOS upload URL (private deployment) |
+| `nos_downloader_v2` | string | — | NOS download URL format (private deployment) |
+| `nosSsl` | boolean | — | Whether NOS download uses HTTPS (private deployment) |
+| `nos_accelerate` | string | — | CDN accelerate URL format (private deployment) |
+| `nos_accelerate_host` | string | — | CDN accelerate host domain (private deployment) |
 
 ## Getting Credentials
 
