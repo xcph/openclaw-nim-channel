@@ -57,6 +57,8 @@ export interface NimMessageEvent {
   ext?: Record<string, unknown>;
   /** 强制推送目标账号列表 (群消息中用于判断是否 @了当前账号) */
   forcePushAccountIds?: string[];
+  /** 发送者昵称（从 SDK 消息对象中提取，可能为空） */
+  fromNick?: string;
   /** 原始消息对象 */
   rawMsg?: unknown;
 }
@@ -254,6 +256,8 @@ export interface QChatInboundMessage {
   timestamp: number;
   /** true if @all or the bot's accid is in mention_accids */
   wasMentioned: boolean;
+  /** List of accids that were @-mentioned in the message */
+  mentionAccids?: string[];
   /** Raw QChat message object from SDK, used for reply-to reference */
   rawMessage?: unknown;
 }

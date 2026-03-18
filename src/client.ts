@@ -120,6 +120,7 @@ function convertV2ToMessageEvent(msg: any): NimMessageEvent {
     attach: parseV2Attachment(msg),
     ext: msg.serverExtension ? JSON.parse(msg.serverExtension) : undefined,
     forcePushAccountIds,
+    fromNick: msg.senderName || undefined,
     rawMsg: msg,
   };
 }
