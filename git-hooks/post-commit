@@ -1,0 +1,3 @@
+#!/bin/bash
+sh ~/.git-ai/bin/post-aicode.sh
+sh ~/.git-ai/bin/post-aicode.sh
