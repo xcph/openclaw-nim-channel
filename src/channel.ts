@@ -1,10 +1,6 @@
 import type { ChannelPlugin, OpenClawConfig } from "openclaw/plugin-sdk";
 import type { ResolvedNimAccount, NimConfig, NimTeamPolicy } from "./types.js";
-import {
-  resolveNimAccount,
-  resolveNimCredentials,
-  DEFAULT_NIM_ACCOUNT_ID,
-} from "./accounts.js";
+import { resolveNimAccount, resolveNimCredentials, DEFAULT_NIM_ACCOUNT_ID } from "./accounts.js";
 import { normalizeNimTarget, looksLikeNimId } from "./targets.js";
 import { sendMessageNim } from "./send.js";
 import { probeNim } from "./probe.js";
@@ -202,17 +198,13 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       }
       return next;
     },
-    isConfigured: (_account, cfg) =>
-      Boolean(
-        resolveNimCredentials(cfg.channels?.nim as NimConfig | undefined),
-      ),
+    isConfigured: (_account, cfg) => Boolean(resolveNimCredentials(cfg.channels?.nim as NimConfig | undefined)),
     describeAccount: (account) => ({
       accountId: account.accountId,
       enabled: account.enabled,
       configured: account.configured,
     }),
-    resolveAllowFrom: ({ cfg }) =>
-      (cfg.channels?.nim as NimConfig | undefined)?.p2p?.allowFrom ?? [],
+    resolveAllowFrom: ({ cfg }) => (cfg.channels?.nim as NimConfig | undefined)?.p2p?.allowFrom ?? [],
     formatAllowFrom: ({ allowFrom }) =>
       allowFrom
         .map((entry) => String(entry).trim())
@@ -247,8 +239,9 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       }
 
       // QChat warnings
-      const qchatCfg = (nimCfg as Record<string, unknown> | undefined)
-        ?.qchat as { policy?: string; allowFrom?: unknown[] } | undefined;
+      const qchatCfg = (nimCfg as Record<string, unknown> | undefined)?.qchat as
+        | { policy?: string; allowFrom?: unknown[] }
+        | undefined;
       if (qchatCfg) {
         const qchatPolicy = qchatCfg.policy ?? "open";
         if (qchatPolicy === "open") {
@@ -300,12 +293,10 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       probe: snapshot.probe,
       lastProbeAt: snapshot.lastProbeAt ?? null,
     }),
-    probeAccount: async ({ cfg }) =>
-      await probeNim(cfg.channels?.nim as NimConfig | undefined),
+    probeAccount: async ({ cfg }) => await probeNim(cfg.channels?.nim as NimConfig | undefined),
     buildAccountSnapshot: ({ account, runtime, probe }) => {
       const running = runtime?.running ?? false;
-      const probeConnected = (probe as { connected?: boolean } | undefined)
-        ?.connected;
+      const probeConnected = (probe as { connected?: boolean } | undefined)?.connected;
       return {
         accountId: account.accountId,
         enabled: account.enabled,
@@ -324,28 +315,21 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       const { monitorNimProvider } = await import("./monitor.js");
       const nimCfg = ctx.cfg.channels?.nim as NimConfig | undefined;
       ctx.setStatus({ accountId: ctx.accountId });
-      ctx.log?.info(
-        `[nim] provider starting — account: ${nimCfg?.account ?? "unknown"}`,
-      );
+      ctx.log?.info(`[nim] provider starting — account: ${nimCfg?.account ?? "unknown"}`);
 
       // Prepare QChat client (listeners + activate handled by monitor).
       // QChat always starts when credentials are available — policy only controls reply behavior.
-      const qchatCfg = (nimCfg as Record<string, unknown> | undefined)
-        ?.qchat as
+      const qchatCfg = (nimCfg as Record<string, unknown> | undefined)?.qchat as
         | { policy?: string; allowFrom?: Array<string | number> }
         | undefined;
 
-      const qchatPolicy = (qchatCfg?.policy ?? "open") as
-        | "open"
-        | "allowlist"
-        | "disabled";
+      const qchatPolicy = (qchatCfg?.policy ?? "open") as "open" | "allowlist" | "disabled";
       const qchatAllowFrom = qchatCfg?.allowFrom ?? [];
 
       // Write live reply flag immediately — all in-flight dispatches check this at send time.
       // "allowlist" with empty allowFrom is treated as disabled — must not enable replies.
       const isEffectivelyDisabled =
-        qchatPolicy === "disabled" ||
-        (qchatPolicy === "allowlist" && qchatAllowFrom.length === 0);
+        qchatPolicy === "disabled" || (qchatPolicy === "allowlist" && qchatAllowFrom.length === 0);
       setQchatReplyEnabled(!isEffectivelyDisabled);
       ctx.log?.info(
         `[qchat] reply enabled: ${!isEffectivelyDisabled} — policy: ${qchatPolicy}, allowFrom count: ${qchatAllowFrom.length}`,
@@ -370,9 +354,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
           ? {
               info: (msg: string) => ctx.log!.info(`[qchat] ${msg}`),
               error: (msg: string) => ctx.log!.error(`[qchat] ${msg}`),
-              debug: ctx.log.debug
-                ? (msg: string) => ctx.log!.debug!(`[qchat] ${msg}`)
-                : undefined,
+              debug: ctx.log.debug ? (msg: string) => ctx.log!.debug!(`[qchat] ${msg}`) : undefined,
             }
           : undefined;
 
@@ -381,19 +363,11 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
         const allowFrom = qchatCfg?.allowFrom ?? [];
         const derivedServerIds =
           qchatPolicy === "allowlist"
-            ? [
-                ...new Set(
-                  allowFrom
-                    .map((e) => String(e).split("|")[0].trim())
-                    .filter(Boolean),
-                ),
-              ]
+            ? [...new Set(allowFrom.map((e) => String(e).split("|")[0].trim()).filter(Boolean))]
             : [];
 
         const serverIdsLabel =
-          derivedServerIds.length > 0
-            ? `servers=[${derivedServerIds.join(",")}]`
-            : "servers=auto-discover";
+          derivedServerIds.length > 0 ? `servers=[${derivedServerIds.join(",")}]` : "servers=auto-discover";
 
         ctx.log?.info(`[qchat] client preparing — ${serverIdsLabel}`);
 
@@ -411,9 +385,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
             );
             const msg = parseQChatMessage(resp, nimCfg!.account as string);
             if (!msg) {
-              ctx.log?.info(
-                "[qchat] message dropped — reason: unsupported or missing fields",
-              );
+              ctx.log?.info("[qchat] message dropped — reason: unsupported or missing fields");
               return;
             }
 
@@ -433,15 +405,10 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
             // Policy gate — re-read LIVE config on every message to avoid stale closure.
             // This is the authoritative gate; qchat-inbound.ts should NOT duplicate this check.
             const liveNimCfg = ctx.cfg.channels?.nim as NimConfig | undefined;
-            const liveQchatCfg = (
-              liveNimCfg as Record<string, unknown> | undefined
-            )?.qchat as
+            const liveQchatCfg = (liveNimCfg as Record<string, unknown> | undefined)?.qchat as
               | { policy?: string; allowFrom?: Array<string | number> }
               | undefined;
-            const livePolicy = (liveQchatCfg?.policy ?? "open") as
-              | "open"
-              | "allowlist"
-              | "disabled";
+            const livePolicy = (liveQchatCfg?.policy ?? "open") as "open" | "allowlist" | "disabled";
             const liveAllowFrom = liveQchatCfg?.allowFrom ?? [];
 
             const policyResult = isQChatAllowed({
@@ -457,10 +424,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
             );
 
             if (!policyResult.allowed) {
-              const blocked = policyResult as Exclude<
-                typeof policyResult,
-                { allowed: true }
-              >;
+              const blocked = policyResult as Exclude<typeof policyResult, { allowed: true }>;
               if (blocked.reason === "disabled") {
                 ctx.log?.info(
                   `[qchat] dispatch skipped — reason: policy disabled, server: ${msg.serverId}, channel: ${msg.channelId}, sender: ${msg.senderAccid}`,
@@ -488,16 +452,11 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
                 accountId: ctx.accountId,
                 config: ctx.cfg,
                 runtime: ctx.runtime,
-                statusSink: (patch) =>
-                  ctx.setStatus({ accountId: ctx.accountId, ...patch }),
+                statusSink: (patch) => ctx.setStatus({ accountId: ctx.accountId, ...patch }),
               });
-              ctx.log?.info(
-                `[qchat] agent pipeline completed — server: ${msg.serverId}, channel: ${msg.channelId}`,
-              );
+              ctx.log?.info(`[qchat] agent pipeline completed — server: ${msg.serverId}, channel: ${msg.channelId}`);
             } catch (dispatchErr) {
-              ctx.log?.error(
-                `[qchat] agent pipeline error — error: ${String(dispatchErr)}`,
-              );
+              ctx.log?.error(`[qchat] agent pipeline error — error: ${String(dispatchErr)}`);
             }
           },
           onLoginStatus: (status) => {

@@ -1,17 +1,7 @@
 import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
 import type { NimConfig, NimSessionType } from "./types.js";
-import {
-  sendMessageNim,
-  replyMessageNim,
-  splitMessageIntoChunks,
-} from "./send.js";
-import {
-  sendImageNim,
-  sendFileNim,
-  sendAudioNim,
-  sendVideoNim,
-  inferMessageType,
-} from "./media.js";
+import { sendMessageNim, replyMessageNim, splitMessageIntoChunks } from "./send.js";
+import { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, inferMessageType } from "./media.js";
 import { getNimRuntime } from "./runtime.js";
 
 /**
@@ -39,14 +29,7 @@ export function createNimReplyDispatcher(params: {
   /** @ 机器人的发送者 accid，用于群组回复强制推送 */
   originalSenderId?: string;
 }) {
-  const {
-    cfg,
-    runtime,
-    senderId,
-    sessionType = "p2p",
-    originalRawMsg,
-    originalSenderId,
-  } = params;
+  const { cfg, runtime, senderId, sessionType = "p2p", originalRawMsg, originalSenderId } = params;
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;
   const log = runtime?.log ?? console.log;
   const chunkLimit = nimCfg?.advanced?.textChunkLimit ?? 4000;
@@ -54,21 +37,15 @@ export function createNimReplyDispatcher(params: {
   // Get the core runtime which has the full channel.reply interface
   const core = getNimRuntime();
 
-  log(
-    `[nim] reply dispatcher created — session: ${sessionType}, sender: ${originalSenderId ?? "n/a"}`,
-  );
+  log(`[nim] reply dispatcher created — session: ${sessionType}, sender: ${originalSenderId ?? "n/a"}`);
 
   /**
    * Deliver function that sends a reply message to NIM.
    * Called by the SDK dispatcher for each block/tool/final reply.
    * @param payload - The reply payload containing text and/or media
    */
-  const deliver = async (
-    payload: ReplyPayload,
-    info?: { kind: string },
-  ): Promise<void> => {
-    const mediaList =
-      payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []);
+  const deliver = async (payload: ReplyPayload, info?: { kind: string }): Promise<void> => {
+    const mediaList = payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []);
     const text = payload.text ?? "";
 
     log(
@@ -86,9 +63,7 @@ export function createNimReplyDispatcher(params: {
       if (mediaList.length > 0) {
         for (const mediaUrl of mediaList) {
           const mediaType = inferMessageType(mediaUrl);
-          log(
-            `[nim] sending media — target: ${senderId}, type: ${mediaType}, file: ${mediaUrl}`,
-          );
+          log(`[nim] sending media — target: ${senderId}, type: ${mediaType}, file: ${mediaUrl}`);
 
           if (mediaType === "image") {
             await sendImageNim({ cfg, to: senderId, imagePath: mediaUrl });
@@ -122,16 +97,10 @@ export function createNimReplyDispatcher(params: {
       // Send text if present
       if (text) {
         const isTeamReply =
-          (sessionType === "team" || sessionType === "superTeam") &&
-          originalRawMsg &&
-          originalSenderId;
-        log(
-          `[nim] reply mode selected — session: ${sessionType}, reply: ${isTeamReply ? "quoted" : "standard"}`,
-        );
+          (sessionType === "team" || sessionType === "superTeam") && originalRawMsg && originalSenderId;
+        log(`[nim] reply mode selected — session: ${sessionType}, reply: ${isTeamReply ? "quoted" : "standard"}`);
         const chunks = splitMessageIntoChunks(text, chunkLimit);
-        log(
-          `[nim] reply chunking — chunks: ${chunks.length}, limit: ${chunkLimit}`,
-        );
+        log(`[nim] reply chunking — chunks: ${chunks.length}, limit: ${chunkLimit}`);
         for (const chunk of chunks) {
           if (isTeamReply) {
             log(
@@ -156,9 +125,7 @@ export function createNimReplyDispatcher(params: {
               sessionType,
             });
             if (!result.success) {
-              log(
-                `[nim] send failed — target: ${senderId}, error: ${result.error ?? "unknown"}`,
-              );
+              log(`[nim] send failed — target: ${senderId}, error: ${result.error ?? "unknown"}`);
             }
           }
           log(
@@ -184,14 +151,10 @@ export function createNimReplyDispatcher(params: {
       log(`[nim] reply dispatcher idle`);
     },
     onError: (err: Error, info: { kind: string }) => {
-      log(
-        `[nim] reply dispatcher error — kind: ${info.kind}, error: ${String(err)}`,
-      );
+      log(`[nim] reply dispatcher error — kind: ${info.kind}, error: ${String(err)}`);
     },
     onSkip: (_payload: unknown, info: { kind: string; reason: string }) => {
-      log(
-        `[nim] reply skipped by normalizer — kind: ${info.kind}, reason: ${info.reason}`,
-      );
+      log(`[nim] reply skipped by normalizer — kind: ${info.kind}, reason: ${info.reason}`);
     },
   });
 

@@ -38,9 +38,7 @@ export async function probeNim(cfg: NimConfig): Promise<NimProbeResult> {
 /**
  * 探测 NIM 连接状态（尝试建立连接）
  */
-export async function probeNimWithConnect(
-  cfg: NimConfig,
-): Promise<NimProbeResult> {
+export async function probeNimWithConnect(cfg: NimConfig): Promise<NimProbeResult> {
   try {
     const creds = resolveNimCredentials(cfg);
 

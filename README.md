@@ -152,7 +152,7 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
 | `appKey`          | string  | —       | NIM application AppKey (required) |
 | `account`         | string  | —       | Bot account ID (required)         |
 | `token`           | string  | —       | Authentication token (required)   |
-| `antispamEnabled` | boolean | `false` | Enable anti-spam protection       |
+| `antispamEnabled` | boolean | `true`  | Enable anti-spam protection       |
 
 #### `p2p` — Private Chat (私聊)
 

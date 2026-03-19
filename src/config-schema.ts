@@ -128,7 +128,7 @@ export const NimConfigSchema = z.object({
   token: coerceToString.optional(),
 
   /** Whether to enable anti-spam protection */
-  antispamEnabled: z.boolean().optional().default(false),
+  antispamEnabled: z.boolean().optional().default(true),
 
   /** P2P (私聊) sub-configuration */
   p2p: P2pSubConfigSchema.optional(),

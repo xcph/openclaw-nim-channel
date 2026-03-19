@@ -55,14 +55,7 @@ export async function replyMessageNim(params: {
   forcePushAccountIds: string[];
   sessionType?: NimSessionType;
 }): Promise<NimSendResult> {
-  const {
-    cfg,
-    to,
-    text,
-    originalMsg,
-    forcePushAccountIds,
-    sessionType = "team",
-  } = params;
+  const { cfg, to, text, originalMsg, forcePushAccountIds, sessionType = "team" } = params;
   const nimCfg = cfg.channels?.nim as NimConfig;
 
   if (!nimCfg) {
@@ -86,16 +79,8 @@ export async function replyMessageNim(params: {
       await client.login();
     }
 
-    console.log(
-      `[nim] sending reply — target: ${targetId}, session: ${sessionType}`,
-    );
-    const result = await client.replyText(
-      targetId,
-      text,
-      originalMsg,
-      forcePushAccountIds,
-      sessionType,
-    );
+    console.log(`[nim] sending reply — target: ${targetId}, session: ${sessionType}`);
+    const result = await client.replyText(targetId, text, originalMsg, forcePushAccountIds, sessionType);
     console.log(
       `[nim] reply completed — message id: ${result.msgId ?? "unknown"}, status: ${result.success ? "sent" : "failed"}`,
     );
@@ -180,10 +165,7 @@ export async function getMessageNim(params: {
 /**
  * 将长文本分割成多条消息
  */
-export function splitMessageIntoChunks(
-  text: string,
-  maxLength: number = MAX_MESSAGE_LENGTH,
-): string[] {
+export function splitMessageIntoChunks(text: string, maxLength: number = MAX_MESSAGE_LENGTH): string[] {
   if (text.length <= maxLength) {
     return [text];
   }

@@ -1,10 +1,5 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type {
-  NimConfig,
-  ResolvedNimAccount,
-  NimP2pPolicy,
-  NimTeamPolicy,
-} from "./types.js";
+import type { NimConfig, ResolvedNimAccount, NimP2pPolicy, NimTeamPolicy } from "./types.js";
 
 /**
  * Default account ID for NIM (single account mode).
@@ -42,9 +37,7 @@ export function resolveNimCredentials(
 /**
  * Resolve NIM account information from OpenClaw configuration.
  */
-export function resolveNimAccount(params: {
-  cfg: OpenClawConfig;
-}): ResolvedNimAccount {
+export function resolveNimAccount(params: { cfg: OpenClawConfig }): ResolvedNimAccount {
   const { cfg } = params;
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;
   const creds = resolveNimCredentials(nimCfg);
@@ -69,12 +62,12 @@ export function resolveNimAccount(params: {
  * Normalize an allow-list into a set for fast matching.
  * Supports wildcard "*" detection.
  */
-export function normalizeNimAllowFrom(
-  configAllowFrom: Array<string | number>,
-): { hasWildcard: boolean; hasEntries: boolean; entries: Set<string> } {
-  const combined = (configAllowFrom ?? [])
-    .map((v) => String(v).trim().toLowerCase())
-    .filter(Boolean);
+export function normalizeNimAllowFrom(configAllowFrom: Array<string | number>): {
+  hasWildcard: boolean;
+  hasEntries: boolean;
+  entries: Set<string>;
+} {
+  const combined = (configAllowFrom ?? []).map((v) => String(v).trim().toLowerCase()).filter(Boolean);
 
   const hasWildcard = combined.includes("*");
   const entries = new Set(combined.filter((e) => e !== "*"));
@@ -85,10 +78,11 @@ export function normalizeNimAllowFrom(
 /**
  * Check if a sender is in the allowlist.
  */
-export function resolveNimAllowlistMatch(params: {
-  allowFrom: Array<string | number>;
-  senderId: string;
-}): { allowed: boolean; matchedEntry?: string; matchSource?: string } {
+export function resolveNimAllowlistMatch(params: { allowFrom: Array<string | number>; senderId: string }): {
+  allowed: boolean;
+  matchedEntry?: string;
+  matchSource?: string;
+} {
   const { senderId } = params;
   const { hasWildcard, entries } = normalizeNimAllowFrom(params.allowFrom);
 
@@ -247,8 +241,7 @@ export function isQChatAllowed(params: {
   if (policy === "open") return { allowed: true };
 
   // "allowlist" with empty list — treat as disabled
-  if (!allowFrom || allowFrom.length === 0)
-    return { allowed: false, reason: "disabled" };
+  if (!allowFrom || allowFrom.length === 0) return { allowed: false, reason: "disabled" };
 
   const nServer = serverId.toLowerCase();
   const nChannel = channelId.toLowerCase();

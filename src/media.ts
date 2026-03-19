@@ -3,12 +3,7 @@
  */
 
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type {
-  NimConfig,
-  NimSendResult,
-  NimMediaInfo,
-  NimSessionType,
-} from "./types.js";
+import type { NimConfig, NimSendResult, NimMediaInfo, NimSessionType } from "./types.js";
 import { createNimClient, getCachedNimClient } from "./client.js";
 import { normalizeNimTarget } from "./targets.js";
 import { extname } from "path";
@@ -128,15 +123,7 @@ export async function sendVideoNim(params: {
   height: number;
   sessionType?: NimSessionType;
 }): Promise<NimSendResult> {
-  const {
-    cfg,
-    to,
-    videoPath,
-    duration,
-    width,
-    height,
-    sessionType = "p2p",
-  } = params;
+  const { cfg, to, videoPath, duration, width, height, sessionType = "p2p" } = params;
   const nimCfg = cfg.channels?.nim as NimConfig;
 
   if (!nimCfg) {
@@ -152,14 +139,7 @@ export async function sendVideoNim(params: {
       await client.login();
     }
 
-    return await client.sendVideo(
-      targetId,
-      videoPath,
-      duration,
-      width,
-      height,
-      sessionType,
-    );
+    return await client.sendVideo(targetId, videoPath, duration, width, height, sessionType);
   } catch (error) {
     return {
       success: false,
@@ -171,9 +151,7 @@ export async function sendVideoNim(params: {
 /**
  * 从媒体信息列表构建 payload
  */
-export function buildNimMediaPayload(
-  mediaList: NimMediaInfo[],
-): Record<string, unknown> {
+export function buildNimMediaPayload(mediaList: NimMediaInfo[]): Record<string, unknown> {
   if (!mediaList || mediaList.length === 0) {
     return {};
   }
@@ -212,9 +190,7 @@ export function inferMediaPlaceholder(messageType: string): string {
 /**
  * 根据文件扩展名推断消息类型
  */
-export function inferMessageType(
-  filePath: string,
-): "image" | "file" | "audio" | "video" {
+export function inferMessageType(filePath: string): "image" | "file" | "audio" | "video" {
   const ext = extname(filePath).toLowerCase();
 
   const imageExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];

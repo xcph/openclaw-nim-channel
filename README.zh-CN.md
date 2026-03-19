@@ -152,7 +152,7 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
 | `appKey`          | string  | —       | NIM 应用 AppKey（必填） |
 | `account`         | string  | —       | 机器人账号 ID（必填）   |
 | `token`           | string  | —       | 认证 Token（必填）      |
-| `antispamEnabled` | boolean | `false` | 启用反垃圾邮件保护      |
+| `antispamEnabled` | boolean | `true`  | 启用反垃圾邮件保护      |
 
 #### `p2p` — 单聊（私聊）
 
