@@ -37,9 +37,7 @@ export function resolveNimCredentials(
 /**
  * Resolve NIM account information from OpenClaw configuration.
  */
-export function resolveNimAccount(params: {
-  cfg: OpenClawConfig;
-}): ResolvedNimAccount {
+export function resolveNimAccount(params: { cfg: OpenClawConfig }): ResolvedNimAccount {
   const { cfg } = params;
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;
   const creds = resolveNimCredentials(nimCfg);
@@ -64,9 +62,11 @@ export function resolveNimAccount(params: {
  * Normalize an allow-list into a set for fast matching.
  * Supports wildcard "*" detection.
  */
-export function normalizeNimAllowFrom(
-  configAllowFrom: Array<string | number>,
-): { hasWildcard: boolean; hasEntries: boolean; entries: Set<string> } {
+export function normalizeNimAllowFrom(configAllowFrom: Array<string | number>): {
+  hasWildcard: boolean;
+  hasEntries: boolean;
+  entries: Set<string>;
+} {
   const combined = (configAllowFrom ?? []).map((v) => String(v).trim().toLowerCase()).filter(Boolean);
 
   const hasWildcard = combined.includes("*");
@@ -78,10 +78,11 @@ export function normalizeNimAllowFrom(
 /**
  * Check if a sender is in the allowlist.
  */
-export function resolveNimAllowlistMatch(params: {
-  allowFrom: Array<string | number>;
-  senderId: string;
-}): { allowed: boolean; matchedEntry?: string; matchSource?: string } {
+export function resolveNimAllowlistMatch(params: { allowFrom: Array<string | number>; senderId: string }): {
+  allowed: boolean;
+  matchedEntry?: string;
+  matchSource?: string;
+} {
   const { senderId } = params;
   const { hasWildcard, entries } = normalizeNimAllowFrom(params.allowFrom);
 
@@ -91,7 +92,11 @@ export function resolveNimAllowlistMatch(params: {
 
   const normalizedSenderId = senderId.toLowerCase();
   if (entries.has(normalizedSenderId)) {
-    return { allowed: true, matchedEntry: normalizedSenderId, matchSource: "id" };
+    return {
+      allowed: true,
+      matchedEntry: normalizedSenderId,
+      matchSource: "id",
+    };
   }
 
   return { allowed: false };

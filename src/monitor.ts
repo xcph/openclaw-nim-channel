@@ -164,7 +164,9 @@ export async function monitorNimProvider(params: {
       }
 
       // Also resolve when the internal abortController fires (e.g. kickout)
-      abortController.signal.addEventListener("abort", () => resolve(), { once: true });
+      abortController.signal.addEventListener("abort", () => resolve(), {
+        once: true,
+      });
     });
   } catch (error) {
     const errorMessage = (error as any)?.message ?? String(error);
@@ -222,7 +224,7 @@ export function isNimMonitorRunning(cfg: NimConfig): boolean {
  */
 export async function stopAllNimMonitors(): Promise<void> {
   console.log("[nim] stopping all monitors");
-  
+
   for (const [key, state] of monitorStates.entries()) {
     state.running = false;
     state.abortController.abort();
@@ -236,6 +238,6 @@ export async function stopAllNimMonitors(): Promise<void> {
 
   monitorStates.clear();
   await clearNimClientCache();
-  
+
   console.log("[nim] all monitors stopped");
 }

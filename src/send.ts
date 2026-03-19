@@ -21,13 +21,13 @@ export async function sendMessageNim(params: {
 }): Promise<NimSendResult> {
   const { cfg, to, text, sessionType = "p2p" } = params;
   const nimCfg = cfg.channels?.nim as NimConfig;
-  
+
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
   }
 
   const targetId = normalizeNimTarget(to);
-  
+
   try {
     let client = getCachedNimClient(nimCfg);
     if (!client || !client.loggedIn) {
@@ -165,10 +165,7 @@ export async function getMessageNim(params: {
 /**
  * 将长文本分割成多条消息
  */
-export function splitMessageIntoChunks(
-  text: string,
-  maxLength: number = MAX_MESSAGE_LENGTH
-): string[] {
+export function splitMessageIntoChunks(text: string, maxLength: number = MAX_MESSAGE_LENGTH): string[] {
   if (text.length <= maxLength) {
     return [text];
   }
@@ -184,12 +181,12 @@ export function splitMessageIntoChunks(
 
     // 尝试在换行符处分割
     let splitIndex = remaining.lastIndexOf("\n", maxLength);
-    
+
     // 如果没有换行符，尝试在空格处分割
     if (splitIndex === -1 || splitIndex < maxLength * 0.5) {
       splitIndex = remaining.lastIndexOf(" ", maxLength);
     }
-    
+
     // 如果还是找不到合适的分割点，强制在 maxLength 处分割
     if (splitIndex === -1 || splitIndex < maxLength * 0.5) {
       splitIndex = maxLength;

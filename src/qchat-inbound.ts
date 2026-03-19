@@ -54,10 +54,7 @@ const QCHAT_SURFACE = "nim-qchat" as const;
  * Convert a raw node-nim QChatRecvMsgResp into our simplified inbound message.
  * The `botAccid` is used to detect whether the bot was @-mentioned.
  */
-export function parseQChatMessage(
-  resp: QChatRecvMsgResp,
-  botAccid: string,
-): QChatInboundMessage | null {
+export function parseQChatMessage(resp: QChatRecvMsgResp, botAccid: string): QChatInboundMessage | null {
   const msg = resp.message;
   if (!msg) return null;
 
@@ -77,8 +74,7 @@ export function parseQChatMessage(
   // Detect @-mention: either @all or bot's accid is in the list
   const mentionAll = (msg.mentionAll ?? msg.mention_all) === true;
   const mentionAccids = msg.mentionAccids ?? msg.mention_accids ?? [];
-  const wasMentioned =
-    mentionAll || mentionAccids.includes(botAccid);
+  const wasMentioned = mentionAll || mentionAccids.includes(botAccid);
 
   return {
     messageId: msg.msgIdServer ?? msg.msg_server_id ?? `${Date.now()}`,
@@ -101,10 +97,7 @@ async function deliverQChatReply(params: {
   replyMessage?: unknown;
   statusSink?: (patch: { lastOutboundAt?: number }) => void;
 }): Promise<void> {
-  const combined = formatTextWithAttachmentLinks(
-    params.payload.text,
-    resolveOutboundMediaUrls(params.payload),
-  );
+  const combined = formatTextWithAttachmentLinks(params.payload.text, resolveOutboundMediaUrls(params.payload));
   if (!combined) return;
 
   await sendQChatMessage(params.target, combined, {
@@ -274,9 +267,7 @@ export async function handleQChatInbound(params: {
     // Re-check policy at delivery time — guards against in-flight dispatches
     // that were initiated before the policy was changed.
     const liveNimCfg = config.channels?.nim as NimConfig | undefined;
-    const liveQchatCfg = liveNimCfg?.qchat as
-      | { policy?: string; allowFrom?: Array<string | number> }
-      | undefined;
+    const liveQchatCfg = liveNimCfg?.qchat as { policy?: string; allowFrom?: Array<string | number> } | undefined;
     const livePolicy = (liveQchatCfg?.policy ?? "open") as "open" | "allowlist" | "disabled";
     const liveAllowFrom = liveQchatCfg?.allowFrom ?? [];
 
@@ -290,7 +281,9 @@ export async function handleQChatInbound(params: {
       senderAccid: message.senderAccid,
     });
     if (!deliveryCheck.allowed) {
-      runtime.log(`[qchat] reply suppressed — reason: policy now blocks delivery (policy: ${livePolicy}), target: ${peerId}`);
+      runtime.log(
+        `[qchat] reply suppressed — reason: policy now blocks delivery (policy: ${livePolicy}), target: ${peerId}`,
+      );
       return;
     }
 

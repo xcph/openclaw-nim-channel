@@ -175,7 +175,8 @@ export class QChatClient {
     const serverId = notification.serverId ?? notification.server_id;
     const type = notification.type ?? (typeof notification.msg_type === "string" ? notification.msg_type : undefined);
     const legacyType = typeof notification.msg_type === "number" ? notification.msg_type : undefined;
-    const normalizedType = type ?? (legacyType === 1 ? "serverMemberInvite" : legacyType === 8 ? "serverMemberInviteDone" : undefined);
+    const normalizedType =
+      type ?? (legacyType === 1 ? "serverMemberInvite" : legacyType === 8 ? "serverMemberInviteDone" : undefined);
 
     return {
       ...notification,
@@ -229,7 +230,9 @@ export class QChatClient {
 
     // Message listener (fires for ALL subscribed channels)
     if (!nim.qchatMsg) {
-      log?.error("nim.qchatMsg is not available on this SDK instance — QChat message events will NOT be received. Ensure nim-web-sdk-ng supports QChat APIs.");
+      log?.error(
+        "nim.qchatMsg is not available on this SDK instance — QChat message events will NOT be received. Ensure nim-web-sdk-ng supports QChat APIs.",
+      );
     }
 
     this.messageHandler = (msg: QChatMessagePayload) => {
@@ -244,16 +247,16 @@ export class QChatClient {
       const notification = this.normalizeSystemNotification(notificationResp ?? {});
       if (!notification) return;
 
-
       // Auto-accept server invite based on serverPolicy
       if (notification.type === "serverMemberInvite") {
-        const serverId = notification.serverId ?? notification.server_id
-          ?? notification.attach?.serverInfo?.serverId;
+        const serverId = notification.serverId ?? notification.server_id ?? notification.attach?.serverInfo?.serverId;
         const inviterAccid = notification.fromAccount ?? notification.from_accid;
         const requestId = notification.attach?.requestId as string | undefined;
 
         if (!serverId || !inviterAccid || !requestId) {
-          log?.info(`[sysnotify] server invite ignored — missing fields (server: ${serverId ?? "n/a"}, inviter: ${inviterAccid ?? "n/a"}, requestId: ${requestId ?? "n/a"})`);
+          log?.info(
+            `[sysnotify] server invite ignored — missing fields (server: ${serverId ?? "n/a"}, inviter: ${inviterAccid ?? "n/a"}, requestId: ${requestId ?? "n/a"})`,
+          );
           return;
         }
 
@@ -270,16 +273,21 @@ export class QChatClient {
           return;
         }
 
-        log?.info(`[sysnotify] auto-accepting server invite — server: ${serverId}, inviter: ${inviterAccid}, policy: ${policy}`);
-        nim.qchatServer.acceptServerInvite({
-          serverId,
-          accid: inviterAccid,
-          recordInfo: { requestId },
-        }).then(() => {
-          log?.info(`[sysnotify] server invite accepted — server: ${serverId}`);
-        }).catch((err: unknown) => {
-          log?.error(`[sysnotify] server invite accept failed — server: ${serverId}, error: ${String(err)}`);
-        });
+        log?.info(
+          `[sysnotify] auto-accepting server invite — server: ${serverId}, inviter: ${inviterAccid}, policy: ${policy}`,
+        );
+        nim.qchatServer
+          .acceptServerInvite({
+            serverId,
+            accid: inviterAccid,
+            recordInfo: { requestId },
+          })
+          .then(() => {
+            log?.info(`[sysnotify] server invite accepted — server: ${serverId}`);
+          })
+          .catch((err: unknown) => {
+            log?.error(`[sysnotify] server invite accept failed — server: ${serverId}, error: ${String(err)}`);
+          });
         return;
       }
 
@@ -351,9 +359,7 @@ export class QChatClient {
       log?.error(`subscribe failed — servers: ${failedServers.join(", ")}`);
     }
 
-    this.subscribedServerIds = serverIds.filter(
-      (id) => !failedServers.includes(id),
-    );
+    this.subscribedServerIds = serverIds.filter((id) => !failedServers.includes(id));
     log?.info(`subscribed to all channels — servers: ${this.subscribedServerIds.length}`);
     this.activated = true;
   }

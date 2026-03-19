@@ -192,7 +192,7 @@ export function inferMediaPlaceholder(messageType: string): string {
  */
 export function inferMessageType(filePath: string): "image" | "file" | "audio" | "video" {
   const ext = extname(filePath).toLowerCase();
-  
+
   const imageExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
   const audioExts = [".mp3", ".wav", ".aac", ".m4a", ".ogg", ".amr"];
   const videoExts = [".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv"];

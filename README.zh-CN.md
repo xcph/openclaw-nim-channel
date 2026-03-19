@@ -146,55 +146,56 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
 
 #### 顶层字段
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `enabled` | boolean | `false` | 启用/禁用 NIM 渠道 |
-| `appKey` | string | — | NIM 应用 AppKey（必填） |
-| `account` | string | — | 机器人账号 ID（必填） |
-| `token` | string | — | 认证 Token（必填） |
+| 字段              | 类型    | 默认值  | 说明                    |
+| ----------------- | ------- | ------- | ----------------------- |
+| `enabled`         | boolean | `false` | 启用/禁用 NIM 渠道      |
+| `appKey`          | string  | —       | NIM 应用 AppKey（必填） |
+| `account`         | string  | —       | 机器人账号 ID（必填）   |
+| `token`           | string  | —       | 认证 Token（必填）      |
+| `antispamEnabled` | boolean | `true`  | 启用反垃圾邮件保护      |
 
 #### `p2p` — 单聊（私聊）
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `policy` | string | `"open"` | `open` · `allowlist` · `disabled` |
-| `allowFrom` | array | `[]` | 允许的发送者账号 ID（`policy="allowlist"` 时生效） |
+| 字段        | 类型   | 默认值   | 说明                                               |
+| ----------- | ------ | -------- | -------------------------------------------------- |
+| `policy`    | string | `"open"` | `open` · `allowlist` · `disabled`                  |
+| `allowFrom` | array  | `[]`     | 允许的发送者账号 ID（`policy="allowlist"` 时生效） |
 
 **策略行为：**
 
-| `policy` | `allowFrom` | 消息处理 | 好友申请自动同意 |
-|----------|-------------|----------|------------------|
-| `open` | 任意 | 接受所有消息 | 自动同意所有 |
-| `allowlist` | 非空 | 仅接受列表中的发送者 | 仅自动同意列表中的发送者 |
-| `allowlist` | 空 | 等同于 `disabled` — 拒绝所有 | 不自动同意 |
-| `disabled` | 任意 | 拒绝所有消息 | 不自动同意 |
+| `policy`    | `allowFrom` | 消息处理                     | 好友申请自动同意         |
+| ----------- | ----------- | ---------------------------- | ------------------------ |
+| `open`      | 任意        | 接受所有消息                 | 自动同意所有             |
+| `allowlist` | 非空        | 仅接受列表中的发送者         | 仅自动同意列表中的发送者 |
+| `allowlist` | 空          | 等同于 `disabled` — 拒绝所有 | 不自动同意               |
+| `disabled`  | 任意        | 拒绝所有消息                 | 不自动同意               |
 
 #### `team` — 群组
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `policy` | string | `"open"` | `open` · `allowlist` · `disabled` |
-| `allowFrom` | array | `[]` | 白名单条目 — 格式见下方（`policy="allowlist"` 时生效） |
+| 字段        | 类型   | 默认值   | 说明                                                   |
+| ----------- | ------ | -------- | ------------------------------------------------------ |
+| `policy`    | string | `"open"` | `open` · `allowlist` · `disabled`                      |
+| `allowFrom` | array  | `[]`     | 白名单条目 — 格式见下方（`policy="allowlist"` 时生效） |
 
 **策略行为：** 与 P2P 规则一致 — `allowlist` 且 `allowFrom` 为空时等同于 `disabled`。
 
 **`team.allowFrom` 条目格式：**
 
-| 格式 | 说明 |
-|------|------|
-| `"teamId"` | 该群任意发送者（高级群和超大群均匹配） |
-| `"teamId\|accountId"` | 该群中指定发送者（两种群类型均匹配） |
-| `"1\|teamId"` | 任意发送者，仅高级群 |
-| `"2\|teamId"` | 任意发送者，仅超大群 |
-| `"1\|teamId\|accountId"` | 指定发送者，仅高级群 |
-| `"2\|teamId\|accountId"` | 指定发送者，仅超大群 |
+| 格式                     | 说明                                   |
+| ------------------------ | -------------------------------------- |
+| `"teamId"`               | 该群任意发送者（高级群和超大群均匹配） |
+| `"teamId\|accountId"`    | 该群中指定发送者（两种群类型均匹配）   |
+| `"1\|teamId"`            | 任意发送者，仅高级群                   |
+| `"2\|teamId"`            | 任意发送者，仅超大群                   |
+| `"1\|teamId\|accountId"` | 指定发送者，仅高级群                   |
+| `"2\|teamId\|accountId"` | 指定发送者，仅超大群                   |
 
 #### `qchat` — 圈组
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `policy` | string | `"open"` | `open` · `allowlist` · `disabled` |
-| `allowFrom` | array | `[]` | 白名单条目 — 格式见下方（`policy="allowlist"` 时生效） |
+| 字段        | 类型   | 默认值   | 说明                                                   |
+| ----------- | ------ | -------- | ------------------------------------------------------ |
+| `policy`    | string | `"open"` | `open` · `allowlist` · `disabled`                      |
+| `allowFrom` | array  | `[]`     | 白名单条目 — 格式见下方（`policy="allowlist"` 时生效） |
 
 配置了 NIM 凭证后，圈组功能会自动启动。设置 `policy: "disabled"` 可完全关闭。
 
@@ -202,14 +203,15 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
 
 **`qchat.allowFrom` 条目格式：**
 
-| 格式 | 说明 |
-|------|------|
-| `"serverId"` | 该服务器下所有频道、所有发送者 |
-| `"serverId\|channelId"` | 该服务器+频道下所有发送者 |
-| `"serverId\|channelId\|accountId"` | 该服务器+频道下指定发送者 |
-| `"serverId\|\|accountId"` | 该服务器下任意频道的指定发送者 |
+| 格式                               | 说明                           |
+| ---------------------------------- | ------------------------------ |
+| `"serverId"`                       | 该服务器下所有频道、所有发送者 |
+| `"serverId\|channelId"`            | 该服务器+频道下所有发送者      |
+| `"serverId\|channelId\|accountId"` | 该服务器+频道下指定发送者      |
+| `"serverId\|\|accountId"`          | 该服务器下任意频道的指定发送者 |
 
 `allowFrom` 列表（`policy="allowlist"` 时）还控制以下行为：
+
 - **服务器订阅**：自动订阅条目中提取的服务器 ID；`policy="open"` 时自动发现所有已加入的服务器。
 - **服务器邀请自动同意**：由 `policy` 控制：
   - `open` — 自动同意所有服务器邀请
@@ -218,18 +220,18 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
 
 #### `advanced` — 高级设置
 
-| 字段 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `mediaMaxMb` | number | `30` | 最大媒体文件大小（MB） |
-| `textChunkLimit` | number | `4000` | 每条消息最大字符数 |
-| `debug` | boolean | `false` | 启用 SDK 调试日志 |
-| `weblbsUrl` | string | — | LBS 地址（私有化部署） |
-| `link_web` | string | — | WebSocket/TCP 连接地址（私有化部署） |
-| `nos_uploader` | string | — | NOS 上传地址（私有化部署） |
-| `nos_downloader_v2` | string | — | NOS 下载地址格式（私有化部署） |
-| `nosSsl` | boolean | — | NOS 下载是否启用 HTTPS（私有化部署） |
-| `nos_accelerate` | string | — | CDN 加速 URL 格式（私有化部署） |
-| `nos_accelerate_host` | string | — | CDN 加速命中域名（私有化部署） |
+| 字段                  | 类型    | 默认值  | 说明                                 |
+| --------------------- | ------- | ------- | ------------------------------------ |
+| `mediaMaxMb`          | number  | `30`    | 最大媒体文件大小（MB）               |
+| `textChunkLimit`      | number  | `4000`  | 每条消息最大字符数                   |
+| `debug`               | boolean | `false` | 启用 SDK 调试日志                    |
+| `weblbsUrl`           | string  | —       | LBS 地址（私有化部署）               |
+| `link_web`            | string  | —       | WebSocket/TCP 连接地址（私有化部署） |
+| `nos_uploader`        | string  | —       | NOS 上传地址（私有化部署）           |
+| `nos_downloader_v2`   | string  | —       | NOS 下载地址格式（私有化部署）       |
+| `nosSsl`              | boolean | —       | NOS 下载是否启用 HTTPS（私有化部署） |
+| `nos_accelerate`      | string  | —       | CDN 加速 URL 格式（私有化部署）      |
+| `nos_accelerate_host` | string  | —       | CDN 加速命中域名（私有化部署）       |
 
 ## 获取凭证
 
@@ -276,7 +278,7 @@ await sendVideoNim({
   cfg: openclawConfig,
   to: "user123",
   videoPath: "/path/to/video.mp4",
-  duration: 60,    // 时长（秒）
+  duration: 60, // 时长（秒）
   width: 1920,
   height: 1080,
 });
@@ -286,7 +288,7 @@ await sendAudioNim({
   cfg: openclawConfig,
   to: "user123",
   audioPath: "/path/to/audio.mp3",
-  duration: 30,    // 时长（秒）
+  duration: 30, // 时长（秒）
 });
 
 // 发送文件（任意文件类型）
@@ -299,23 +301,23 @@ await sendFileNim({
 
 ### 目标格式
 
-| 格式 | 说明 |
-|------|------|
-| `user123` | 纯账号 ID |
-| `nim:user123` | 带 `nim:` 前缀 |
+| 格式           | 说明            |
+| -------------- | --------------- |
+| `user123`      | 纯账号 ID       |
+| `nim:user123`  | 带 `nim:` 前缀  |
 | `user:user123` | 带 `user:` 前缀 |
 
 ## 支持的消息类型
 
-| 类型 | 接收 | 发送 |
-|------|------|------|
-| 文本 | ✅ | ✅ |
-| 图片 | ✅ | ✅ |
-| 文件 | ✅ | ✅ |
-| 音频 | ✅ | ✅ |
-| 视频 | ✅ | ✅ |
-| 位置 | ✅ | ❌ |
-| 自定义 | ✅ | ❌ |
+| 类型   | 接收 | 发送 |
+| ------ | ---- | ---- |
+| 文本   | ✅   | ✅   |
+| 图片   | ✅   | ✅   |
+| 文件   | ✅   | ✅   |
+| 音频   | ✅   | ✅   |
+| 视频   | ✅   | ✅   |
+| 位置   | ✅   | ❌   |
+| 自定义 | ✅   | ❌   |
 
 ## 开发
 

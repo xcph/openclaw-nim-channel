@@ -31,9 +31,7 @@ export type NimOutboundOptions = {
 /**
  * Target resolution result
  */
-type TargetResolveResult =
-  | { ok: true; to: string }
-  | { ok: false; error: string };
+type TargetResolveResult = { ok: true; to: string } | { ok: false; error: string };
 
 /**
  * Resolve NIM target from various input formats.
@@ -48,9 +46,7 @@ export function resolveNimOutboundTarget(params: {
   const trimmed = to?.trim() ?? "";
 
   // Normalize allowFrom list
-  const allowListRaw = (allowFrom ?? [])
-    .map((entry) => String(entry).trim())
-    .filter(Boolean);
+  const allowListRaw = (allowFrom ?? []).map((entry) => String(entry).trim()).filter(Boolean);
   const hasWildcard = allowListRaw.includes("*");
   const allowList = allowListRaw
     .filter((entry) => entry !== "*")
@@ -125,7 +121,12 @@ export async function sendNimOutboundText(params: {
   console.log(`[nim] outbound text send — target: ${targetId}, session: ${sessionType}, length: ${text.length}`);
 
   try {
-    const result = await sendMessageNim({ cfg, to: targetId, text, sessionType });
+    const result = await sendMessageNim({
+      cfg,
+      to: targetId,
+      text,
+      sessionType,
+    });
 
     if (result.success) {
       console.log(`[nim] outbound text sent — message id: ${result.msgId ?? "unknown"}`);
@@ -183,9 +184,20 @@ export async function sendNimOutboundMedia(params: {
       let mediaResult;
 
       if (mediaType === "image") {
-        mediaResult = await sendImageNim({ cfg, to: targetId, imagePath: media, sessionType });
+        mediaResult = await sendImageNim({
+          cfg,
+          to: targetId,
+          imagePath: media,
+          sessionType,
+        });
       } else if (mediaType === "audio") {
-        mediaResult = await sendAudioNim({ cfg, to: targetId, audioPath: media, duration: 0, sessionType });
+        mediaResult = await sendAudioNim({
+          cfg,
+          to: targetId,
+          audioPath: media,
+          duration: 0,
+          sessionType,
+        });
       } else if (mediaType === "video") {
         mediaResult = await sendVideoNim({
           cfg,
@@ -197,7 +209,12 @@ export async function sendNimOutboundMedia(params: {
           sessionType,
         });
       } else {
-        mediaResult = await sendFileNim({ cfg, to: targetId, filePath: media, sessionType });
+        mediaResult = await sendFileNim({
+          cfg,
+          to: targetId,
+          filePath: media,
+          sessionType,
+        });
       }
 
       if (!mediaResult.success) {
@@ -333,7 +350,11 @@ export async function nimOutbound(params: NimOutboundOptions): Promise<void> {
     const chunks = splitMessageIntoChunks(text, chunkLimit);
 
     for (const chunk of chunks) {
-      const result = await sendNimOutboundText({ cfg, to: targetId, text: chunk });
+      const result = await sendNimOutboundText({
+        cfg,
+        to: targetId,
+        text: chunk,
+      });
       if (!result.ok) {
         throw new Error(result.error || "Failed to send text");
       }

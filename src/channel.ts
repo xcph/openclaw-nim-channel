@@ -69,7 +69,10 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
           additionalProperties: false,
           properties: {
             policy: { type: "string", enum: ["open", "allowlist", "disabled"] },
-            allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
+            allowFrom: {
+              type: "array",
+              items: { oneOf: [{ type: "string" }, { type: "number" }] },
+            },
           },
         },
         team: {
@@ -77,7 +80,10 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
           additionalProperties: false,
           properties: {
             policy: { type: "string", enum: ["open", "allowlist", "disabled"] },
-            allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
+            allowFrom: {
+              type: "array",
+              items: { oneOf: [{ type: "string" }, { type: "number" }] },
+            },
           },
         },
         advanced: {
@@ -101,36 +107,70 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
           additionalProperties: false,
           properties: {
             policy: { type: "string", enum: ["open", "allowlist", "disabled"] },
-            allowFrom: { type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } },
+            allowFrom: {
+              type: "array",
+              items: { oneOf: [{ type: "string" }, { type: "number" }] },
+            },
           },
         },
       },
     },
     uiHints: {
-      enabled:         { order: 1,  label: "Enable" },
-      appKey:          { order: 2,  label: "App Key" },
-      account:         { order: 3,  label: "Account ID" },
-      token:           { order: 4,  label: "Token", sensitive: true },
-      p2p:             { order: 10, label: "P2P" },
-      "p2p.policy":    { order: 11, label: "Message Policy" },
+      enabled: { order: 1, label: "Enable" },
+      appKey: { order: 2, label: "App Key" },
+      account: { order: 3, label: "Account ID" },
+      token: { order: 4, label: "Token", sensitive: true },
+      p2p: { order: 10, label: "P2P" },
+      "p2p.policy": { order: 11, label: "Message Policy" },
       "p2p.allowFrom": { order: 12, label: "Account Allowlist" },
-      team:             { order: 20, label: "Team" },
-      "team.policy":    { order: 21, label: "Message Policy" },
+      team: { order: 20, label: "Team" },
+      "team.policy": { order: 21, label: "Message Policy" },
       "team.allowFrom": { order: 22, label: "Team Allowlist" },
-      qchat:             { order: 30, label: "QChat" },
-      "qchat.policy":    { order: 31, label: "Message Policy" },
-      "qchat.allowFrom": { order: 32, label: "Server / Channel / Account Allowlist" },
-      advanced:                  { order: 40, label: "Advanced", advanced: true },
-      "advanced.mediaMaxMb":     { order: 41, label: "Max Media Size (MB)" },
+      qchat: { order: 30, label: "QChat" },
+      "qchat.policy": { order: 31, label: "Message Policy" },
+      "qchat.allowFrom": {
+        order: 32,
+        label: "Server / Channel / Account Allowlist",
+      },
+      advanced: { order: 40, label: "Advanced", advanced: true },
+      "advanced.mediaMaxMb": { order: 41, label: "Max Media Size (MB)" },
       "advanced.textChunkLimit": { order: 42, label: "Text Chunk Limit" },
-      "advanced.debug":          { order: 43, label: "Debug Mode", advanced: true },
-      "advanced.weblbsUrl":          { order: 50, label: "LBS URL (Private Deploy)", advanced: true },
-      "advanced.link_web":           { order: 51, label: "Link Server URL (Private Deploy)", advanced: true },
-      "advanced.nos_uploader":       { order: 52, label: "NOS Upload URL (Private Deploy)", advanced: true },
-      "advanced.nos_downloader_v2":  { order: 53, label: "NOS Download URL Format (Private Deploy)", advanced: true },
-      "advanced.nosSsl":             { order: 54, label: "NOS Download HTTPS (Private Deploy)", advanced: true },
-      "advanced.nos_accelerate":     { order: 55, label: "CDN Accelerate URL (Private Deploy)", advanced: true },
-      "advanced.nos_accelerate_host": { order: 56, label: "CDN Accelerate Host (Private Deploy)", advanced: true },
+      "advanced.debug": { order: 43, label: "Debug Mode", advanced: true },
+      "advanced.weblbsUrl": {
+        order: 50,
+        label: "LBS URL (Private Deploy)",
+        advanced: true,
+      },
+      "advanced.link_web": {
+        order: 51,
+        label: "Link Server URL (Private Deploy)",
+        advanced: true,
+      },
+      "advanced.nos_uploader": {
+        order: 52,
+        label: "NOS Upload URL (Private Deploy)",
+        advanced: true,
+      },
+      "advanced.nos_downloader_v2": {
+        order: 53,
+        label: "NOS Download URL Format (Private Deploy)",
+        advanced: true,
+      },
+      "advanced.nosSsl": {
+        order: 54,
+        label: "NOS Download HTTPS (Private Deploy)",
+        advanced: true,
+      },
+      "advanced.nos_accelerate": {
+        order: 55,
+        label: "CDN Accelerate URL (Private Deploy)",
+        advanced: true,
+      },
+      "advanced.nos_accelerate_host": {
+        order: 56,
+        label: "CDN Accelerate Host (Private Deploy)",
+        advanced: true,
+      },
     },
   },
   config: {
@@ -158,15 +198,13 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       }
       return next;
     },
-    isConfigured: (_account, cfg) =>
-      Boolean(resolveNimCredentials(cfg.channels?.nim as NimConfig | undefined)),
+    isConfigured: (_account, cfg) => Boolean(resolveNimCredentials(cfg.channels?.nim as NimConfig | undefined)),
     describeAccount: (account) => ({
       accountId: account.accountId,
       enabled: account.enabled,
       configured: account.configured,
     }),
-    resolveAllowFrom: ({ cfg }) =>
-      (cfg.channels?.nim as NimConfig | undefined)?.p2p?.allowFrom ?? [],
+    resolveAllowFrom: ({ cfg }) => (cfg.channels?.nim as NimConfig | undefined)?.p2p?.allowFrom ?? [],
     formatAllowFrom: ({ allowFrom }) =>
       allowFrom
         .map((entry) => String(entry).trim())
@@ -255,8 +293,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       probe: snapshot.probe,
       lastProbeAt: snapshot.lastProbeAt ?? null,
     }),
-    probeAccount: async ({ cfg }) =>
-      await probeNim(cfg.channels?.nim as NimConfig | undefined),
+    probeAccount: async ({ cfg }) => await probeNim(cfg.channels?.nim as NimConfig | undefined),
     buildAccountSnapshot: ({ account, runtime, probe }) => {
       const running = runtime?.running ?? false;
       const probeConnected = (probe as { connected?: boolean } | undefined)?.connected;
@@ -291,15 +328,24 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
 
       // Write live reply flag immediately — all in-flight dispatches check this at send time.
       // "allowlist" with empty allowFrom is treated as disabled — must not enable replies.
-      const isEffectivelyDisabled = qchatPolicy === "disabled" || (qchatPolicy === "allowlist" && qchatAllowFrom.length === 0);
+      const isEffectivelyDisabled =
+        qchatPolicy === "disabled" || (qchatPolicy === "allowlist" && qchatAllowFrom.length === 0);
       setQchatReplyEnabled(!isEffectivelyDisabled);
-      ctx.log?.info(`[qchat] reply enabled: ${!isEffectivelyDisabled} — policy: ${qchatPolicy}, allowFrom count: ${qchatAllowFrom.length}`);
+      ctx.log?.info(
+        `[qchat] reply enabled: ${!isEffectivelyDisabled} — policy: ${qchatPolicy}, allowFrom count: ${qchatAllowFrom.length}`,
+      );
 
       // Abort guard: when gateway restarts (config reload), the old onMessage callback must
       // immediately stop processing. Without this, stale closures from previous gateway
       // instances continue handling messages with outdated policy.
       let gatewayAborted = false;
-      ctx.abortSignal.addEventListener("abort", () => { gatewayAborted = true; }, { once: true });
+      ctx.abortSignal.addEventListener(
+        "abort",
+        () => {
+          gatewayAborted = true;
+        },
+        { once: true },
+      );
 
       let qchatClient: QChatClient | null = null;
 
@@ -308,26 +354,20 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
           ? {
               info: (msg: string) => ctx.log!.info(`[qchat] ${msg}`),
               error: (msg: string) => ctx.log!.error(`[qchat] ${msg}`),
-              debug: ctx.log.debug
-                ? (msg: string) => ctx.log!.debug!(`[qchat] ${msg}`)
-                : undefined,
+              debug: ctx.log.debug ? (msg: string) => ctx.log!.debug!(`[qchat] ${msg}`) : undefined,
             }
           : undefined;
 
         // Derive server IDs from allowFrom entries (first "|"-segment of each entry).
         // Used for subscription and server invite auto-accept.
         const allowFrom = qchatCfg?.allowFrom ?? [];
-        const derivedServerIds = qchatPolicy === "allowlist"
-          ? [...new Set(
-              allowFrom
-                .map((e) => String(e).split("|")[0].trim())
-                .filter(Boolean),
-            )]
-          : [];
+        const derivedServerIds =
+          qchatPolicy === "allowlist"
+            ? [...new Set(allowFrom.map((e) => String(e).split("|")[0].trim()).filter(Boolean))]
+            : [];
 
-        const serverIdsLabel = derivedServerIds.length > 0
-          ? `servers=[${derivedServerIds.join(",")}]`
-          : "servers=auto-discover";
+        const serverIdsLabel =
+          derivedServerIds.length > 0 ? `servers=[${derivedServerIds.join(",")}]` : "servers=auto-discover";
 
         ctx.log?.info(`[qchat] client preparing — ${serverIdsLabel}`);
 
@@ -358,7 +398,6 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
               return;
             }
 
-
             // Guard: if this gateway instance was aborted (config reload / shutdown),
             // stop processing immediately. The new instance will handle messages.
             if (gatewayAborted) return;
@@ -387,10 +426,17 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
             if (!policyResult.allowed) {
               const blocked = policyResult as Exclude<typeof policyResult, { allowed: true }>;
               if (blocked.reason === "disabled") {
-                ctx.log?.info(`[qchat] dispatch skipped — reason: policy disabled, server: ${msg.serverId}, channel: ${msg.channelId}, sender: ${msg.senderAccid}`);
-                ctx.setStatus({ accountId: ctx.accountId, lastInboundAt: msg.timestamp });
+                ctx.log?.info(
+                  `[qchat] dispatch skipped — reason: policy disabled, server: ${msg.serverId}, channel: ${msg.channelId}, sender: ${msg.senderAccid}`,
+                );
+                ctx.setStatus({
+                  accountId: ctx.accountId,
+                  lastInboundAt: msg.timestamp,
+                });
               } else {
-                ctx.log?.info(`[qchat] dispatch skipped — reason: no matching allowFrom entry, server: ${msg.serverId}, channel: ${msg.channelId}, sender: ${msg.senderAccid}, allowFrom: [${blocked.allowFrom.join(", ")}]`);
+                ctx.log?.info(
+                  `[qchat] dispatch skipped — reason: no matching allowFrom entry, server: ${msg.serverId}, channel: ${msg.channelId}, sender: ${msg.senderAccid}, allowFrom: [${blocked.allowFrom.join(", ")}]`,
+                );
               }
               return;
             }
@@ -406,20 +452,17 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
                 accountId: ctx.accountId,
                 config: ctx.cfg,
                 runtime: ctx.runtime,
-                statusSink: (patch) =>
-                  ctx.setStatus({ accountId: ctx.accountId, ...patch }),
+                statusSink: (patch) => ctx.setStatus({ accountId: ctx.accountId, ...patch }),
               });
-              ctx.log?.info(
-                `[qchat] agent pipeline completed — server: ${msg.serverId}, channel: ${msg.channelId}`,
-              );
+              ctx.log?.info(`[qchat] agent pipeline completed — server: ${msg.serverId}, channel: ${msg.channelId}`);
             } catch (dispatchErr) {
-              ctx.log?.error(
-                `[qchat] agent pipeline error — error: ${String(dispatchErr)}`,
-              );
+              ctx.log?.error(`[qchat] agent pipeline error — error: ${String(dispatchErr)}`);
             }
           },
           onLoginStatus: (status) => {
-            ctx.log?.info(`[qchat] login status changed — status: ${typeof status === "object" ? (status as any)?.code ?? String(status) : status}`);
+            ctx.log?.info(
+              `[qchat] login status changed — status: ${typeof status === "object" ? ((status as any)?.code ?? String(status)) : status}`,
+            );
           },
           onError: (err) => {
             ctx.log?.error(`[qchat] error — message: ${err.message}`);
@@ -432,13 +475,17 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
 
       // Handle abort: stop QChat when shutting down
       if (qchatClient) {
-        ctx.abortSignal.addEventListener("abort", () => {
-          qchatClient!.stop().catch((err) => {
-            ctx.log?.error(`[qchat] shutdown failed — error: ${String(err)}`);
-          });
-          setSharedQChatClient(null);
-          setQchatReplyEnabled(false);
-        }, { once: true });
+        ctx.abortSignal.addEventListener(
+          "abort",
+          () => {
+            qchatClient!.stop().catch((err) => {
+              ctx.log?.error(`[qchat] shutdown failed — error: ${String(err)}`);
+            });
+            setSharedQChatClient(null);
+            setQchatReplyEnabled(false);
+          },
+          { once: true },
+        );
       }
 
       // Start IM monitor — QChat lifecycle (initListeners + activate) is handled inside

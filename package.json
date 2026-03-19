@@ -1,6 +1,6 @@
 {
   "name": "openclaw-nim",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "description": "OpenClaw NIM (NetEase IM) channel plugin",
   "license": "MIT",
@@ -41,6 +41,8 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\" \"*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"*.ts\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -50,6 +52,7 @@
   "devDependencies": {
     "@types/node": "^25.0.10",
     "openclaw": "2026.1.29",
+    "prettier": "^3.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
   },

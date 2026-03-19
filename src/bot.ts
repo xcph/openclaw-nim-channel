@@ -7,7 +7,15 @@ import {
   type OutboundReplyPayload,
   type RuntimeEnv,
 } from "openclaw/plugin-sdk";
-import type { NimConfig, NimP2pPolicy, NimTeamPolicy, NimMessageContext, NimMessageEvent, NimMessageType, NimSessionType } from "./types.js";
+import type {
+  NimConfig,
+  NimP2pPolicy,
+  NimTeamPolicy,
+  NimMessageContext,
+  NimMessageEvent,
+  NimMessageType,
+  NimSessionType,
+} from "./types.js";
 import { isNimP2pAllowed, isNimTeamAllowed } from "./accounts.js";
 import { getNimRuntime } from "./runtime.js";
 import { buildNimMediaPayload, inferMediaPlaceholder } from "./media.js";
@@ -80,9 +88,7 @@ function extractMessageContent(message: NimMessageEvent): string {
  */
 export function parseNimMessageEvent(message: NimMessageEvent): NimMessageContext {
   const isDirectMessage = message.sessionType === "p2p";
-  const sessionId = isDirectMessage 
-    ? `p2p-${message.from}` 
-    : `team-${message.to}`;
+  const sessionId = isDirectMessage ? `p2p-${message.from}` : `team-${message.to}`;
 
   return {
     id: message.clientMsgId,
@@ -164,7 +170,15 @@ export async function handleNimMessage(params: {
     const teamPolicy = (nimCfg?.team?.policy ?? "open") as NimTeamPolicy;
     const teamIds = nimCfg?.team?.allowFrom ?? [];
 
-    if (!isNimTeamAllowed({ teamPolicy, teamIds, groupId: message.to, senderId: ctx.senderId, sessionType: message.sessionType as "team" | "superTeam" })) {
+    if (
+      !isNimTeamAllowed({
+        teamPolicy,
+        teamIds,
+        groupId: message.to,
+        senderId: ctx.senderId,
+        sessionType: message.sessionType as "team" | "superTeam",
+      })
+    ) {
       log(`[nim] team message blocked — group: ${message.to}, sender: ${ctx.senderId}, policy: ${teamPolicy}`);
       return;
     }
@@ -222,7 +236,7 @@ export async function handleNimMessage(params: {
 
     const senderDisplayName = nativeNim
       ? await resolveUserNick(nativeNim, ctx.senderId, message.fromNick)
-      : (message.fromNick || ctx.senderId);
+      : message.fromNick || ctx.senderId;
 
     let conversationLabel: string;
     let groupSubject: string | undefined;
@@ -298,10 +312,7 @@ export async function handleNimMessage(params: {
     });
 
     const deliverReply = createNormalizedOutboundDeliverer(async (payload: OutboundReplyPayload) => {
-      const combined = formatTextWithAttachmentLinks(
-        payload.text,
-        resolveOutboundMediaUrls(payload),
-      );
+      const combined = formatTextWithAttachmentLinks(payload.text, resolveOutboundMediaUrls(payload));
       if (!combined) return;
 
       log(`[nim] delivering reply — target: ${replyTarget}, session: ${sessionType}`);
@@ -332,9 +343,7 @@ export async function handleNimMessage(params: {
       log(`[nim] reply delivered — target: ${replyTarget}`);
     });
 
-    log(
-      `[nim] dispatching to agent — session: ${route.sessionKey}, chat: ${chatType}, agent: ${route.agentId}`,
-    );
+    log(`[nim] dispatching to agent — session: ${route.sessionKey}, chat: ${chatType}, agent: ${route.agentId}`);
 
     // ── Dispatch through agent pipeline (same pattern as QChat) ──
     await core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({

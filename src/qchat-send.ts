@@ -61,7 +61,12 @@ export async function sendQChatMessage(
   );
 
   const result = isReply
-    ? await sharedQChatClient.replyText({ serverId, channelId, text, replyMessage: opts!.replyMessage! })
+    ? await sharedQChatClient.replyText({
+        serverId,
+        channelId,
+        text,
+        replyMessage: opts!.replyMessage!,
+      })
     : await sharedQChatClient.sendText({ serverId, channelId, text });
   if (!result.ok) {
     log.error(`[qchat] send failed — error: ${result.error ?? "unknown"}`);
