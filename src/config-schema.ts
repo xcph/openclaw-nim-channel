@@ -6,7 +6,7 @@ import { z } from "zod";
  */
 const coerceToString = z.preprocess(
   (val) => (typeof val === "number" ? String(val) : val),
-  z.string()
+  z.string(),
 );
 
 /** Union type for allow-list entries (string or number from YAML) */
@@ -126,6 +126,9 @@ export const NimConfigSchema = z.object({
 
   /** Authentication token (coerced from number if needed) */
   token: coerceToString.optional(),
+
+  /** Whether to enable anti-spam protection */
+  antispamEnabled: z.boolean().optional().default(false),
 
   /** P2P (私聊) sub-configuration */
   p2p: P2pSubConfigSchema.optional(),

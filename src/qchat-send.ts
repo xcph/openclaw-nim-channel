@@ -32,7 +32,9 @@ export async function sendQChatMessage(
   // Hard gate: reject all sends when policy is disabled, regardless of
   // which dispatch context triggered this (catches in-flight agents from prior messages)
   if (!qchatReplyEnabled) {
-    log.info(`[qchat] send suppressed — reason: policy is disabled, target: ${to}`);
+    log.info(
+      `[qchat] send suppressed — reason: policy is disabled, target: ${to}`,
+    );
     return { ok: true, messageId: "" };
   }
 
@@ -42,7 +44,9 @@ export async function sendQChatMessage(
     return {
       ok: false,
       messageId: "",
-      error: new Error(`Invalid QChat target "${to}" — expected "serverId:channelId"`),
+      error: new Error(
+        `Invalid QChat target "${to}" — expected "serverId:channelId"`,
+      ),
     };
   }
 
@@ -61,12 +65,19 @@ export async function sendQChatMessage(
   );
 
   const result = isReply
-    ? await sharedQChatClient.replyText({ serverId, channelId, text, replyMessage: opts!.replyMessage! })
+    ? await sharedQChatClient.replyText({
+        serverId,
+        channelId,
+        text,
+        replyMessage: opts!.replyMessage!,
+      })
     : await sharedQChatClient.sendText({ serverId, channelId, text });
   if (!result.ok) {
     log.error(`[qchat] send failed — error: ${result.error ?? "unknown"}`);
   } else {
-    log.info(`[qchat] message sent — message id: ${result.msgServerId ?? "unknown"}`);
+    log.info(
+      `[qchat] message sent — message id: ${result.msgServerId ?? "unknown"}`,
+    );
   }
   return {
     ok: result.ok,

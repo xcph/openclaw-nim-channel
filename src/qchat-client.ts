@@ -109,7 +109,9 @@ export class QChatClient {
   private stopped = false;
   // Store bound handlers so we can remove them on stop()
   private messageHandler: ((msg: QChatMessagePayload) => void) | null = null;
-  private systemNotificationHandler: ((resp: QChatSystemNotificationPayload) => void) | null = null;
+  private systemNotificationHandler:
+    | ((resp: QChatSystemNotificationPayload) => void)
+    | null = null;
 
   constructor(opts: QChatClientOptions) {
     this.opts = opts;
@@ -128,7 +130,9 @@ export class QChatClient {
       if (this.opts.nim) {
         this.nim = this.opts.nim;
       } else {
-        throw new Error("QChatClient requires a NIM instance — call setNim() or pass opts.nim before use");
+        throw new Error(
+          "QChatClient requires a NIM instance — call setNim() or pass opts.nim before use",
+        );
       }
     }
     return this.nim;
@@ -140,7 +144,8 @@ export class QChatClient {
     const fromAccount = msg.fromAccount ?? msg.from_accid;
     const fromNick = msg.fromNick ?? msg.from_nick;
     const body = msg.body ?? msg.msg_body;
-    const type = msg.type ?? (typeof msg.msg_type === "string" ? msg.msg_type : undefined);
+    const type =
+      msg.type ?? (typeof msg.msg_type === "string" ? msg.msg_type : undefined);
     const msgIdServer = msg.msgIdServer ?? msg.msg_server_id;
     const time = msg.time ?? msg.timestamp;
     const mentionAll = msg.mentionAll ?? msg.mention_all;
@@ -171,11 +176,26 @@ export class QChatClient {
     };
   }
 
-  private normalizeSystemNotification(notification: QChatSystemNotificationPayload): QChatSystemNotificationPayload {
+  private normalizeSystemNotification(
+    notification: QChatSystemNotificationPayload,
+  ): QChatSystemNotificationPayload {
     const serverId = notification.serverId ?? notification.server_id;
-    const type = notification.type ?? (typeof notification.msg_type === "string" ? notification.msg_type : undefined);
-    const legacyType = typeof notification.msg_type === "number" ? notification.msg_type : undefined;
-    const normalizedType = type ?? (legacyType === 1 ? "serverMemberInvite" : legacyType === 8 ? "serverMemberInviteDone" : undefined);
+    const type =
+      notification.type ??
+      (typeof notification.msg_type === "string"
+        ? notification.msg_type
+        : undefined);
+    const legacyType =
+      typeof notification.msg_type === "number"
+        ? notification.msg_type
+        : undefined;
+    const normalizedType =
+      type ??
+      (legacyType === 1
+        ? "serverMemberInvite"
+        : legacyType === 8
+          ? "serverMemberInviteDone"
+          : undefined);
 
     return {
       ...notification,
@@ -222,14 +242,20 @@ export class QChatClient {
     });
 
     // Kicked out
-    loginService?.on("onKickedOffline", (resp: { reasonDesc?: string; reason?: string } | null) => {
-      const reason = resp?.reasonDesc ?? resp?.reason ?? String(resp ?? "unknown");
-      this.opts.onError?.(new Error(`kicked out — reason: ${reason}`));
-    });
+    loginService?.on(
+      "onKickedOffline",
+      (resp: { reasonDesc?: string; reason?: string } | null) => {
+        const reason =
+          resp?.reasonDesc ?? resp?.reason ?? String(resp ?? "unknown");
+        this.opts.onError?.(new Error(`kicked out — reason: ${reason}`));
+      },
+    );
 
     // Message listener (fires for ALL subscribed channels)
     if (!nim.qchatMsg) {
-      log?.error("nim.qchatMsg is not available on this SDK instance — QChat message events will NOT be received. Ensure nim-web-sdk-ng supports QChat APIs.");
+      log?.error(
+        "nim.qchatMsg is not available on this SDK instance — QChat message events will NOT be received. Ensure nim-web-sdk-ng supports QChat APIs.",
+      );
     }
 
     this.messageHandler = (msg: QChatMessagePayload) => {
@@ -239,21 +265,29 @@ export class QChatClient {
     };
     nim.qchatMsg?.on("message", this.messageHandler);
 
-    this.systemNotificationHandler = (notificationResp: QChatSystemNotificationPayload) => {
+    this.systemNotificationHandler = (
+      notificationResp: QChatSystemNotificationPayload,
+    ) => {
       if (this.stopped) return;
-      const notification = this.normalizeSystemNotification(notificationResp ?? {});
+      const notification = this.normalizeSystemNotification(
+        notificationResp ?? {},
+      );
       if (!notification) return;
-
 
       // Auto-accept server invite based on serverPolicy
       if (notification.type === "serverMemberInvite") {
-        const serverId = notification.serverId ?? notification.server_id
-          ?? notification.attach?.serverInfo?.serverId;
-        const inviterAccid = notification.fromAccount ?? notification.from_accid;
+        const serverId =
+          notification.serverId ??
+          notification.server_id ??
+          notification.attach?.serverInfo?.serverId;
+        const inviterAccid =
+          notification.fromAccount ?? notification.from_accid;
         const requestId = notification.attach?.requestId as string | undefined;
 
         if (!serverId || !inviterAccid || !requestId) {
-          log?.info(`[sysnotify] server invite ignored — missing fields (server: ${serverId ?? "n/a"}, inviter: ${inviterAccid ?? "n/a"}, requestId: ${requestId ?? "n/a"})`);
+          log?.info(
+            `[sysnotify] server invite ignored — missing fields (server: ${serverId ?? "n/a"}, inviter: ${inviterAccid ?? "n/a"}, requestId: ${requestId ?? "n/a"})`,
+          );
           return;
         }
 
@@ -261,25 +295,38 @@ export class QChatClient {
         const allowlist = this.opts.serverAllowlist ?? [];
 
         if (policy === "disabled") {
-          log?.info(`[sysnotify] server invite ignored — server: ${serverId}, reason: serverPolicy is disabled`);
+          log?.info(
+            `[sysnotify] server invite ignored — server: ${serverId}, reason: serverPolicy is disabled`,
+          );
           return;
         }
 
         if (policy === "allowlist" && !allowlist.includes(serverId)) {
-          log?.info(`[sysnotify] server invite ignored — server: ${serverId}, reason: not in serverAllowlist`);
+          log?.info(
+            `[sysnotify] server invite ignored — server: ${serverId}, reason: not in serverAllowlist`,
+          );
           return;
         }
 
-        log?.info(`[sysnotify] auto-accepting server invite — server: ${serverId}, inviter: ${inviterAccid}, policy: ${policy}`);
-        nim.qchatServer.acceptServerInvite({
-          serverId,
-          accid: inviterAccid,
-          recordInfo: { requestId },
-        }).then(() => {
-          log?.info(`[sysnotify] server invite accepted — server: ${serverId}`);
-        }).catch((err: unknown) => {
-          log?.error(`[sysnotify] server invite accept failed — server: ${serverId}, error: ${String(err)}`);
-        });
+        log?.info(
+          `[sysnotify] auto-accepting server invite — server: ${serverId}, inviter: ${inviterAccid}, policy: ${policy}`,
+        );
+        nim.qchatServer
+          .acceptServerInvite({
+            serverId,
+            accid: inviterAccid,
+            recordInfo: { requestId },
+          })
+          .then(() => {
+            log?.info(
+              `[sysnotify] server invite accepted — server: ${serverId}`,
+            );
+          })
+          .catch((err: unknown) => {
+            log?.error(
+              `[sysnotify] server invite accept failed — server: ${serverId}, error: ${String(err)}`,
+            );
+          });
         return;
       }
 
@@ -289,18 +336,24 @@ export class QChatClient {
 
         // Skip if already subscribed
         if (this.subscribedServerIds.includes(serverId)) {
-          log?.info(`[sysnotify] invite received — server: ${serverId}, status: already subscribed`);
+          log?.info(
+            `[sysnotify] invite received — server: ${serverId}, status: already subscribed`,
+          );
           return;
         }
 
         if (!this.activated) {
-          log?.info(`[sysnotify] invite queued — server: ${serverId}, status: not activated`);
+          log?.info(
+            `[sysnotify] invite queued — server: ${serverId}, status: not activated`,
+          );
           return;
         }
 
         log?.info(`[sysnotify] auto-subscribing — server: ${serverId}`);
         this.subscribeServer(serverId).catch((err) => {
-          log?.error(`[sysnotify] subscribe failed — server: ${serverId}, error: ${String(err)}`);
+          log?.error(
+            `[sysnotify] subscribe failed — server: ${serverId}, error: ${String(err)}`,
+          );
         });
       }
     };
@@ -330,7 +383,9 @@ export class QChatClient {
       // Auto-discover all joined servers
       log?.info("no servers configured — discovering joined servers");
       serverIds = await this.discoverJoinedServers();
-      log?.info(`servers discovered — count: ${serverIds.length}, servers: ${serverIds.join(", ")}`);
+      log?.info(
+        `servers discovered — count: ${serverIds.length}, servers: ${serverIds.join(", ")}`,
+      );
     }
 
     if (serverIds.length === 0) {
@@ -354,7 +409,9 @@ export class QChatClient {
     this.subscribedServerIds = serverIds.filter(
       (id) => !failedServers.includes(id),
     );
-    log?.info(`subscribed to all channels — servers: ${this.subscribedServerIds.length}`);
+    log?.info(
+      `subscribed to all channels — servers: ${this.subscribedServerIds.length}`,
+    );
     this.activated = true;
   }
 
@@ -392,7 +449,8 @@ export class QChatClient {
         }
       }
 
-      const hasMore = resp.listQueryTag?.hasMore ?? servers.length >= PAGE_LIMIT;
+      const hasMore =
+        resp.listQueryTag?.hasMore ?? servers.length >= PAGE_LIMIT;
       if (!hasMore) break;
 
       const lastServer = servers[servers.length - 1];
@@ -427,7 +485,9 @@ export class QChatClient {
     }
 
     this.subscribedServerIds.push(serverId);
-    log?.info(`[sysnotify] subscribed — server: ${serverId}, total servers: ${this.subscribedServerIds.length}`);
+    log?.info(
+      `[sysnotify] subscribed — server: ${serverId}, total servers: ${this.subscribedServerIds.length}`,
+    );
   }
 
   async sendText(params: {
@@ -493,7 +553,10 @@ export class QChatClient {
         this.messageHandler = null;
       }
       if (this.systemNotificationHandler) {
-        this.nim.qchatMsg.off("systemNotification", this.systemNotificationHandler);
+        this.nim.qchatMsg.off(
+          "systemNotification",
+          this.systemNotificationHandler,
+        );
         this.systemNotificationHandler = null;
       }
     }

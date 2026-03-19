@@ -1,7 +1,13 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { NimConfig } from "./types.js";
 import { sendMessageNim, splitMessageIntoChunks } from "./send.js";
-import { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, inferMessageType } from "./media.js";
+import {
+  sendImageNim,
+  sendFileNim,
+  sendAudioNim,
+  sendVideoNim,
+  inferMessageType,
+} from "./media.js";
 import { normalizeNimTarget, parseNimTarget } from "./targets.js";
 
 /** Default text chunk limit for NIM messages */
@@ -72,7 +78,10 @@ export function resolveNimOutboundTarget(params: {
     const normalizedTo = normalizeNimTarget(trimmed);
     if (!normalizedTo) {
       // Fallback to allowFrom if target is invalid
-      if ((mode === "implicit" || mode === "heartbeat") && allowList.length > 0) {
+      if (
+        (mode === "implicit" || mode === "heartbeat") &&
+        allowList.length > 0
+      ) {
         return { ok: true, to: allowList[0] };
       }
       return {
@@ -122,13 +131,22 @@ export async function sendNimOutboundText(params: {
   const targetId = parsed?.id ?? normalizeNimTarget(to) ?? to;
   const sessionType = parsed?.sessionType ?? "p2p";
 
-  console.log(`[nim] outbound text send — target: ${targetId}, session: ${sessionType}, length: ${text.length}`);
+  console.log(
+    `[nim] outbound text send — target: ${targetId}, session: ${sessionType}, length: ${text.length}`,
+  );
 
   try {
-    const result = await sendMessageNim({ cfg, to: targetId, text, sessionType });
+    const result = await sendMessageNim({
+      cfg,
+      to: targetId,
+      text,
+      sessionType,
+    });
 
     if (result.success) {
-      console.log(`[nim] outbound text sent — message id: ${result.msgId ?? "unknown"}`);
+      console.log(
+        `[nim] outbound text sent — message id: ${result.msgId ?? "unknown"}`,
+      );
       return {
         channel: "nim",
         ok: true,
@@ -136,7 +154,9 @@ export async function sendNimOutboundText(params: {
         clientMsgId: result.clientMsgId,
       };
     } else {
-      console.error(`[nim] outbound text failed — error: ${result.error ?? "unknown"}`);
+      console.error(
+        `[nim] outbound text failed — error: ${result.error ?? "unknown"}`,
+      );
       return {
         channel: "nim",
         ok: false,
@@ -183,9 +203,20 @@ export async function sendNimOutboundMedia(params: {
       let mediaResult;
 
       if (mediaType === "image") {
-        mediaResult = await sendImageNim({ cfg, to: targetId, imagePath: media, sessionType });
+        mediaResult = await sendImageNim({
+          cfg,
+          to: targetId,
+          imagePath: media,
+          sessionType,
+        });
       } else if (mediaType === "audio") {
-        mediaResult = await sendAudioNim({ cfg, to: targetId, audioPath: media, duration: 0, sessionType });
+        mediaResult = await sendAudioNim({
+          cfg,
+          to: targetId,
+          audioPath: media,
+          duration: 0,
+          sessionType,
+        });
       } else if (mediaType === "video") {
         mediaResult = await sendVideoNim({
           cfg,
@@ -197,11 +228,18 @@ export async function sendNimOutboundMedia(params: {
           sessionType,
         });
       } else {
-        mediaResult = await sendFileNim({ cfg, to: targetId, filePath: media, sessionType });
+        mediaResult = await sendFileNim({
+          cfg,
+          to: targetId,
+          filePath: media,
+          sessionType,
+        });
       }
 
       if (!mediaResult.success) {
-        console.error(`[nim] outbound media failed — error: ${mediaResult.error ?? "unknown"}`);
+        console.error(
+          `[nim] outbound media failed — error: ${mediaResult.error ?? "unknown"}`,
+        );
         return {
           channel: "nim",
           ok: false,
@@ -209,7 +247,9 @@ export async function sendNimOutboundMedia(params: {
         };
       }
 
-      console.log(`[nim] outbound media sent — message id: ${mediaResult.msgId ?? "unknown"}`);
+      console.log(
+        `[nim] outbound media sent — message id: ${mediaResult.msgId ?? "unknown"}`,
+      );
 
       // If no text, return media result
       if (!text) {
@@ -329,11 +369,16 @@ export async function nimOutbound(params: NimOutboundOptions): Promise<void> {
 
   // Send text if provided
   if (text) {
-    const chunkLimit = nimCfg?.advanced?.textChunkLimit ?? DEFAULT_TEXT_CHUNK_LIMIT;
+    const chunkLimit =
+      nimCfg?.advanced?.textChunkLimit ?? DEFAULT_TEXT_CHUNK_LIMIT;
     const chunks = splitMessageIntoChunks(text, chunkLimit);
 
     for (const chunk of chunks) {
-      const result = await sendNimOutboundText({ cfg, to: targetId, text: chunk });
+      const result = await sendNimOutboundText({
+        cfg,
+        to: targetId,
+        text: chunk,
+      });
       if (!result.ok) {
         throw new Error(result.error || "Failed to send text");
       }

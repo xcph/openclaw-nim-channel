@@ -18,7 +18,11 @@ import { getNimRuntime } from "./runtime.js";
 import type { NimConfig, QChatInboundMessage } from "./types.js";
 import { isQChatAllowed } from "./accounts.js";
 import { sendQChatMessage } from "./qchat-send.js";
-import { resolveQChatChannelName, resolveUserNick, buildConversationLabel } from "./name-resolver.js";
+import {
+  resolveQChatChannelName,
+  resolveUserNick,
+  buildConversationLabel,
+} from "./name-resolver.js";
 import { getCachedNimClient } from "./client.js";
 type QChatMessagePayload = {
   serverId?: string;
@@ -61,8 +65,10 @@ export function parseQChatMessage(
   const msg = resp.message;
   if (!msg) return null;
 
-  const messageType = msg.type ?? (typeof msg.msg_type === "string" ? msg.msg_type : undefined);
-  const legacyType = typeof msg.msg_type === "number" ? msg.msg_type : undefined;
+  const messageType =
+    msg.type ?? (typeof msg.msg_type === "string" ? msg.msg_type : undefined);
+  const legacyType =
+    typeof msg.msg_type === "number" ? msg.msg_type : undefined;
 
   if (messageType && messageType !== "text") return null;
   if (legacyType !== undefined && legacyType !== 0) return null;
@@ -77,8 +83,7 @@ export function parseQChatMessage(
   // Detect @-mention: either @all or bot's accid is in the list
   const mentionAll = (msg.mentionAll ?? msg.mention_all) === true;
   const mentionAccids = msg.mentionAccids ?? msg.mention_accids ?? [];
-  const wasMentioned =
-    mentionAll || mentionAccids.includes(botAccid);
+  const wasMentioned = mentionAll || mentionAccids.includes(botAccid);
 
   return {
     messageId: msg.msgIdServer ?? msg.msg_server_id ?? `${Date.now()}`,
@@ -129,7 +134,10 @@ export async function handleQChatInbound(params: {
   accountId: string;
   config: OpenClawConfig;
   runtime: RuntimeEnv;
-  statusSink?: (patch: { lastInboundAt?: number; lastOutboundAt?: number }) => void;
+  statusSink?: (patch: {
+    lastInboundAt?: number;
+    lastOutboundAt?: number;
+  }) => void;
 }): Promise<void> {
   const { message, botAccid, accountId, config, runtime, statusSink } = params;
   const core = getNimRuntime();
@@ -162,7 +170,11 @@ export async function handleQChatInbound(params: {
     : (message.senderNick ?? message.senderAccid);
 
   const channelDisplayName = nativeNim
-    ? await resolveQChatChannelName(nativeNim, message.serverId, message.channelId)
+    ? await resolveQChatChannelName(
+        nativeNim,
+        message.serverId,
+        message.channelId,
+      )
     : peerId;
 
   const conversationLabel = buildConversationLabel("qchat", channelDisplayName);
@@ -213,10 +225,14 @@ export async function handleQChatInbound(params: {
   });
 
   // Build envelope
-  const storePath = core.channel.session.resolveStorePath(config.session?.store, {
-    agentId: route.agentId,
-  });
-  const envelopeOptions = core.channel.reply.resolveEnvelopeFormatOptions(config);
+  const storePath = core.channel.session.resolveStorePath(
+    config.session?.store,
+    {
+      agentId: route.agentId,
+    },
+  );
+  const envelopeOptions =
+    core.channel.reply.resolveEnvelopeFormatOptions(config);
   const previousTimestamp = core.channel.session.readSessionUpdatedAt({
     storePath,
     sessionKey: route.sessionKey,
@@ -277,7 +293,10 @@ export async function handleQChatInbound(params: {
     const liveQchatCfg = liveNimCfg?.qchat as
       | { policy?: string; allowFrom?: Array<string | number> }
       | undefined;
-    const livePolicy = (liveQchatCfg?.policy ?? "open") as "open" | "allowlist" | "disabled";
+    const livePolicy = (liveQchatCfg?.policy ?? "open") as
+      | "open"
+      | "allowlist"
+      | "disabled";
     const liveAllowFrom = liveQchatCfg?.allowFrom ?? [];
 
     // Use the full isQChatAllowed check — catches both literal "disabled" AND
@@ -290,7 +309,9 @@ export async function handleQChatInbound(params: {
       senderAccid: message.senderAccid,
     });
     if (!deliveryCheck.allowed) {
-      runtime.log(`[qchat] reply suppressed — reason: policy now blocks delivery (policy: ${livePolicy}), target: ${peerId}`);
+      runtime.log(
+        `[qchat] reply suppressed — reason: policy now blocks delivery (policy: ${livePolicy}), target: ${peerId}`,
+      );
       return;
     }
 
@@ -313,7 +334,9 @@ export async function handleQChatInbound(params: {
       ...prefixOptions,
       deliver: deliverReply,
       onError: (err: unknown, info: { kind: string }) => {
-        runtime.error?.(`[qchat] ${info.kind} reply failed — error: ${String(err)}`);
+        runtime.error?.(
+          `[qchat] ${info.kind} reply failed — error: ${String(err)}`,
+        );
       },
     },
     replyOptions: {

@@ -7,12 +7,28 @@ import {
   type OutboundReplyPayload,
   type RuntimeEnv,
 } from "openclaw/plugin-sdk";
-import type { NimConfig, NimP2pPolicy, NimTeamPolicy, NimMessageContext, NimMessageEvent, NimMessageType, NimSessionType } from "./types.js";
+import type {
+  NimConfig,
+  NimP2pPolicy,
+  NimTeamPolicy,
+  NimMessageContext,
+  NimMessageEvent,
+  NimMessageType,
+  NimSessionType,
+} from "./types.js";
 import { isNimP2pAllowed, isNimTeamAllowed } from "./accounts.js";
 import { getNimRuntime } from "./runtime.js";
 import { buildNimMediaPayload, inferMediaPlaceholder } from "./media.js";
-import { sendMessageNim, replyMessageNim, splitMessageIntoChunks } from "./send.js";
-import { resolveUserNick, resolveTeamName, buildConversationLabel } from "./name-resolver.js";
+import {
+  sendMessageNim,
+  replyMessageNim,
+  splitMessageIntoChunks,
+} from "./send.js";
+import {
+  resolveUserNick,
+  resolveTeamName,
+  buildConversationLabel,
+} from "./name-resolver.js";
 import { getCachedNimClient } from "./client.js";
 
 /**
@@ -59,7 +75,11 @@ function extractMessageContent(message: NimMessageEvent): string {
   if (message.type === "custom" && message.ext) {
     try {
       const parsed = message.ext;
-      return (parsed as any).text || (parsed as any).content || JSON.stringify(parsed);
+      return (
+        (parsed as any).text ||
+        (parsed as any).content ||
+        JSON.stringify(parsed)
+      );
     } catch {
       return String(message.ext);
     }
@@ -78,10 +98,12 @@ function extractMessageContent(message: NimMessageEvent): string {
 /**
  * Parse a NIM message event into a message context.
  */
-export function parseNimMessageEvent(message: NimMessageEvent): NimMessageContext {
+export function parseNimMessageEvent(
+  message: NimMessageEvent,
+): NimMessageContext {
   const isDirectMessage = message.sessionType === "p2p";
-  const sessionId = isDirectMessage 
-    ? `p2p-${message.from}` 
+  const sessionId = isDirectMessage
+    ? `p2p-${message.from}`
     : `team-${message.to}`;
 
   return {
@@ -114,7 +136,8 @@ export async function handleNimMessage(params: {
   const botAccount = nimCfg?.account ? String(nimCfg.account) : "";
 
   const isP2P = message.sessionType === "p2p";
-  const isTeam = message.sessionType === "team" || message.sessionType === "superTeam";
+  const isTeam =
+    message.sessionType === "team" || message.sessionType === "superTeam";
 
   if (!isP2P && !isTeam) {
     log(`[nim] ignoring message — session: ${message.sessionType}`);
@@ -153,7 +176,9 @@ export async function handleNimMessage(params: {
       if (result.reason === "disabled") {
         log(`[nim] p2p disabled — sender: ${ctx.senderId}`);
       } else {
-        log(`[nim] p2p blocked — sender: ${ctx.senderId}, policy: ${p2pPolicy}`);
+        log(
+          `[nim] p2p blocked — sender: ${ctx.senderId}, policy: ${p2pPolicy}`,
+        );
       }
       return;
     }
@@ -164,8 +189,18 @@ export async function handleNimMessage(params: {
     const teamPolicy = (nimCfg?.team?.policy ?? "open") as NimTeamPolicy;
     const teamIds = nimCfg?.team?.allowFrom ?? [];
 
-    if (!isNimTeamAllowed({ teamPolicy, teamIds, groupId: message.to, senderId: ctx.senderId, sessionType: message.sessionType as "team" | "superTeam" })) {
-      log(`[nim] team message blocked — group: ${message.to}, sender: ${ctx.senderId}, policy: ${teamPolicy}`);
+    if (
+      !isNimTeamAllowed({
+        teamPolicy,
+        teamIds,
+        groupId: message.to,
+        senderId: ctx.senderId,
+        sessionType: message.sessionType as "team" | "superTeam",
+      })
+    ) {
+      log(
+        `[nim] team message blocked — group: ${message.to}, sender: ${ctx.senderId}, policy: ${teamPolicy}`,
+      );
       return;
     }
   }
@@ -222,7 +257,7 @@ export async function handleNimMessage(params: {
 
     const senderDisplayName = nativeNim
       ? await resolveUserNick(nativeNim, ctx.senderId, message.fromNick)
-      : (message.fromNick || ctx.senderId);
+      : message.fromNick || ctx.senderId;
 
     let conversationLabel: string;
     let groupSubject: string | undefined;
@@ -230,9 +265,15 @@ export async function handleNimMessage(params: {
 
     if (isTeam) {
       teamName = nativeNim
-        ? await resolveTeamName(nativeNim, message.to, message.sessionType as "team" | "superTeam")
+        ? await resolveTeamName(
+            nativeNim,
+            message.to,
+            message.sessionType as "team" | "superTeam",
+          )
         : message.to;
-      log(`[nim] resolved team name — teamId: ${message.to}, teamName: ${teamName}, hasNativeNim: ${!!nativeNim}`);
+      log(
+        `[nim] resolved team name — teamId: ${message.to}, teamName: ${teamName}, hasNativeNim: ${!!nativeNim}`,
+      );
       conversationLabel = buildConversationLabel("team", teamName);
       groupSubject = buildConversationLabel("team", teamName);
     } else {
@@ -269,14 +310,19 @@ export async function handleNimMessage(params: {
       CommandAuthorized: true,
       OriginatingChannel: "nim" as const,
       OriginatingTo: nimTo,
-      ...(isTeam ? { GroupSubject: groupSubject ?? message.to, WasMentioned: true } : {}),
+      ...(isTeam
+        ? { GroupSubject: groupSubject ?? message.to, WasMentioned: true }
+        : {}),
       ...mediaPayload,
     });
 
     // ── Record inbound session ──
-    const storePath = core.channel.session.resolveStorePath(cfg.session?.store, {
-      agentId: route.agentId,
-    });
+    const storePath = core.channel.session.resolveStorePath(
+      cfg.session?.store,
+      {
+        agentId: route.agentId,
+      },
+    );
 
     await core.channel.session.recordInboundSession({
       storePath,
@@ -297,40 +343,44 @@ export async function handleNimMessage(params: {
       accountId,
     });
 
-    const deliverReply = createNormalizedOutboundDeliverer(async (payload: OutboundReplyPayload) => {
-      const combined = formatTextWithAttachmentLinks(
-        payload.text,
-        resolveOutboundMediaUrls(payload),
-      );
-      if (!combined) return;
+    const deliverReply = createNormalizedOutboundDeliverer(
+      async (payload: OutboundReplyPayload) => {
+        const combined = formatTextWithAttachmentLinks(
+          payload.text,
+          resolveOutboundMediaUrls(payload),
+        );
+        if (!combined) return;
 
-      log(`[nim] delivering reply — target: ${replyTarget}, session: ${sessionType}`);
+        log(
+          `[nim] delivering reply — target: ${replyTarget}, session: ${sessionType}`,
+        );
 
-      const isTeamReply = isTeam && message.rawMsg && ctx.senderId;
-      const chunks = splitMessageIntoChunks(combined, chunkLimit);
+        const isTeamReply = isTeam && message.rawMsg && ctx.senderId;
+        const chunks = splitMessageIntoChunks(combined, chunkLimit);
 
-      for (const chunk of chunks) {
-        if (isTeamReply) {
-          await replyMessageNim({
-            cfg,
-            to: replyTarget,
-            text: chunk,
-            originalMsg: message.rawMsg,
-            forcePushAccountIds: [ctx.senderId],
-            sessionType,
-          });
-        } else {
-          await sendMessageNim({
-            cfg,
-            to: replyTarget,
-            text: chunk,
-            sessionType,
-          });
+        for (const chunk of chunks) {
+          if (isTeamReply) {
+            await replyMessageNim({
+              cfg,
+              to: replyTarget,
+              text: chunk,
+              originalMsg: message.rawMsg,
+              forcePushAccountIds: [ctx.senderId],
+              sessionType,
+            });
+          } else {
+            await sendMessageNim({
+              cfg,
+              to: replyTarget,
+              text: chunk,
+              sessionType,
+            });
+          }
         }
-      }
 
-      log(`[nim] reply delivered — target: ${replyTarget}`);
-    });
+        log(`[nim] reply delivered — target: ${replyTarget}`);
+      },
+    );
 
     log(
       `[nim] dispatching to agent — session: ${route.sessionKey}, chat: ${chatType}, agent: ${route.agentId}`,

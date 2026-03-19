@@ -16,7 +16,10 @@ const userNickCache = new Map<string, CacheEntry>();
 const teamNameCache = new Map<string, CacheEntry>();
 const qchatChannelNameCache = new Map<string, CacheEntry>();
 
-function getCached(cache: Map<string, CacheEntry>, key: string): string | undefined {
+function getCached(
+  cache: Map<string, CacheEntry>,
+  key: string,
+): string | undefined {
   const entry = cache.get(key);
   if (!entry) return undefined;
   if (Date.now() > entry.expiresAt) {
@@ -26,7 +29,11 @@ function getCached(cache: Map<string, CacheEntry>, key: string): string | undefi
   return entry.value;
 }
 
-function setCache(cache: Map<string, CacheEntry>, key: string, value: string): void {
+function setCache(
+  cache: Map<string, CacheEntry>,
+  key: string,
+  value: string,
+): void {
   cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
@@ -64,7 +71,9 @@ export async function resolveUserNick(
       }
     }
   } catch (err) {
-    console.error(`[nim] resolveUserNick failed — accid: ${accid}, error: ${String(err)}`);
+    console.error(
+      `[nim] resolveUserNick failed — accid: ${accid}, error: ${String(err)}`,
+    );
   }
 
   // 4. Fallback
@@ -101,7 +110,9 @@ export async function resolveTeamName(
       }
     }
   } catch (err) {
-    console.error(`[nim] resolveTeamName failed — teamId: ${teamId}, error: ${String(err)}`);
+    console.error(
+      `[nim] resolveTeamName failed — teamId: ${teamId}, error: ${String(err)}`,
+    );
   }
 
   // 3. Fallback
@@ -127,9 +138,14 @@ export async function resolveQChatChannelName(
 
   // 2. 调用 SDK 查询
   try {
-    const qchatChannelService = nim.qchatChannel ?? nim.qchat?.channelService ?? nim.V2NIMQChatChannelService;
+    const qchatChannelService =
+      nim.qchatChannel ??
+      nim.qchat?.channelService ??
+      nim.V2NIMQChatChannelService;
     if (qchatChannelService) {
-      const channels = await qchatChannelService.getChannels({ channelIds: [channelId] });
+      const channels = await qchatChannelService.getChannels({
+        channelIds: [channelId],
+      });
       const name = channels?.[0]?.name || channels?.channels?.[0]?.name || "";
       if (name.trim()) {
         setCache(qchatChannelNameCache, cacheKey, name.trim());
@@ -137,7 +153,9 @@ export async function resolveQChatChannelName(
       }
     }
   } catch (err) {
-    console.error(`[nim] resolveQChatChannelName failed — server: ${serverId}, channel: ${channelId}, error: ${String(err)}`);
+    console.error(
+      `[nim] resolveQChatChannelName failed — server: ${serverId}, channel: ${channelId}, error: ${String(err)}`,
+    );
   }
 
   // 3. Fallback

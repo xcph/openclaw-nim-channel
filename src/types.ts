@@ -13,7 +13,7 @@ export type NimConfig = z.infer<typeof NimConfigSchema>;
 /**
  * NIM 消息类型
  */
-export type NimMessageType = 
+export type NimMessageType =
   | "text"
   | "image"
   | "audio"
@@ -192,17 +192,47 @@ export interface NimClientInstance {
   /** 登出 */
   logout(): Promise<void>;
   /** 发送文本消息 */
-  sendText(to: string, text: string, sessionType?: NimSessionType): Promise<NimSendResult>;
+  sendText(
+    to: string,
+    text: string,
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 回复文本消息（群组中引用原消息并 @发送者） */
-  replyText(to: string, text: string, originalMsg: unknown, forcePushAccountIds: string[], sessionType?: NimSessionType): Promise<NimSendResult>;
+  replyText(
+    to: string,
+    text: string,
+    originalMsg: unknown,
+    forcePushAccountIds: string[],
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 发送图片消息 */
-  sendImage(to: string, filePath: string, sessionType?: NimSessionType): Promise<NimSendResult>;
+  sendImage(
+    to: string,
+    filePath: string,
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 发送文件消息 */
-  sendFile(to: string, filePath: string, sessionType?: NimSessionType): Promise<NimSendResult>;
+  sendFile(
+    to: string,
+    filePath: string,
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 发送音频消息 */
-  sendAudio(to: string, filePath: string, duration: number, sessionType?: NimSessionType): Promise<NimSendResult>;
+  sendAudio(
+    to: string,
+    filePath: string,
+    duration: number,
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 发送视频消息 */
-  sendVideo(to: string, filePath: string, duration: number, width: number, height: number, sessionType?: NimSessionType): Promise<NimSendResult>;
+  sendVideo(
+    to: string,
+    filePath: string,
+    duration: number,
+    width: number,
+    height: number,
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 注册消息回调 */
   onMessage(callback: (msg: NimMessageEvent) => void): void;
   /** 移除消息回调 */
@@ -210,7 +240,10 @@ export interface NimClientInstance {
   /** 注册连接状态回调 */
   onConnectionChange(callback: (state: string) => void): void;
   /** 更新 P2P 好友申请自动同意策略（config reload 时调用） */
-  updateP2pPolicy(policy: NimP2pPolicy, allowFrom: Array<string | number>): void;
+  updateP2pPolicy(
+    policy: NimP2pPolicy,
+    allowFrom: Array<string | number>,
+  ): void;
   /** 底层 NIM SDK 实例（用于 QChat 等复用） */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   nativeNim: any;

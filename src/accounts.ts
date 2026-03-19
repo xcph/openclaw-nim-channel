@@ -1,5 +1,10 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type { NimConfig, ResolvedNimAccount, NimP2pPolicy, NimTeamPolicy } from "./types.js";
+import type {
+  NimConfig,
+  ResolvedNimAccount,
+  NimP2pPolicy,
+  NimTeamPolicy,
+} from "./types.js";
 
 /**
  * Default account ID for NIM (single account mode).
@@ -67,7 +72,9 @@ export function resolveNimAccount(params: {
 export function normalizeNimAllowFrom(
   configAllowFrom: Array<string | number>,
 ): { hasWildcard: boolean; hasEntries: boolean; entries: Set<string> } {
-  const combined = (configAllowFrom ?? []).map((v) => String(v).trim().toLowerCase()).filter(Boolean);
+  const combined = (configAllowFrom ?? [])
+    .map((v) => String(v).trim().toLowerCase())
+    .filter(Boolean);
 
   const hasWildcard = combined.includes("*");
   const entries = new Set(combined.filter((e) => e !== "*"));
@@ -91,7 +98,11 @@ export function resolveNimAllowlistMatch(params: {
 
   const normalizedSenderId = senderId.toLowerCase();
   if (entries.has(normalizedSenderId)) {
-    return { allowed: true, matchedEntry: normalizedSenderId, matchSource: "id" };
+    return {
+      allowed: true,
+      matchedEntry: normalizedSenderId,
+      matchSource: "id",
+    };
   }
 
   return { allowed: false };
@@ -236,7 +247,8 @@ export function isQChatAllowed(params: {
   if (policy === "open") return { allowed: true };
 
   // "allowlist" with empty list — treat as disabled
-  if (!allowFrom || allowFrom.length === 0) return { allowed: false, reason: "disabled" };
+  if (!allowFrom || allowFrom.length === 0)
+    return { allowed: false, reason: "disabled" };
 
   const nServer = serverId.toLowerCase();
   const nChannel = channelId.toLowerCase();
