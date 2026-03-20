@@ -7,6 +7,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-03-20
+
+### Changed
+- `SenderId` now uses display name (nickname) instead of raw accid across all message types (P2P, Team, QChat) — when a nickname is resolved, only the nickname is shown in the UI; accid is used as fallback when no nickname is available
+
+## [0.4.1] - 2026-03-19
+
+### Added
+- **Anti-spam configuration**: new `antispamEnabled` field in NIM config schema — enables/disables NIM server-side content moderation (安全通) for outbound text and reply messages; defaults to `true`
+- QChat channel topic (subject) is now included in the agent prompt context
+
+### Changed
+- Applied Prettier auto-formatting across entire codebase (`.prettierrc` added)
+- Code style normalized — no functional changes beyond formatting
+
 ## [0.4.0] - 2026-03-18
 
 ### Added

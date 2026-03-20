@@ -275,7 +275,7 @@ export async function handleNimMessage(params: {
       ChatType: chatType,
       ConversationLabel: conversationLabel,
       SenderName: senderDisplayName,
-      SenderId: ctx.senderId,
+      SenderId: senderDisplayName,
       Provider: "nim" as const,
       Surface: "nim" as const,
       MessageSid: ctx.id,

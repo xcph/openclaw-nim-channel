@@ -235,7 +235,7 @@ export async function handleQChatInbound(params: {
     ChatType: "direct",
     ConversationLabel: conversationLabel,
     SenderName: senderDisplay,
-    SenderId: message.senderAccid,
+    SenderId: senderDisplay,
     Provider: CHANNEL_ID,
     Surface: QCHAT_SURFACE,
     WasMentioned: true,
