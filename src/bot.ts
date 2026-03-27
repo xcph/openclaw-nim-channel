@@ -128,11 +128,16 @@ export function parseNimMessageEvent(
  */
 export async function handleNimMessage(params: {
   cfg: OpenClawConfig;
+  /** The derived accountId ("appKey:accid") for the receiving instance. */
+  accountId: string;
   message: NimMessageEvent;
   runtime?: RuntimeEnv;
 }): Promise<void> {
-  const { cfg, message, runtime } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig | undefined;
+  const { cfg, accountId, message, runtime } = params;
+  // Resolve this specific instance config for policy & account lookups
+  const { resolveNimAccountById } = await import("./accounts.js");
+  const account = resolveNimAccountById({ cfg, accountId });
+  const nimCfg = account.configured ? account.config : undefined;
   const log = runtime?.log ?? console.log;
   const error = runtime?.error ?? console.error;
   const botAccount = nimCfg?.account ? String(nimCfg.account) : "";
@@ -346,6 +351,7 @@ export async function handleNimMessage(params: {
               isComplete: false,
               baseMessage,
               replyMessage: message.rawMsg,
+              accountId, // 🔥 Pass accountId
             });
           } else {
             result = await sendStreamMessageNim({
@@ -356,6 +362,7 @@ export async function handleNimMessage(params: {
               chunkIndex: streamChunkIndex++,
               isComplete: false,
               baseMessage,
+              accountId, // 🔥 Pass accountId
             });
           }
 
@@ -431,6 +438,11 @@ export async function handleNimMessage(params: {
             `[nim] reply chunking — chunks: ${chunks.length}, limit: ${chunkLimit}`,
           );
           for (const chunk of chunks) {
+            // 🔥 Debug: log accountId before sending
+            log(
+              `[nim] 🔍 preparing to send — accountId: "${accountId}", target: ${ctx.senderId}, session: ${sessionType}, isTeamReply: ${isTeamReply}`,
+            );
+
             if (isTeamReply) {
               log(
                 `[nim] sending reply chunk — target: ${ctx.senderId}, session: ${sessionType}, force-push: [${ctx.senderId}]`,
@@ -442,6 +454,7 @@ export async function handleNimMessage(params: {
                 originalMsg: message.rawMsg,
                 forcePushAccountIds: [ctx.senderId],
                 sessionType,
+                accountId, // 🔥 Pass accountId
               });
               log(
                 `[nim] reply result — message id: ${result.msgId ?? "unknown"}, status: ${result.success ? "sent" : "failed"}`,
@@ -452,6 +465,7 @@ export async function handleNimMessage(params: {
                 to: ctx.senderId,
                 text: chunk,
                 sessionType,
+                accountId, // 🔥 Pass accountId
               });
               if (!result.success) {
                 log(

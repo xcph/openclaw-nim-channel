@@ -5,12 +5,13 @@
 import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
 import type {
   NimConfig,
+  NimInstanceConfig,
   NimClientInstance,
   NimMessageEvent,
   NimP2pPolicy,
 } from "./types.js";
 import { createNimClient, clearNimClientCache } from "./client.js";
-import { resolveNimCredentials } from "./accounts.js";
+import { resolveNimCredentials, resolveNimAccountById } from "./accounts.js";
 import { handleNimMessage } from "./bot.js";
 import type { QChatClient } from "./qchat-client.js";
 /** 监控状态 */
@@ -24,26 +25,44 @@ interface MonitorState {
 const monitorStates = new Map<string, MonitorState>();
 
 /**
- * 启动 NIM 消息监听
+ * 启动 NIM 消息监听（多实例版本）
+ * accountId 指定要启动的实例（"appKey:accid"），与 monitorStates Map 的键一致。
  */
 export async function monitorNimProvider(params: {
   cfg: OpenClawConfig;
+  /** The derived accountId ("appKey:accid") for this instance. */
+  accountId: string;
   runtime: RuntimeEnv;
   abortSignal?: AbortSignal;
   /** QChat client to wire into the IM login lifecycle (two-phase). */
   qchatClient?: QChatClient | null;
 }): Promise<void> {
   const { cfg, runtime, abortSignal } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
 
-  if (!nimCfg) {
-    console.error("[nim] channel not configured");
+  // Resolve the specific instance config by accountId
+  const rawNim = (cfg as any)?.channels?.nim;
+  console.log(
+    `[nim] monitor init — accountId: ${params.accountId}, channels.nim type: ${Array.isArray(rawNim) ? `array[${rawNim.length}]` : typeof rawNim}`,
+  );
+
+  const account = resolveNimAccountById({ cfg, accountId: params.accountId });
+  console.log(
+    `[nim] monitor init — account resolved: configured=${account.configured}, account=${account.account || "none"}`,
+  );
+  const nimInstCfg = account.configured ? account.config : undefined;
+
+  if (!nimInstCfg) {
+    console.error(
+      `[nim] instance not configured — accountId: ${params.accountId}`,
+    );
     return;
   }
 
-  const creds = resolveNimCredentials(nimCfg);
+  const creds = resolveNimCredentials(nimInstCfg);
   if (!creds) {
-    console.error("[nim] credentials not configured");
+    console.error(
+      `[nim] credentials not configured — accountId: ${params.accountId}`,
+    );
     return;
   }
   const monitorKey = `${creds.appKey}:${creds.account}`;
@@ -59,12 +78,12 @@ export async function monitorNimProvider(params: {
 
   try {
     // 创建客户端（IM 初始化）
-    const client = await createNimClient(nimCfg);
+    const client = await createNimClient(nimInstCfg);
 
     // Sync P2P policy to the cached client — ensures the friend request listener
     // always uses the latest policy, even when the client is reused from cache.
-    const liveP2pPolicy = (nimCfg.p2p?.policy as NimP2pPolicy) ?? "open";
-    const liveP2pAllowFrom = nimCfg.p2p?.allowFrom ?? [];
+    const liveP2pPolicy = (nimInstCfg.p2p?.policy as NimP2pPolicy) ?? "open";
+    const liveP2pAllowFrom = nimInstCfg.p2p?.allowFrom ?? [];
     client.updateP2pPolicy(liveP2pPolicy, liveP2pAllowFrom);
     // QChat phase 1: register passive listeners AFTER IM init, BEFORE login
     // 复用 IM 创建的 NIM 实例，避免重复创建
@@ -124,6 +143,7 @@ export async function monitorNimProvider(params: {
       try {
         await handleNimMessage({
           cfg,
+          accountId: params.accountId,
           runtime,
           message: msg,
         });
@@ -141,7 +161,7 @@ export async function monitorNimProvider(params: {
 
       if (status === "kickout") {
         console.warn(`[nim] account kicked out — account: ${creds.account}`);
-        stopNimMonitor(nimCfg);
+        stopNimMonitorByKey(monitorKey);
       } else if (status === "disconnected") {
         console.warn("[nim] disconnected — reconnecting");
         // SDK 会自动重连
@@ -156,7 +176,7 @@ export async function monitorNimProvider(params: {
     await new Promise<void>((resolve) => {
       const onAbort = () => {
         console.log("[nim] abort signal received — stopping monitor");
-        stopNimMonitor(nimCfg).finally(resolve);
+        stopNimMonitorByKey(monitorKey).finally(resolve);
       };
 
       if (abortSignal?.aborted) {
@@ -181,23 +201,16 @@ export async function monitorNimProvider(params: {
 }
 
 /**
- * 停止 NIM 消息监听
+ * 按 monitorKey ("appKey:account") 停止监控 — 内部使用
  */
-export async function stopNimMonitor(cfg: NimConfig): Promise<void> {
-  const creds = resolveNimCredentials(cfg);
-  if (!creds) {
-    console.log("[nim] monitor stop skipped — missing credentials");
-    return;
-  }
-  const monitorKey = `${creds.appKey}:${creds.account}`;
-
+async function stopNimMonitorByKey(monitorKey: string): Promise<void> {
   const state = monitorStates.get(monitorKey);
   if (!state) {
-    console.log(`[nim] monitor not running — account: ${creds.account}`);
+    console.log(`[nim] monitor not running — key: ${monitorKey}`);
     return;
   }
 
-  console.log(`[nim] monitor stopping — account: ${creds.account}`);
+  console.log(`[nim] monitor stopping — key: ${monitorKey}`);
 
   state.running = false;
   state.abortController.abort();
@@ -212,13 +225,25 @@ export async function stopNimMonitor(cfg: NimConfig): Promise<void> {
   }
 
   monitorStates.delete(monitorKey);
-  console.log(`[nim] monitor stopped — account: ${creds.account}`);
+  console.log(`[nim] monitor stopped — key: ${monitorKey}`);
+}
+
+/**
+ * 停止 NIM 消息监听（按实例配置）
+ */
+export async function stopNimMonitor(cfg: NimInstanceConfig): Promise<void> {
+  const creds = resolveNimCredentials(cfg);
+  if (!creds) {
+    console.log("[nim] monitor stop skipped — missing credentials");
+    return;
+  }
+  await stopNimMonitorByKey(`${creds.appKey}:${creds.account}`);
 }
 
 /**
  * 检查监控是否在运行
  */
-export function isNimMonitorRunning(cfg: NimConfig): boolean {
+export function isNimMonitorRunning(cfg: NimInstanceConfig): boolean {
   const creds = resolveNimCredentials(cfg);
   if (!creds) return false;
   const monitorKey = `${creds.appKey}:${creds.account}`;

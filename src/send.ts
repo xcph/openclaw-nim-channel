@@ -3,9 +3,30 @@
  */
 
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type { NimConfig, NimSendResult, NimSessionType } from "./types.js";
+import type {
+  NimInstanceConfig,
+  NimSendResult,
+  NimSessionType,
+} from "./types.js";
 import { createNimClient, getCachedNimClient } from "./client.js";
 import { normalizeNimTarget } from "./targets.js";
+import { resolveNimAccountById, resolveAllNimAccounts } from "./accounts.js";
+
+/**
+ * Resolve the NIM instance config for a given accountId, or fall back to
+ * the first configured instance if no accountId is provided.
+ */
+export function resolveInstCfg(
+  cfg: OpenClawConfig,
+  accountId?: string,
+): NimInstanceConfig | null {
+  if (accountId) {
+    const acct = resolveNimAccountById({ cfg, accountId });
+    return acct.configured ? acct.config : null;
+  }
+  const all = resolveAllNimAccounts({ cfg });
+  return all.find((a) => a.configured)?.config ?? null;
+}
 
 /** 单条消息最大字符数 */
 const MAX_MESSAGE_LENGTH = 5000;
@@ -18,9 +39,10 @@ export async function sendMessageNim(params: {
   to: string;
   text: string;
   sessionType?: NimSessionType;
+  accountId?: string; // 🔥 Add accountId parameter
 }): Promise<NimSendResult> {
-  const { cfg, to, text, sessionType = "p2p" } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const { cfg, to, text, sessionType = "p2p", accountId } = params;
+  const nimCfg = resolveInstCfg(cfg, accountId); // 🔥 Pass accountId
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -28,12 +50,20 @@ export async function sendMessageNim(params: {
 
   const targetId = normalizeNimTarget(to);
 
+  console.log(
+    `[nim] 🔍 sendMessageNim — accountId: "${accountId ?? "none"}", target: ${targetId}, session: ${sessionType}, account in config: ${nimCfg.account}`,
+  );
+
   try {
     let client = getCachedNimClient(nimCfg);
     if (!client || !client.loggedIn) {
       client = await createNimClient(nimCfg);
       await client.login();
     }
+
+    console.log(
+      `[nim] ✅ sendMessageNim using client — account: ${client.account}`,
+    );
 
     return await client.sendText(targetId, text, sessionType);
   } catch (error) {
@@ -54,6 +84,7 @@ export async function replyMessageNim(params: {
   originalMsg: unknown;
   forcePushAccountIds: string[];
   sessionType?: NimSessionType;
+  accountId?: string; // 🔥 Add accountId parameter
 }): Promise<NimSendResult> {
   const {
     cfg,
@@ -62,8 +93,9 @@ export async function replyMessageNim(params: {
     originalMsg,
     forcePushAccountIds,
     sessionType = "team",
+    accountId,
   } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const nimCfg = resolveInstCfg(cfg, accountId); // 🔥 Pass accountId
 
   if (!nimCfg) {
     console.log("[nim] reply skipped — channel not configured");
@@ -72,7 +104,7 @@ export async function replyMessageNim(params: {
 
   const targetId = normalizeNimTarget(to);
   console.log(
-    `[nim] reply requested — target: ${targetId}, session: ${sessionType}, force-push: [${forcePushAccountIds.join(", ")}]`,
+    `[nim] 🔍 replyMessageNim — accountId: "${accountId ?? "none"}", target: ${targetId}, session: ${sessionType}, force-push: [${forcePushAccountIds.join(", ")}], account in config: ${nimCfg.account}`,
   );
 
   try {
@@ -87,7 +119,7 @@ export async function replyMessageNim(params: {
     }
 
     console.log(
-      `[nim] sending reply — target: ${targetId}, session: ${sessionType}`,
+      `[nim] ✅ replyMessageNim using client — account: ${client.account}`,
     );
     const result = await client.replyText(
       targetId,
@@ -177,6 +209,7 @@ export async function sendStreamMessageNim(params: {
   chunkIndex: number;
   isComplete: boolean;
   baseMessage?: any; // 基础消息体，复用于整个流式会话
+  accountId?: string; // 🔥 Add accountId parameter
 }): Promise<NimSendResult> {
   const {
     cfg,
@@ -186,8 +219,13 @@ export async function sendStreamMessageNim(params: {
     chunkIndex,
     isComplete,
     baseMessage,
+    accountId,
   } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const nimCfg = resolveInstCfg(cfg, accountId); // 🔥 Pass accountId
+
+  console.log(
+    `[nim] 🔍 sendStreamMessageNim — accountId: "${accountId ?? "none"}", target: ${to}, session: ${sessionType}, chunk: ${chunkIndex}, complete: ${isComplete}, account in config: ${nimCfg?.account}`,
+  );
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -236,6 +274,7 @@ export async function replyStreamMessageNim(params: {
   isComplete: boolean;
   baseMessage?: any; // 基础消息体，复用于整个流式会话
   replyMessage?: any; // 被回复的消息
+  accountId?: string; // 🔥 Add accountId parameter
 }): Promise<NimSendResult> {
   const {
     cfg,
@@ -245,8 +284,13 @@ export async function replyStreamMessageNim(params: {
     isComplete,
     baseMessage,
     replyMessage,
+    accountId,
   } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const nimCfg = resolveInstCfg(cfg, accountId); // 🔥 Pass accountId
+
+  console.log(
+    `[nim] 🔍 replyStreamMessageNim — accountId: "${accountId ?? "none"}", conversation: ${conversationId}, chunk: ${chunkIndex}, complete: ${isComplete}, account in config: ${nimCfg?.account}`,
+  );
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };

@@ -3,14 +3,10 @@
  */
 
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type {
-  NimConfig,
-  NimSendResult,
-  NimMediaInfo,
-  NimSessionType,
-} from "./types.js";
+import type { NimSendResult, NimMediaInfo, NimSessionType } from "./types.js";
 import { createNimClient, getCachedNimClient } from "./client.js";
 import { normalizeNimTarget } from "./targets.js";
+import { resolveInstCfg } from "./send.js";
 import { extname } from "path";
 
 /**
@@ -23,7 +19,7 @@ export async function sendImageNim(params: {
   sessionType?: NimSessionType;
 }): Promise<NimSendResult> {
   const { cfg, to, imagePath, sessionType = "p2p" } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const nimCfg = resolveInstCfg(cfg);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -57,7 +53,7 @@ export async function sendFileNim(params: {
   sessionType?: NimSessionType;
 }): Promise<NimSendResult> {
   const { cfg, to, filePath, sessionType = "p2p" } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const nimCfg = resolveInstCfg(cfg);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -92,7 +88,7 @@ export async function sendAudioNim(params: {
   sessionType?: NimSessionType;
 }): Promise<NimSendResult> {
   const { cfg, to, audioPath, duration, sessionType = "p2p" } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const nimCfg = resolveInstCfg(cfg);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -137,7 +133,7 @@ export async function sendVideoNim(params: {
     height,
     sessionType = "p2p",
   } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const nimCfg = resolveInstCfg(cfg);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };

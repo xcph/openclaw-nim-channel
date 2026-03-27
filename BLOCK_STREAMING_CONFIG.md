@@ -151,3 +151,31 @@ logging:
 4. **模型 `stream: true`** - 千问模型启用流式输出
 
 这样配置后，您就能获得真正的流式分块输出了！
+
+## ⚠️ 圈组(QChat)特殊说明
+
+**圈组消息不支持流式输出和文本分块** - 即使全局启用了 `blockStreaming` 或配置了 `textChunkLimit`，圈组(QChat)消息也会强制禁用流式和分块，以**单条完整消息**的形式返回。
+
+**原因**:
+
+- 圈组频道内的流式分块会导致消息碎片化，影响用户体验
+- 用户期望机器人回复作为**一条完整消息**展示，便于阅读和引用
+- 减少不必要的消息通知
+
+**影响范围**:
+
+- ✅ **私聊(P2P)**: 支持流式输出和文本分块
+- ✅ **群组(Team/SuperTeam)**: 支持流式输出和文本分块
+- ❌ **圈组(QChat)**: 强制禁用流式和分块，单条完整返回
+
+**技术实现**:
+
+- 设置 `disableStreaming: true` - 禁用流式输出
+- 设置 `textChunkLimit: Infinity` - 禁用文本分块
+- 设置 `chunker: undefined` - 移除分块函数
+
+**日志标识**: 当圈组消息被处理时，您会看到如下日志:
+
+```
+[qchat] streaming and chunking disabled for QChat — using complete message delivery
+```

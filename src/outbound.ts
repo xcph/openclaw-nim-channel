@@ -1,6 +1,10 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type { NimConfig } from "./types.js";
-import { sendMessageNim, splitMessageIntoChunks } from "./send.js";
+import type { NimInstanceConfig } from "./types.js";
+import {
+  sendMessageNim,
+  splitMessageIntoChunks,
+  resolveInstCfg,
+} from "./send.js";
 import {
   sendImageNim,
   sendFileNim,
@@ -19,6 +23,7 @@ const DEFAULT_TEXT_CHUNK_LIMIT = 5000;
 export type NimOutboundResult = {
   channel: "nim";
   ok: boolean;
+  messageId: string;
   msgId?: string;
   clientMsgId?: string;
   error?: string;
@@ -39,7 +44,7 @@ export type NimOutboundOptions = {
  */
 type TargetResolveResult =
   | { ok: true; to: string }
-  | { ok: false; error: string };
+  | { ok: false; error: Error };
 
 /**
  * Resolve NIM target from various input formats.
@@ -86,7 +91,9 @@ export function resolveNimOutboundTarget(params: {
       }
       return {
         ok: false,
-        error: `Invalid NIM target: ${trimmed}. Provide a valid NIM account ID or configure channels.nim.allowFrom.`,
+        error: new Error(
+          `Invalid NIM target: ${trimmed}. Provide a valid NIM account ID or configure channels.nim.allowFrom.`,
+        ),
       };
     }
 
@@ -112,7 +119,9 @@ export function resolveNimOutboundTarget(params: {
 
   return {
     ok: false,
-    error: `Missing NIM target. Provide a target ID or configure channels.nim.allowFrom.`,
+    error: new Error(
+      `Missing NIM target. Provide a target ID or configure channels.nim.allowFrom.`,
+    ),
   };
 }
 
@@ -150,6 +159,7 @@ export async function sendNimOutboundText(params: {
       return {
         channel: "nim",
         ok: true,
+        messageId: result.msgId ?? "",
         msgId: result.msgId,
         clientMsgId: result.clientMsgId,
       };
@@ -160,6 +170,7 @@ export async function sendNimOutboundText(params: {
       return {
         channel: "nim",
         ok: false,
+        messageId: "",
         error: result.error,
       };
     }
@@ -169,6 +180,7 @@ export async function sendNimOutboundText(params: {
     return {
       channel: "nim",
       ok: false,
+      messageId: "",
       error: errorMsg,
     };
   }
@@ -243,6 +255,7 @@ export async function sendNimOutboundMedia(params: {
         return {
           channel: "nim",
           ok: false,
+          messageId: "",
           error: mediaResult.error,
         };
       }
@@ -256,6 +269,7 @@ export async function sendNimOutboundMedia(params: {
         return {
           channel: "nim",
           ok: true,
+          messageId: mediaResult.msgId ?? "",
           msgId: mediaResult.msgId,
           clientMsgId: mediaResult.clientMsgId,
         };
@@ -271,6 +285,7 @@ export async function sendNimOutboundMedia(params: {
     return {
       channel: "nim",
       ok: true,
+      messageId: "",
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -278,6 +293,7 @@ export async function sendNimOutboundMedia(params: {
     return {
       channel: "nim",
       ok: false,
+      messageId: "",
       error: errorMsg,
     };
   }
@@ -346,7 +362,7 @@ export const nimOutboundConfig = {
  */
 export async function nimOutbound(params: NimOutboundOptions): Promise<void> {
   const { cfg, to, text, mediaPath } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig | undefined;
+  const nimCfg = resolveInstCfg(cfg);
 
   const targetId = normalizeNimTarget(to);
   if (!targetId) {

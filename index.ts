@@ -3,6 +3,9 @@ import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
 import { nimPlugin } from "./src/channel.js";
 import { setNimRuntime } from "./src/runtime.js";
 
+// Version stamp — confirms new code is loaded
+console.log("[nim] plugin module loaded — multi-instance v2");
+
 // Export monitor functions
 export {
   monitorNimProvider,
@@ -84,7 +87,7 @@ const plugin = {
   description: "NetEase IM (网易云信) channel plugin",
   configSchema: emptyPluginConfigSchema(),
   register(api: OpenClawPluginApi) {
-    setNimRuntime(api.runtime);
+    setNimRuntime(api.runtime as any);
 
     api.registerChannel({ plugin: nimPlugin });
   },

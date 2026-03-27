@@ -5,7 +5,7 @@
  */
 
 import type {
-  NimConfig,
+  NimInstanceConfig,
   NimClientInstance,
   NimMessageEvent,
   NimSendResult,
@@ -143,7 +143,7 @@ function convertV2ToMessageEvent(msg: any): NimMessageEvent {
  * 创建 NIM 客户端实例 (@yxim/nim-bot)
  */
 export async function createNimClient(
-  cfg: NimConfig,
+  cfg: NimInstanceConfig,
 ): Promise<NimClientInstance> {
   const creds = resolveNimCredentials(cfg);
   if (!creds) {
@@ -317,14 +317,20 @@ export async function createNimClient(
 
     async login(): Promise<boolean> {
       try {
-        console.log(`[nim] login started — account: ${creds.account}`);
+        // 🔥 Determine aiBot value based on legacyLogin config
+        const legacyLogin = cfg.advanced?.legacyLogin ?? false;
+        const aiBotValue = legacyLogin ? 0 : 2;
+
+        console.log(
+          `[nim] login started — account: ${creds.account}, aiBot: ${aiBotValue} (legacyLogin: ${legacyLogin})`,
+        );
         await loginService.login(creds.account, creds.token, {
-          aiBot: 2,
+          aiBot: aiBotValue,
         });
         loggedIn = true;
         instance.loggedIn = true;
         console.log(
-          `*************************[nim] login successful — account: ${creds.account}************************`,
+          `*************************[nim] login successful — account: ${creds.account}, aiBot: ${aiBotValue}************************`,
         );
         return true;
       } catch (error: any) {
@@ -709,7 +715,7 @@ export async function createNimClient(
  * 获取缓存的客户端
  */
 export function getCachedNimClient(
-  cfg: NimConfig,
+  cfg: NimInstanceConfig,
 ): NimClientInstance | undefined {
   const creds = resolveNimCredentials(cfg);
   if (!creds) return undefined;
@@ -720,7 +726,9 @@ export function getCachedNimClient(
 /**
  * 清除客户端缓存
  */
-export async function clearNimClientCache(cfg?: NimConfig): Promise<void> {
+export async function clearNimClientCache(
+  cfg?: NimInstanceConfig,
+): Promise<void> {
   if (cfg) {
     const creds = resolveNimCredentials(cfg);
     if (!creds) return;

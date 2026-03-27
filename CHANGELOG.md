@@ -9,9 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-03-27
+
 ### Added
 
-- `nimToken` shorthand credential: supports `appKey-accid-token` format for simplified configuration, takes priority over individual `appKey`/`account`/`token` fields
+- **Streaming output support**: P2P and team messages support block streaming for real-time response delivery; QChat messages use complete message delivery (streaming force-disabled to prevent fragmentation)
+- **Multi-instance configuration**: Support up to 3 NIM instances running simultaneously with different accounts or AppKeys; each instance maintains independent connection and policies
+- `nimToken` shorthand credential: supports `appKey-accid-token` format for simplified configuration, takes priority over individual `appKey`/`account`/`token` fields (recommended)
+- Technical documentation: [`BLOCK_STREAMING_CONFIG.md`](./BLOCK_STREAMING_CONFIG.md) for block streaming setup and [`STREAMING_GUIDE.md`](./STREAMING_GUIDE.md) for real-time streaming data usage
+
+### Changed
+
+- **BREAKING**: Requires OpenClaw **2026.3.24 or later** for streaming and multi-instance support
+- **BREAKING**: `channels.nim` configuration changed from single object to **array format** to support multiple instances
+- **BREAKING**: Only **bot accounts** are supported; regular personal accounts are no longer supported
+- **BREAKING**: Recommended to use `nimToken` shorthand format (`appKey-accid-token`); individual `appKey`/`account`/`token` fields deprecated but still supported
+- QChat messages force-disable streaming output and text chunking for complete message delivery (prevents message fragmentation in circle groups)
 
 ### Fixed
 

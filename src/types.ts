@@ -2,11 +2,19 @@
  * NIM Types - node-nim SDK 版本
  */
 
-import type { NimConfigSchema } from "./config-schema.js";
+import type {
+  NimConfigSchema,
+  NimInstanceConfigSchema,
+} from "./config-schema.js";
 import type { z } from "zod";
 
 /**
- * NIM 配置类型
+ * NIM 实例配置类型（单实例）
+ */
+export type NimInstanceConfig = z.infer<typeof NimInstanceConfigSchema>;
+
+/**
+ * NIM 配置类型（实例数组）
  */
 export type NimConfig = z.infer<typeof NimConfigSchema>;
 
@@ -175,7 +183,7 @@ export interface ResolvedNimAccount {
   allowFrom: Array<string | number>;
   teamPolicy: NimTeamPolicy;
   teamIds: Array<string | number>;
-  config: NimConfig;
+  config: NimInstanceConfig;
 }
 
 /**

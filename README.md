@@ -4,13 +4,24 @@ English | [中文](./README.zh-CN.md)
 
 A [OpenClaw](https://openclaw.ai/) channel plugin for NetEase IM (网易云信), supporting P2P private chat, team group chat, and QChat (圈组) circle group.
 
+## Requirements
+
+> **⚠️ Breaking Changes in v1.0.0**
+>
+> 1. **OpenClaw Version**: Requires OpenClaw **2026.3.24 or later** (this version uses the new OpenClaw plugin API and is incompatible with older versions)
+> 2. **Configuration Format**: `channels.nim` changed from single object to **array format** (see examples below)
+> 3. **Account Type**: Only **bot accounts** are supported (regular personal accounts are not supported)
+> 4. **Credentials**: Recommended to use `nimToken` shorthand format (`appKey-accid-token`)
+
 ## Features
 
 - 💬 Private chat (P2P) message support with configurable access policy
 - 👥 Team group chat support with group/sender allowlist
 - 🔵 QChat (圈组) circle group support with unified allowlist
+- 🌊 **Streaming output support** (P2P and team messages support block streaming; QChat uses complete message delivery)
+- 🔄 **Multi-instance support** (run up to 3 NIM instances simultaneously with different accounts/AppKeys)
 - 📷 Media support (images, files, audio, video)
-- 🔐 AppKey + Token authentication
+- 🔐 Simplified `nimToken` authentication (`appKey-accid-token` format)
 - 🔄 Automatic reconnection handling
 - 📝 Message chunking for long responses
 - 🔒 Private deployment (privatization) support with custom server URLs
@@ -19,10 +30,12 @@ A [OpenClaw](https://openclaw.ai/) channel plugin for NetEase IM (网易云信),
 
 ### Install Node.js
 
+> **Recommended**: Node.js **v24.x** (>=24.0.0, <25.0.0)
+
 #### Option 1: Official Installer (Recommended)
 
 1. Visit [nodejs.org](https://nodejs.org/).
-2. Download the **LTS** version (e.g., v20.x.x).
+2. Download **Node.js v24.x**.
 3. Run the installer and follow the prompts.
 
 #### Option 2: NVM (Node Version Manager)
@@ -34,21 +47,23 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 # Restart terminal or run:
 source ~/.zshrc  # or ~/.bashrc for bash
 
-# Install Node.js LTS
-nvm install --lts
-nvm use --lts
+# Install Node.js v24
+nvm install 24
+nvm use 24
 ```
 
 #### Option 3: Homebrew (macOS)
 
 ```bash
-brew install node
+# Install Node.js v24
+brew install node@24
+brew link node@24
 ```
 
 #### Verify Installation
 
 ```bash
-node --version  # Should show v20.x.x or higher
+node --version  # Should show v24.x.x
 ```
 
 ### Install OpenClaw
@@ -67,78 +82,150 @@ openclaw plugins install openclaw-nim
 
 ## Configuration
 
+> **Note**: Starting from v1.0.0, `channels.nim` uses an **array format** to support multiple NIM instances (up to 3). Each instance can have different credentials and policies.
+
 ### Quick Setup (CLI)
 
 ```bash
-openclaw config set channels.nim.nimToken "your-app-key-your-bot-account-id-your-auth-token"
-openclaw config set channels.nim.enabled true
+# Note: CLI commands configure the first instance (index 0)
+openclaw config set channels.nim.0.nimToken "<appKey>-<accid>-<token>"
+openclaw config set channels.nim.0.enabled true
 ```
 
-> `nimToken` format: `appKey-accid-token` (three fields separated by `-`)
+> **`nimToken` format**: `<appKey>-<accid>-<token>` (three fields separated by `-`) — **Recommended**
+>
+> Example: `45c6af3c98409b18a84451215d0bdd6e-testbot001-a1b2c3d4e5f6`
+>
+> Alternative: Use separate `appKey`, `account`, `token` fields (deprecated but still supported)
 
 #### Private Deployment (CLI)
 
 ```bash
-openclaw config set channels.nim.advanced.weblbsUrl "https://your-lbs.example.com"
-openclaw config set channels.nim.advanced.link_web "weblink.netease.im:443"
-openclaw config set channels.nim.advanced.nos_uploader "https://your-nos-upload.example.com"
-openclaw config set channels.nim.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
-openclaw config set channels.nim.advanced.nosSsl true
-openclaw config set channels.nim.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
-openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.com"
+openclaw config set channels.nim.0.advanced.weblbsUrl "https://your-lbs.example.com"
+openclaw config set channels.nim.0.advanced.link_web "weblink.netease.im:443"
+openclaw config set channels.nim.0.advanced.nos_uploader "https://your-nos-upload.example.com"
+openclaw config set channels.nim.0.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
+openclaw config set channels.nim.0.advanced.nosSsl true
+openclaw config set channels.nim.0.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
+openclaw config set channels.nim.0.advanced.nos_accelerate_host "your-cdn.example.com"
 ```
 
-### Full Configuration (JSON)
+### Single Instance Configuration
 
 ```json
 {
   "channels": {
-    "nim": {
-      "enabled": true,
-      "nimToken": "your-app-key-your-bot-account-id-your-auth-token",
+    "nim": [
+      {
+        "enabled": true,
+        "nimToken": "<appKey>-<accid>-<token>",
 
-      "p2p": {
-        "policy": "open",
-        "allowFrom": ["user_abc", "user_xyz"]
-      },
+        "p2p": {
+          "policy": "open",
+          "allowFrom": ["user_abc", "user_xyz"]
+        },
 
-      "team": {
-        "policy": "open",
-        "allowFrom": [
-          "groupId_1",
-          "groupId_2|user_abc",
-          "1|groupId_3",
-          "2|groupId_4",
-          "1|groupId_5|user_xyz"
-        ]
-      },
+        "team": {
+          "policy": "open",
+          "allowFrom": [
+            "groupId_1",
+            "groupId_2|user_abc",
+            "1|groupId_3",
+            "2|groupId_4",
+            "1|groupId_5|user_xyz"
+          ]
+        },
 
-      "qchat": {
-        "policy": "open",
-        "allowFrom": [
-          "serverId_1",
-          "serverId_2|channelId_1",
-          "serverId_2|channelId_2|user_abc",
-          "serverId_3||user_xyz"
-        ]
-      },
+        "qchat": {
+          "policy": "open",
+          "allowFrom": [
+            "serverId_1",
+            "serverId_2|channelId_1",
+            "serverId_2|channelId_2|user_abc",
+            "serverId_3||user_xyz"
+          ]
+        },
 
-      "advanced": {
-        "mediaMaxMb": 30,
-        "textChunkLimit": 4000,
-        "debug": false,
-        "weblbsUrl": "https://your-lbs.example.com",
-        "link_web": "weblink.netease.im:443",
-        "nos_uploader": "https://your-nos-upload.example.com",
-        "nos_downloader_v2": "https://your-nos-download.example.com/{bucket}/{object}",
-        "nosSsl": true,
-        "nos_accelerate": "https://your-cdn.example.com/{bucket}/{object}",
-        "nos_accelerate_host": "your-cdn.example.com"
+        "advanced": {
+          "mediaMaxMb": 30,
+          "textChunkLimit": 4000,
+          "debug": false,
+          "weblbsUrl": "https://your-lbs.example.com",
+          "link_web": "weblink.netease.im:443",
+          "nos_uploader": "https://your-nos-upload.example.com",
+          "nos_downloader_v2": "https://your-nos-download.example.com/{bucket}/{object}",
+          "nosSsl": true,
+          "nos_accelerate": "https://your-cdn.example.com/{bucket}/{object}",
+          "nos_accelerate_host": "your-cdn.example.com"
+        }
       }
-    }
+    ]
   }
 }
 ```
+
+### Multi-Instance Configuration
+
+Run up to 3 NIM instances simultaneously with different accounts or AppKeys:
+
+```json
+{
+  "channels": {
+    "nim": [
+      {
+        "enabled": true,
+        "nimToken": "<appKey1>-<bot1>-<token1>",
+        "p2p": { "policy": "open" },
+        "team": { "policy": "allowlist", "allowFrom": ["team_abc"] },
+        "qchat": { "policy": "disabled" }
+      },
+      {
+        "enabled": true,
+        "nimToken": "<appKey1>-<bot2>-<token2>",
+        "p2p": { "policy": "allowlist", "allowFrom": ["user_vip"] },
+        "team": { "policy": "disabled" },
+        "qchat": { "policy": "open" }
+      },
+      {
+        "enabled": false,
+        "nimToken": "<appKey2>-<bot3>-<token3>",
+        "p2p": { "policy": "open" }
+      }
+    ]
+  }
+}
+```
+
+> **Note**: Maximum 3 instances total (enabled or disabled). Each instance maintains its own connection and can have different policies.
+
+### Streaming Output Configuration
+
+**P2P and Team messages** support block streaming for real-time response delivery. **QChat messages** use complete message delivery (streaming is force-disabled).
+
+To enable streaming, configure OpenClaw's block streaming settings:
+
+```yaml
+# config.yaml
+agents:
+  defaults:
+    blockStreamingDefault: "on"
+    blockStreamingBreak: "text_end"
+    blockStreamingChunk:
+      minChars: 150
+      maxChars: 600
+
+channels:
+  nim:
+    - enabled: true
+      nimToken: "your-credentials"
+```
+
+For detailed streaming configuration, see:
+
+- [`BLOCK_STREAMING_CONFIG.md`](./BLOCK_STREAMING_CONFIG.md) — Block streaming setup guide
+- [`STREAMING_GUIDE.md`](./STREAMING_GUIDE.md) — Real-time streaming data usage
+
+> **QChat Special Note**: Streaming and text chunking are force-disabled for QChat messages to prevent message fragmentation and improve user experience. QChat always delivers complete messages.
 
 ### Configuration Reference
 
@@ -231,10 +318,12 @@ The `allowFrom` list (when `policy="allowlist"`) also controls:
 
 ## Getting Credentials
 
+> **Important**: Only **bot accounts** are supported. Regular personal accounts cannot be used with this plugin.
+
 1. Log in to the [NetEase IM Console](https://app.netease.im/)
 2. Create or select an application
 3. Copy the **AppKey** from the application settings
-4. Create a bot account and obtain its **Account ID** and **Token**
+4. **Create a bot account** (not a regular personal account) and obtain its **Account ID** and **Token**
 
 ## Start the Bot
 

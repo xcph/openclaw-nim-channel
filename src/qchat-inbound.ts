@@ -180,7 +180,7 @@ export async function handleQChatInbound(params: {
 
   // ── Resolve display names ──
   const nimCfg = config.channels?.nim as NimConfig | undefined;
-  const nimClient = nimCfg ? getCachedNimClient(nimCfg) : undefined;
+  const nimClient = nimCfg ? getCachedNimClient(nimCfg as any) : undefined;
   const nativeNim = nimClient?.nativeNim;
 
   const senderDisplay = nativeNim
@@ -212,7 +212,7 @@ export async function handleQChatInbound(params: {
   }
 
   // Record inbound activity
-  core.channel.activity.record({
+  (core as any).channel.activity.record({
     channel: CHANNEL_ID,
     accountId,
     direction: "inbound",
@@ -220,7 +220,7 @@ export async function handleQChatInbound(params: {
   });
 
   // Resolve agent route
-  const route = core.channel.routing.resolveAgentRoute({
+  const route = (core as any).channel.routing.resolveAgentRoute({
     cfg: config,
     channel: CHANNEL_ID,
     accountId,
@@ -239,55 +239,56 @@ export async function handleQChatInbound(params: {
   const channelInfo = message.channelInfo;
   let contextualBody = rawBody;
 
-  runtime.log?.(
+  (runtime as any).log?.(
     `[qchat] 🔍 checking channel info — channelInfo exists: ${!!channelInfo}, has topic: ${!!channelInfo?.topic}`,
   );
 
   if (channelInfo) {
-    runtime.log?.(
+    (runtime as any).log?.(
       `[qchat] 📋 channel info details — name: "${channelInfo.name}", topic: "${channelInfo.topic}", keys: [${Object.keys(channelInfo).join(", ")}]`,
     );
-    runtime.log?.(
+    (runtime as any).log?.(
       `[qchat] 🔍 topic type: ${typeof channelInfo.topic}, topic value: "${channelInfo.topic}", topic length: ${channelInfo.topic?.length}`,
     );
   }
 
-  runtime.log?.(
+  (runtime as any).log?.(
     `[qchat] 🔍 conditional check: channelInfo=${!!channelInfo}, topic=${!!channelInfo?.topic}, will use context: ${!!channelInfo?.topic}`,
   );
 
   if (channelInfo?.topic) {
     // 将频道主题作为上下文信息添加到消息前
     contextualBody = `[频道信息] 当前频道: "${channelInfo.name}", 主题: "${channelInfo.topic}"\n\n用户消息: ${rawBody}`;
-    runtime.log?.(
+    (runtime as any).log?.(
       `[qchat] channel context added — channel: "${channelInfo.name}", topic: "${channelInfo.topic}"`,
     );
   } else {
-    runtime.log?.(
+    (runtime as any).log?.(
       `[qchat] ⚠️ no channel topic available — using original message body`,
     );
   }
   // ── System event (matches bot.ts pattern) ──
   const inboundLabel = ` From ${senderDisplay} in ${channelDisplayName}`;
-  core.system.enqueueSystemEvent(`${inboundLabel}`, {
+  (core as any).system.enqueueSystemEvent(`${inboundLabel}`, {
     sessionKey: route.sessionKey,
     contextKey: `nim:qchat:message:${peerId}:${message.messageId}`,
   });
 
   // Build envelope
-  const storePath = core.channel.session.resolveStorePath(
+  const storePath = (core as any).channel.session.resolveStorePath(
     config.session?.store,
     {
       agentId: route.agentId,
     },
   );
-  const envelopeOptions =
-    core.channel.reply.resolveEnvelopeFormatOptions(config);
-  const previousTimestamp = core.channel.session.readSessionUpdatedAt({
+  const envelopeOptions = (
+    core as any
+  ).channel.reply.resolveEnvelopeFormatOptions(config);
+  const previousTimestamp = (core as any).channel.session.readSessionUpdatedAt({
     storePath,
     sessionKey: route.sessionKey,
   });
-  const body = core.channel.reply.formatAgentEnvelope({
+  const body = (core as any).channel.reply.formatAgentEnvelope({
     channel: "QChat",
     from: senderDisplay,
     timestamp: message.timestamp,
@@ -297,11 +298,11 @@ export async function handleQChatInbound(params: {
   });
 
   // Finalize inbound context
-  runtime.log?.(
+  (runtime as any).log?.(
     `[qchat] 📋 building context payload — From: nim:qchat:${message.senderAccid}, To: nim:qchat:${peerId}, SessionKey: ${route.sessionKey}, AccountId: ${route.accountId}, ChatType: group, ConversationLabel: server:${message.serverId}/channel:${message.channelId}, SenderName: ${senderDisplay}, SenderId: ${message.senderAccid}, GroupSubject: ${peerId}, Provider: ${CHANNEL_ID}, Surface: ${QCHAT_SURFACE}, WasMentioned: true, MessageSid: ${message.messageId}, Timestamp: ${message.timestamp}, OriginatingChannel: ${CHANNEL_ID}, OriginatingTo: nim:qchat:${peerId}, CommandAuthorized: true`,
   );
 
-  const ctxPayload = core.channel.reply.finalizeInboundContext({
+  const ctxPayload = (core as any).channel.reply.finalizeInboundContext({
     Body: body,
     RawBody: resolvedBody,
     CommandBody: resolvedBody,
@@ -323,12 +324,12 @@ export async function handleQChatInbound(params: {
     CommandAuthorized: true,
   });
 
-  runtime.log?.(
+  (runtime as any).log?.(
     `[qchat] ✅ context payload finalized — Body: "${JSON.stringify(body)}", RawBody: "${JSON.stringify(rawBody)}"`,
   );
 
   // Record inbound session
-  await core.channel.session.recordInboundSession({
+  await (core as any).channel.session.recordInboundSession({
     storePath,
     sessionKey: ctxPayload.SessionKey ?? route.sessionKey,
     ctx: ctxPayload,
@@ -345,11 +346,18 @@ export async function handleQChatInbound(params: {
     accountId,
   });
 
-  const deliverReply = createNormalizedOutboundDeliverer(async (payload) => {
+  // 🔥 Buffer mechanism for QChat - collect all text chunks and send as single message
+  const qchatBuffer: string[] = [];
+  let qchatMediaUrls: string[] = [];
+  let deliveryCount = 0;
+
+  const deliverReply = async (payload: OutboundReplyPayload): Promise<void> => {
+    deliveryCount++;
+
     // Re-check policy at delivery time — guards against in-flight dispatches
     // that were initiated before the policy was changed.
     const liveNimCfg = config.channels?.nim as NimConfig | undefined;
-    const liveQchatCfg = liveNimCfg?.qchat as
+    const liveQchatCfg = (liveNimCfg as any)?.qchat as
       | { policy?: string; allowFrom?: Array<string | number> }
       | undefined;
     const livePolicy = (liveQchatCfg?.policy ?? "open") as
@@ -368,31 +376,52 @@ export async function handleQChatInbound(params: {
       senderAccid: message.senderAccid,
     });
     if (!deliveryCheck.allowed) {
-      runtime.log(
+      (runtime as any).log(
         `[qchat] reply suppressed — reason: policy now blocks delivery (policy: ${livePolicy}), target: ${peerId}`,
       );
       return;
     }
 
-    runtime.log(`[qchat] delivering reply — target: ${peerId}`);
-    await deliverQChatReply({
-      payload,
-      target: peerId,
-      accountId,
-      replyMessage: message.rawMessage,
-      statusSink,
-      runtime,
-    });
-    runtime.log(`[qchat] reply delivered — target: ${peerId}`);
-  });
+    // 🔥 Collect text chunks - buffer all text until complete
+    const text = payload.text ?? "";
+    const mediaUrls = resolveOutboundMediaUrls(payload) || [];
+
+    if (text) {
+      qchatBuffer.push(text);
+      (runtime as any).log(
+        `[qchat] buffering text chunk #${deliveryCount} — length: ${text.length}, buffer size: ${qchatBuffer.length}`,
+      );
+    }
+
+    if (mediaUrls.length > 0) {
+      qchatMediaUrls.push(...mediaUrls);
+      (runtime as any).log(
+        `[qchat] buffering media — count: ${mediaUrls.length}, total: ${qchatMediaUrls.length}`,
+      );
+    }
+
+    // 🔥 IMPORTANT: Don't send yet - wait for dispatcher to finish calling us
+    // The actual send will happen after dispatchReplyWithBufferedBlockDispatcher completes
+    (runtime as any).log(
+      `[qchat] chunk buffered (delivery #${deliveryCount}), waiting for more chunks...`,
+    );
+  };
 
   // Dispatch through the agent pipeline
-  await core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
+  // 🔥 QChat messages: disable streaming AND chunking for complete message delivery
+  (runtime as any).log?.(
+    `[qchat] streaming and chunking disabled for QChat — using complete message delivery`,
+  );
+
+  await (core as any).channel.reply.dispatchReplyWithBufferedBlockDispatcher({
     ctx: ctxPayload,
     cfg: config,
     dispatcherOptions: {
       ...prefixOptions,
       deliver: deliverReply,
+      disableStreaming: true, // 🔥 Disable streaming for QChat
+      textChunkLimit: Infinity, // 🔥 Disable text chunking for QChat
+      chunker: undefined, // 🔥 Disable chunker function
       onError: (err: unknown, info: { kind: string }) => {
         runtime.error?.(
           `[qchat] ${info.kind} reply failed — error: ${String(err)}`,
@@ -403,4 +432,40 @@ export async function handleQChatInbound(params: {
       onModelSelected,
     },
   });
+
+  // 🔥 After dispatcher finishes, send the buffered complete message
+  if (qchatBuffer.length > 0) {
+    const combinedText = qchatBuffer.join("");
+    (runtime as any).log(
+      `[qchat] sending buffered complete message — total chunks: ${qchatBuffer.length}, total length: ${combinedText.length}`,
+    );
+
+    const completePayload: OutboundReplyPayload = {
+      text: combinedText,
+      mediaUrls: qchatMediaUrls.length > 0 ? qchatMediaUrls : undefined,
+    };
+
+    try {
+      await deliverQChatReply({
+        payload: completePayload,
+        target: peerId,
+        accountId,
+        replyMessage: message.rawMessage,
+        statusSink,
+        runtime,
+      });
+
+      (runtime as any).log(
+        `[qchat] complete message delivered — length: ${combinedText.length}`,
+      );
+    } catch (error) {
+      (runtime as any).error?.(
+        `[qchat] failed to send buffered message — error: ${String(error)}`,
+      );
+    }
+  } else {
+    (runtime as any).log(
+      `[qchat] no buffered content to send — buffer was empty`,
+    );
+  }
 }

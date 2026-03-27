@@ -62,6 +62,9 @@ export const AdvancedSubConfigSchema = z.object({
   /** Enable debug logging */
   debug: z.boolean().optional().default(false),
 
+  /** Internal: legacy login mode */
+  legacyLogin: z.boolean().optional().default(false),
+
   /** Private deployment: custom LBS URL */
   weblbsUrl: z.string().optional(),
 
@@ -112,10 +115,11 @@ export const QChatSubConfigSchema = z.object({
 });
 
 /**
- * NIM channel configuration schema.
+ * A single NIM instance configuration (one bot account).
+ * `accountId` is automatically derived as `appKey:accid` — no manual `id` needed.
  */
-export const NimConfigSchema = z.object({
-  /** Whether the NIM channel is enabled */
+export const NimInstanceConfigSchema = z.object({
+  /** Whether this instance is enabled (used when inside an `instances` array) */
   enabled: z.boolean().optional().default(false),
 
   /**
@@ -148,5 +152,52 @@ export const NimConfigSchema = z.object({
   /** QChat (圈组) sub-configuration */
   qchat: QChatSubConfigSchema.optional(),
 });
+
+const NimInstancesArraySchema = z
+  .array(NimInstanceConfigSchema)
+  .min(1, "channels.nim.instances must have at least one instance")
+  .max(3, "channels.nim.instances may have at most 3 instances")
+  .superRefine((instances, ctx) => {
+    const seen = new Set<string>();
+    for (let i = 0; i < instances.length; i++) {
+      const inst = instances[i];
+      let key: string | null = null;
+      if (inst.nimToken) {
+        const parts = inst.nimToken.split("-");
+        if (parts.length === 3) {
+          key = `${parts[0].trim()}:${parts[1].trim()}`;
+        }
+      } else if (inst.appKey && inst.account) {
+        key = `${inst.appKey}:${inst.account}`;
+      }
+      if (key) {
+        if (seen.has(key)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Duplicate NIM instance credentials: "${key}" appears more than once`,
+            path: [i],
+          });
+        }
+        seen.add(key);
+      }
+    }
+  });
+
+/**
+ * NIM channel configuration schema.
+ *
+ * Multi-instance format (up to 3 instances):
+ *   { instances: [ { enabled, appKey, account, token, p2p, ... }, ... ] }
+ *
+ * The outer object wrapper is required so that the framework correctly detects
+ * channels.nim as a configured channel (isRecord check in config-presence.ts).
+ * Each instance's accountId is automatically derived as "<appKey>:<accid>".
+ */
+export const NimConfigSchema = z.object({
+  instances: NimInstancesArraySchema,
+});
+
+/** Single instance config type */
+export type NimInstanceConfig = z.infer<typeof NimInstanceConfigSchema>;
 
 export type { z };

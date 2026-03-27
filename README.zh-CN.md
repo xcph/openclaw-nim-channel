@@ -4,13 +4,24 @@
 
 [OpenClaw](https://openclaw.ai/) 网易云信（NIM）渠道插件，支持 P2P 单聊、群组聊天及圈组（QChat）。
 
+## 版本要求
+
+> **⚠️ v1.0.0 破坏性变更**
+>
+> 1. **OpenClaw 版本要求**：需要 OpenClaw **2026.3.24 或更新版本**（当前版本使用新的 OpenClaw 插件 API，与旧版本不兼容）
+> 2. **配置格式变更**：`channels.nim` 从单对象改为**数组格式**（见下方示例）
+> 3. **账号类型限制**：仅支持**机器人账号**登录（不支持普通个人账号）
+> 4. **凭证配置方式**：推荐使用 `nimToken` 三合一配置（`appKey-accid-token`）
+
 ## 功能特性
 
 - 💬 P2P 单聊消息，支持可配置的访问策略
 - 👥 群组聊天，支持群/发送者白名单
 - 🔵 圈组（QChat）消息，支持统一白名单
+- 🌊 **流式输出支持**（私聊和群组支持分块流式，圈组强制完整消息返回）
+- 🔄 **多实例支持**（支持同时运行最多 3 个 NIM 实例，不同账号/AppKey）
 - 📷 多媒体支持（图片、文件、音频、视频）
-- 🔐 AppKey + Token 认证
+- 🔐 简化的 `nimToken` 认证（`appKey-accid-token` 格式）
 - 🔄 自动重连处理
 - 📝 长消息自动分片
 - 🔒 私有化部署支持，可自定义服务器地址
@@ -19,10 +30,12 @@
 
 ### 安装 Node.js
 
+> **推荐版本**：Node.js **v24.x** (>=24.0.0, <25.0.0)
+
 #### 方式一：官方安装包（推荐）
 
 1. 访问 [nodejs.org](https://nodejs.org/)。
-2. 下载 **LTS** 版本（如 v20.x.x）。
+2. 下载 **Node.js v24.x**。
 3. 运行安装包并按提示操作。
 
 #### 方式二：NVM（Node 版本管理器）
@@ -34,21 +47,23 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 # 重启终端或执行：
 source ~/.zshrc  # bash 用户使用 ~/.bashrc
 
-# 安装 Node.js LTS
-nvm install --lts
-nvm use --lts
+# 安装 Node.js v24
+nvm install 24
+nvm use 24
 ```
 
 #### 方式三：Homebrew（macOS）
 
 ```bash
-brew install node
+# 安装 Node.js v24
+brew install node@24
+brew link node@24
 ```
 
 #### 验证安装
 
 ```bash
-node --version  # 应显示 v20.x.x 或更高版本
+node --version  # 应显示 v24.x.x
 ```
 
 ### 安装 OpenClaw
@@ -67,78 +82,150 @@ openclaw plugins install openclaw-nim
 
 ## 配置
 
+> **注意**：从 v1.0.0 开始，`channels.nim` 使用**数组格式**以支持多实例（最多 3 个）。每个实例可以有不同的凭证和策略。
+
 ### 快速配置（CLI）
 
 ```bash
-openclaw config set channels.nim.nimToken "your-app-key-your-bot-account-id-your-auth-token"
-openclaw config set channels.nim.enabled true
+# 注意：CLI 命令配置第一个实例（索引 0）
+openclaw config set channels.nim.0.nimToken "<appKey>-<accid>-<token>"
+openclaw config set channels.nim.0.enabled true
 ```
 
-> `nimToken` 格式：`appKey-accid-token`（用 `-` 分隔三个字段）
+> **`nimToken` 格式**：`<appKey>-<accid>-<token>`（用 `-` 分隔三个字段）— **推荐**
+>
+> 示例：`45c6af3c98409b18a84451215d0bdd6e-testbot001-a1b2c3d4e5f6`
+>
+> 备选方式：使用独立的 `appKey`、`account`、`token` 字段（已弃用但仍支持）
 
 #### 私有化部署配置（CLI）
 
 ```bash
-openclaw config set channels.nim.advanced.weblbsUrl "https://your-lbs.example.com"
-openclaw config set channels.nim.advanced.link_web "weblink.netease.im:443"
-openclaw config set channels.nim.advanced.nos_uploader "https://your-nos-upload.example.com"
-openclaw config set channels.nim.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
-openclaw config set channels.nim.advanced.nosSsl true
-openclaw config set channels.nim.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
-openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.com"
+openclaw config set channels.nim.0.advanced.weblbsUrl "https://your-lbs.example.com"
+openclaw config set channels.nim.0.advanced.link_web "weblink.netease.im:443"
+openclaw config set channels.nim.0.advanced.nos_uploader "https://your-nos-upload.example.com"
+openclaw config set channels.nim.0.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
+openclaw config set channels.nim.0.advanced.nosSsl true
+openclaw config set channels.nim.0.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
+openclaw config set channels.nim.0.advanced.nos_accelerate_host "your-cdn.example.com"
 ```
 
-### 完整配置（JSON）
+### 单实例配置
 
 ```json
 {
   "channels": {
-    "nim": {
-      "enabled": true,
-      "nimToken": "your-app-key-your-bot-account-id-your-auth-token",
+    "nim": [
+      {
+        "enabled": true,
+        "nimToken": "<appKey>-<accid>-<token>",
 
-      "p2p": {
-        "policy": "open",
-        "allowFrom": ["user_abc", "user_xyz"]
-      },
+        "p2p": {
+          "policy": "open",
+          "allowFrom": ["user_abc", "user_xyz"]
+        },
 
-      "team": {
-        "policy": "open",
-        "allowFrom": [
-          "groupId_1",
-          "groupId_2|user_abc",
-          "1|groupId_3",
-          "2|groupId_4",
-          "1|groupId_5|user_xyz"
-        ]
-      },
+        "team": {
+          "policy": "open",
+          "allowFrom": [
+            "groupId_1",
+            "groupId_2|user_abc",
+            "1|groupId_3",
+            "2|groupId_4",
+            "1|groupId_5|user_xyz"
+          ]
+        },
 
-      "qchat": {
-        "policy": "open",
-        "allowFrom": [
-          "serverId_1",
-          "serverId_2|channelId_1",
-          "serverId_2|channelId_2|user_abc",
-          "serverId_3||user_xyz"
-        ]
-      },
+        "qchat": {
+          "policy": "open",
+          "allowFrom": [
+            "serverId_1",
+            "serverId_2|channelId_1",
+            "serverId_2|channelId_2|user_abc",
+            "serverId_3||user_xyz"
+          ]
+        },
 
-      "advanced": {
-        "mediaMaxMb": 30,
-        "textChunkLimit": 4000,
-        "debug": false,
-        "weblbsUrl": "https://your-lbs.example.com",
-        "link_web": "weblink.netease.im:443",
-        "nos_uploader": "https://your-nos-upload.example.com",
-        "nos_downloader_v2": "https://your-nos-download.example.com/{bucket}/{object}",
-        "nosSsl": true,
-        "nos_accelerate": "https://your-cdn.example.com/{bucket}/{object}",
-        "nos_accelerate_host": "your-cdn.example.com"
+        "advanced": {
+          "mediaMaxMb": 30,
+          "textChunkLimit": 4000,
+          "debug": false,
+          "weblbsUrl": "https://your-lbs.example.com",
+          "link_web": "weblink.netease.im:443",
+          "nos_uploader": "https://your-nos-upload.example.com",
+          "nos_downloader_v2": "https://your-nos-download.example.com/{bucket}/{object}",
+          "nosSsl": true,
+          "nos_accelerate": "https://your-cdn.example.com/{bucket}/{object}",
+          "nos_accelerate_host": "your-cdn.example.com"
+        }
       }
-    }
+    ]
   }
 }
 ```
+
+### 多实例配置
+
+同时运行最多 3 个 NIM 实例，使用不同账号或 AppKey：
+
+```json
+{
+  "channels": {
+    "nim": [
+      {
+        "enabled": true,
+        "nimToken": "<appKey1>-<bot1>-<token1>",
+        "p2p": { "policy": "open" },
+        "team": { "policy": "allowlist", "allowFrom": ["team_abc"] },
+        "qchat": { "policy": "disabled" }
+      },
+      {
+        "enabled": true,
+        "nimToken": "<appKey1>-<bot2>-<token2>",
+        "p2p": { "policy": "allowlist", "allowFrom": ["user_vip"] },
+        "team": { "policy": "disabled" },
+        "qchat": { "policy": "open" }
+      },
+      {
+        "enabled": false,
+        "nimToken": "<appKey2>-<bot3>-<token3>",
+        "p2p": { "policy": "open" }
+      }
+    ]
+  }
+}
+```
+
+> **注意**：最多 3 个实例（无论是否启用）。每个实例保持独立连接，可以有不同的策略。
+
+### 流式输出配置
+
+**私聊和群组消息**支持分块流式输出，实现实时响应传递。**圈组消息**使用完整消息传递（流式被强制禁用）。
+
+要启用流式输出，配置 OpenClaw 的分块流式设置：
+
+```yaml
+# config.yaml
+agents:
+  defaults:
+    blockStreamingDefault: "on"
+    blockStreamingBreak: "text_end"
+    blockStreamingChunk:
+      minChars: 150
+      maxChars: 600
+
+channels:
+  nim:
+    - enabled: true
+      nimToken: "your-credentials"
+```
+
+流式输出详细配置，请参阅：
+
+- [`BLOCK_STREAMING_CONFIG.md`](./BLOCK_STREAMING_CONFIG.md) — 分块流式配置指南
+- [`STREAMING_GUIDE.md`](./STREAMING_GUIDE.md) — 实时流式数据使用说明
+
+> **圈组特别说明**：圈组消息强制禁用流式输出和文本分块，以避免消息碎片化，提升用户体验。圈组始终以完整消息形式传递。
 
 ### 配置参考
 
@@ -231,10 +318,12 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
 
 ## 获取凭证
 
+> **重要提示**：仅支持**机器人账号**。普通个人账号无法使用此插件。
+
 1. 登录[网易云信控制台](https://app.netease.im/)
 2. 创建或选择应用
 3. 在应用设置中复制 **AppKey**
-4. 创建机器人账号并获取 **Account ID** 和 **Token**
+4. **创建机器人账号**（而非普通个人账号）并获取 **Account ID** 和 **Token**
 
 ## 启动机器人
 
