@@ -3,7 +3,12 @@
  */
 
 import type { OpenClawConfig, RuntimeEnv } from "openclaw/plugin-sdk";
-import type { NimConfig, NimClientInstance, NimMessageEvent, NimP2pPolicy } from "./types.js";
+import type {
+  NimConfig,
+  NimClientInstance,
+  NimMessageEvent,
+  NimP2pPolicy,
+} from "./types.js";
 import { createNimClient, clearNimClientCache } from "./client.js";
 import { resolveNimCredentials } from "./accounts.js";
 import { handleNimMessage } from "./bot.js";
@@ -201,7 +206,9 @@ export async function stopNimMonitor(cfg: NimConfig): Promise<void> {
     await state.client.logout();
   } catch (error) {
     const errorMessage = (error as any)?.message ?? String(error);
-    console.error(`[nim] logout failed during monitor stop — error: ${errorMessage}`);
+    console.error(
+      `[nim] logout failed during monitor stop — error: ${errorMessage}`,
+    );
   }
 
   monitorStates.delete(monitorKey);
@@ -232,7 +239,9 @@ export async function stopAllNimMonitors(): Promise<void> {
       await state.client.logout();
     } catch (error) {
       const errorMessage = (error as any)?.message ?? String(error);
-      console.error(`[nim] monitor stop failed — account: ${key}, error: ${errorMessage}`);
+      console.error(
+        `[nim] monitor stop failed — account: ${key}, error: ${errorMessage}`,
+      );
     }
   }
 

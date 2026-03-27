@@ -118,6 +118,12 @@ export const NimConfigSchema = z.object({
   /** Whether the NIM channel is enabled */
   enabled: z.boolean().optional().default(false),
 
+  /**
+   * Shorthand credential: "appKey-accid-token" (3 segments separated by `-`).
+   * When present and valid, takes priority over individual appKey/account/token fields.
+   */
+  nimToken: z.string().optional(),
+
   /** NIM App Key (coerced from number if needed) */
   appKey: coerceToString.optional(),
 

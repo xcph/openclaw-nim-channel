@@ -1,5 +1,10 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type { NimConfig, ResolvedNimAccount, NimP2pPolicy, NimTeamPolicy } from "./types.js";
+import type {
+  NimConfig,
+  ResolvedNimAccount,
+  NimP2pPolicy,
+  NimTeamPolicy,
+} from "./types.js";
 
 /**
  * Default account ID for NIM (single account mode).
@@ -18,12 +23,36 @@ function coerceToString(value: unknown): string {
 }
 
 /**
+ * Parse the shorthand nimToken field ("appKey-accid-token").
+ * Returns the three credential parts, or null if the format is invalid.
+ */
+function parseNimToken(
+  nimToken: string | undefined,
+): { appKey: string; account: string; token: string } | null {
+  if (!nimToken) return null;
+  const parts = nimToken.split("-");
+  if (parts.length !== 3) return null;
+  const [appKey, account, token] = parts.map((p) => p.trim());
+  if (!appKey || !account || !token) return null;
+  return { appKey, account, token };
+}
+
+/**
  * Resolve NIM credentials from configuration.
+ * Priority: nimToken (shorthand) > individual appKey/account/token fields.
  * Returns null if required credentials are missing.
  */
 export function resolveNimCredentials(
   cfg: NimConfig | undefined,
 ): { appKey: string; account: string; token: string } | null {
+  // 1. Try nimToken shorthand first
+  const fromToken = parseNimToken(cfg?.nimToken);
+  if (fromToken) {
+    console.log(`[nim] credentials resolved from nimToken shorthand`);
+    return fromToken;
+  }
+
+  // 2. Fall back to individual fields
   if (!cfg?.appKey || !cfg?.account || !cfg?.token) {
     return null;
   }
@@ -37,7 +66,9 @@ export function resolveNimCredentials(
 /**
  * Resolve NIM account information from OpenClaw configuration.
  */
-export function resolveNimAccount(params: { cfg: OpenClawConfig }): ResolvedNimAccount {
+export function resolveNimAccount(params: {
+  cfg: OpenClawConfig;
+}): ResolvedNimAccount {
   const { cfg } = params;
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;
   const creds = resolveNimCredentials(nimCfg);
@@ -62,12 +93,16 @@ export function resolveNimAccount(params: { cfg: OpenClawConfig }): ResolvedNimA
  * Normalize an allow-list into a set for fast matching.
  * Supports wildcard "*" detection.
  */
-export function normalizeNimAllowFrom(configAllowFrom: Array<string | number>): {
+export function normalizeNimAllowFrom(
+  configAllowFrom: Array<string | number>,
+): {
   hasWildcard: boolean;
   hasEntries: boolean;
   entries: Set<string>;
 } {
-  const combined = (configAllowFrom ?? []).map((v) => String(v).trim().toLowerCase()).filter(Boolean);
+  const combined = (configAllowFrom ?? [])
+    .map((v) => String(v).trim().toLowerCase())
+    .filter(Boolean);
 
   const hasWildcard = combined.includes("*");
   const entries = new Set(combined.filter((e) => e !== "*"));
@@ -78,7 +113,10 @@ export function normalizeNimAllowFrom(configAllowFrom: Array<string | number>): 
 /**
  * Check if a sender is in the allowlist.
  */
-export function resolveNimAllowlistMatch(params: { allowFrom: Array<string | number>; senderId: string }): {
+export function resolveNimAllowlistMatch(params: {
+  allowFrom: Array<string | number>;
+  senderId: string;
+}): {
   allowed: boolean;
   matchedEntry?: string;
   matchSource?: string;
@@ -241,7 +279,8 @@ export function isQChatAllowed(params: {
   if (policy === "open") return { allowed: true };
 
   // "allowlist" with empty list — treat as disabled
-  if (!allowFrom || allowFrom.length === 0) return { allowed: false, reason: "disabled" };
+  if (!allowFrom || allowFrom.length === 0)
+    return { allowed: false, reason: "disabled" };
 
   const nServer = serverId.toLowerCase();
   const nChannel = channelId.toLowerCase();

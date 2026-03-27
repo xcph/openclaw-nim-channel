@@ -70,11 +70,11 @@ openclaw plugins install openclaw-nim
 ### 快速配置（CLI）
 
 ```bash
-openclaw config set channels.nim.appKey "your-app-key"
-openclaw config set channels.nim.account "your-bot-account-id"
-openclaw config set channels.nim.token "your-auth-token"
+openclaw config set channels.nim.nimToken "your-app-key-your-bot-account-id-your-auth-token"
 openclaw config set channels.nim.enabled true
 ```
+
+> `nimToken` 格式：`appKey-accid-token`（用 `-` 分隔三个字段）
 
 #### 私有化部署配置（CLI）
 
@@ -95,9 +95,7 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
   "channels": {
     "nim": {
       "enabled": true,
-      "appKey": "your-app-key",
-      "account": "your-bot-account-id",
-      "token": "your-auth-token",
+      "nimToken": "your-app-key-your-bot-account-id-your-auth-token",
 
       "p2p": {
         "policy": "open",
@@ -146,13 +144,11 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
 
 #### 顶层字段
 
-| 字段              | 类型    | 默认值  | 说明                    |
-| ----------------- | ------- | ------- | ----------------------- |
-| `enabled`         | boolean | `false` | 启用/禁用 NIM 渠道      |
-| `appKey`          | string  | —       | NIM 应用 AppKey（必填） |
-| `account`         | string  | —       | 机器人账号 ID（必填）   |
-| `token`           | string  | —       | 认证 Token（必填）      |
-| `antispamEnabled` | boolean | `true`  | 启用反垃圾邮件保护      |
+| 字段              | 类型    | 默认值  | 说明                               |
+| ----------------- | ------- | ------- | ---------------------------------- |
+| `enabled`         | boolean | `false` | 启用/禁用 NIM 渠道                 |
+| `nimToken`        | string  | —       | 凭证：`appKey-accid-token`（必填） |
+| `antispamEnabled` | boolean | `true`  | 启用反垃圾邮件保护                 |
 
 #### `p2p` — 单聊（私聊）
 

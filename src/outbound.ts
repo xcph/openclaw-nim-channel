@@ -1,7 +1,13 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
 import type { NimConfig } from "./types.js";
 import { sendMessageNim, splitMessageIntoChunks } from "./send.js";
-import { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, inferMessageType } from "./media.js";
+import {
+  sendImageNim,
+  sendFileNim,
+  sendAudioNim,
+  sendVideoNim,
+  inferMessageType,
+} from "./media.js";
 import { normalizeNimTarget, parseNimTarget } from "./targets.js";
 
 /** Default text chunk limit for NIM messages */
@@ -31,7 +37,9 @@ export type NimOutboundOptions = {
 /**
  * Target resolution result
  */
-type TargetResolveResult = { ok: true; to: string } | { ok: false; error: string };
+type TargetResolveResult =
+  | { ok: true; to: string }
+  | { ok: false; error: string };
 
 /**
  * Resolve NIM target from various input formats.
@@ -46,7 +54,9 @@ export function resolveNimOutboundTarget(params: {
   const trimmed = to?.trim() ?? "";
 
   // Normalize allowFrom list
-  const allowListRaw = (allowFrom ?? []).map((entry) => String(entry).trim()).filter(Boolean);
+  const allowListRaw = (allowFrom ?? [])
+    .map((entry) => String(entry).trim())
+    .filter(Boolean);
   const hasWildcard = allowListRaw.includes("*");
   const allowList = allowListRaw
     .filter((entry) => entry !== "*")
@@ -68,7 +78,10 @@ export function resolveNimOutboundTarget(params: {
     const normalizedTo = normalizeNimTarget(trimmed);
     if (!normalizedTo) {
       // Fallback to allowFrom if target is invalid
-      if ((mode === "implicit" || mode === "heartbeat") && allowList.length > 0) {
+      if (
+        (mode === "implicit" || mode === "heartbeat") &&
+        allowList.length > 0
+      ) {
         return { ok: true, to: allowList[0] };
       }
       return {
@@ -118,7 +131,9 @@ export async function sendNimOutboundText(params: {
   const targetId = parsed?.id ?? normalizeNimTarget(to) ?? to;
   const sessionType = parsed?.sessionType ?? "p2p";
 
-  console.log(`[nim] outbound text send — target: ${targetId}, session: ${sessionType}, length: ${text.length}`);
+  console.log(
+    `[nim] outbound text send — target: ${targetId}, session: ${sessionType}, length: ${text.length}`,
+  );
 
   try {
     const result = await sendMessageNim({
@@ -129,7 +144,9 @@ export async function sendNimOutboundText(params: {
     });
 
     if (result.success) {
-      console.log(`[nim] outbound text sent — message id: ${result.msgId ?? "unknown"}`);
+      console.log(
+        `[nim] outbound text sent — message id: ${result.msgId ?? "unknown"}`,
+      );
       return {
         channel: "nim",
         ok: true,
@@ -137,7 +154,9 @@ export async function sendNimOutboundText(params: {
         clientMsgId: result.clientMsgId,
       };
     } else {
-      console.error(`[nim] outbound text failed — error: ${result.error ?? "unknown"}`);
+      console.error(
+        `[nim] outbound text failed — error: ${result.error ?? "unknown"}`,
+      );
       return {
         channel: "nim",
         ok: false,
@@ -218,7 +237,9 @@ export async function sendNimOutboundMedia(params: {
       }
 
       if (!mediaResult.success) {
-        console.error(`[nim] outbound media failed — error: ${mediaResult.error ?? "unknown"}`);
+        console.error(
+          `[nim] outbound media failed — error: ${mediaResult.error ?? "unknown"}`,
+        );
         return {
           channel: "nim",
           ok: false,
@@ -226,7 +247,9 @@ export async function sendNimOutboundMedia(params: {
         };
       }
 
-      console.log(`[nim] outbound media sent — message id: ${mediaResult.msgId ?? "unknown"}`);
+      console.log(
+        `[nim] outbound media sent — message id: ${mediaResult.msgId ?? "unknown"}`,
+      );
 
       // If no text, return media result
       if (!text) {
@@ -346,7 +369,8 @@ export async function nimOutbound(params: NimOutboundOptions): Promise<void> {
 
   // Send text if provided
   if (text) {
-    const chunkLimit = nimCfg?.advanced?.textChunkLimit ?? DEFAULT_TEXT_CHUNK_LIMIT;
+    const chunkLimit =
+      nimCfg?.advanced?.textChunkLimit ?? DEFAULT_TEXT_CHUNK_LIMIT;
     const chunks = splitMessageIntoChunks(text, chunkLimit);
 
     for (const chunk of chunks) {

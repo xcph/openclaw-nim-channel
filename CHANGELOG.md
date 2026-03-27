@@ -7,24 +7,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.2] - 2026-03-20
-
-### Changed
-- `SenderId` now uses display name (nickname) instead of raw accid across all message types (P2P, Team, QChat) — when a nickname is resolved, only the nickname is shown in the UI; accid is used as fallback when no nickname is available
-
-## [0.4.1] - 2026-03-19
+## [Unreleased]
 
 ### Added
-- **Anti-spam configuration**: new `antispamEnabled` field in NIM config schema — enables/disables NIM server-side content moderation (安全通) for outbound text and reply messages; defaults to `true`
-- QChat channel topic (subject) is now included in the agent prompt context
 
-### Changed
-- Applied Prettier auto-formatting across entire codebase (`.prettierrc` added)
-- Code style normalized — no functional changes beyond formatting
+- `nimToken` shorthand credential: supports `appKey-accid-token` format for simplified configuration, takes priority over individual `appKey`/`account`/`token` fields
+
+### Fixed
+
+- Login `aiBot` parameter changed from `1` to `2` to correctly identify as AI Bot
 
 ## [0.4.0] - 2026-03-18
 
 ### Added
+
 - **Name resolver module** (`name-resolver.ts`): resolves user nicknames, team names, and QChat channel names via NIM SDK V2 API with in-memory TTL cache (5 min)
 - Conversation labels now display human-readable names: `云信·单聊·<nickname>`, `云信·群聊·<team name>`, `云信·圈组·<channel name>` instead of raw IDs
 - `fromNick` field on `NimMessageEvent` — extracts sender nickname directly from SDK message objects
@@ -34,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Session recording via `core.channel.session.recordInboundSession()` for NIM P2P and team messages
 
 ### Changed
+
 - **Breaking:** Reply dispatch migrated from `createNimReplyDispatcher` + `dispatchReplyFromConfig` to `createNormalizedOutboundDeliverer` + `dispatchReplyWithBufferedBlockDispatcher` (aligned with QChat pattern)
 - **Breaking:** P2P and team messages now use `ChatType: "direct"` and `PeerKind: "dm"` uniformly; team peer IDs prefixed with `team-` for disambiguation
 - **Breaking:** QChat inbound `ChatType` changed from `"group"` to `"direct"`; peer IDs prefixed with `qchat-`; `GroupSubject` removed from QChat context payload
@@ -44,31 +41,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - System event labels updated to use resolved display names
 
 ### Removed
+
 - `reply-dispatcher.ts` usage — replaced by inline `createNormalizedOutboundDeliverer`
 - Message content preview from system event labels (privacy improvement)
 
 ## [0.4.0-beta.3] - 2026-03-12
 
 ### Changed
+
 - Fixed `link_web` example value from `wss://your-link.example.com` to `weblink.netease.im:443` in README CLI and JSON examples to match NIM SDK's expected format (host:port, not WebSocket URL)
 
 ## [0.4.0-beta.2] - 2026-03-10
 
 ### Added
+
 - Private deployment CLI configuration examples in README — added `openclaw config set` commands for all privatization fields (`weblbsUrl`, `link_web`, `nos_uploader`, `nos_downloader_v2`, `nosSsl`, `nos_accelerate`, `nos_accelerate_host`)
 
 ## [0.4.0-beta.1] - 2026-03-09
 
 ### Added
+
 - Private deployment (privatization) configuration via `NIMOtherOptionsPrivateConfig`: supports custom LBS URL (`weblbsUrl`), WebSocket link address (`link_web`), NOS upload URL (`nos_uploader`), NOS download URL format (`nos_downloader_v2`), NOS HTTPS toggle (`nosSsl`), CDN accelerate URL (`nos_accelerate`), and CDN accelerate host (`nos_accelerate_host`)
 - All privatization parameters are exposed under `advanced` config, except data reporting fields (`compassDataEndpoint`, `enableCompass`) which are intentionally excluded
 
 ### Changed
+
 - Configuration examples in README converted from YAML to JSON to match OpenClaw's actual config format
 
 ## [0.3.0-beta.6] - 2026-03-06
 
 ### Added
+
 - QChat (`qchat`) policy system: `open` / `allowlist` / `disabled`, with fine-grained `allowFrom` entries supporting `serverId`, `serverId|channelId`, `serverId|channelId|accountId`, `serverId||accountId` formats
 - QChat server invite auto-accept, controlled by `qchat.policy` and `allowFrom`
 - QChat reply-to message support (replies reference the original message)
@@ -78,6 +81,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Chinese README (`README.zh-CN.md`) with bidirectional language links
 
 ### Changed
+
 - **Breaking:** Config structure reorganized — `p2pPolicy`/`allowFrom`/`teamPolicy`/`teamAllowFrom`/`mediaMaxMb`/`textChunkLimit`/`debug` moved into nested `p2p`, `team`, `advanced`, `qchat` sub-objects
 - **Breaking:** QChat config simplified — removed `qchat.enabled`, `qchat.serverIds`, `qchat.serverPolicy`; replaced with `qchat.policy` + `qchat.allowFrom`
 - QChat now starts automatically when NIM credentials are configured (no longer requires `qchat.enabled: true`)
@@ -86,6 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed message content (text preview) from `[nim] sending reply` log for privacy
 
 ### Fixed
+
 - **QChat messages processed despite policy block**: stale closure captured `qchatPolicy` at startup and never updated on config reload, causing old gateway instances to dispatch messages with outdated `policy: open`
 - **QChat listener accumulation on config reload**: `stop()` only unsubscribed servers but never removed `nim.qchatMsg.on("message")` event listeners, causing the same message to be processed multiple times by old + new listeners on the shared NIM SDK instance
 - **`allowlist` with empty `allowFrom` treated as `open`**: for QChat server invites, `serverPolicy` was derived from `derivedServerIds.length > 0` instead of the actual `qchat.policy` value — `disabled` and `allowlist` with empty list both incorrectly resolved to `"open"`
@@ -98,6 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.3] - 2026-02-03
 
 ### Fixed
+
 - Fixed plugin SDK imports from `clawdbot/plugin-sdk` to `openclaw/plugin-sdk`
 - Fixed type references from `ClawdbotConfig` to `OpenClawConfig`
 - Fixed type references from `ClawdbotPluginApi` to `OpenClawPluginApi`
@@ -105,11 +111,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.2] - 2026-02-03
 
 ### Fixed
+
 - Added `openclaw.plugin.json` manifest file (renamed from `clawdbot.plugin.json`)
 
 ## [0.0.1] - 2026-02-03
 
 ### Added
+
 - Initial release as `openclaw-nim` (rebranded from `moltbot-nim`)
 - NetEase IM (NIM) channel plugin for OpenClaw
 - Message sending and receiving support
@@ -120,6 +128,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Zod schema validation with numeric string coercion
 
 ### Changed
+
+enclaw.plugin.json`manifest file (renamed from`clawdbot.plugin.json`)
+
+## [0.0.1] - 2026-02-03
+
+### Added
+
+- Initial release as `openclaw-nim` (rebranded from `moltbot-nim`)
+- NetEase IM (NIM) channel plugin for OpenClaw
+- Message sending and receiving support
+- Media file handling (images, audio, video, files)
+- Long message chunking support
+- DM (direct message) policy configuration
+- Multi-account support via config
+- Zod schema validation with numeric string coercion
+
+### Changed
+
 - Package renamed from `moltbot-nim` to `openclaw-nim`
 - Plugin ID changed to `openclaw-nim`
 - Data directory changed from `~/.moltbot-nim` to `~/.openclaw-nim`

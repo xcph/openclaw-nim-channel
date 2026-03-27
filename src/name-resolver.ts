@@ -16,7 +16,10 @@ const userNickCache = new Map<string, CacheEntry>();
 const teamNameCache = new Map<string, CacheEntry>();
 const qchatChannelNameCache = new Map<string, CacheEntry>();
 
-function getCached(cache: Map<string, CacheEntry>, key: string): string | undefined {
+function getCached(
+  cache: Map<string, CacheEntry>,
+  key: string,
+): string | undefined {
   const entry = cache.get(key);
   if (!entry) return undefined;
   if (Date.now() > entry.expiresAt) {
@@ -26,7 +29,11 @@ function getCached(cache: Map<string, CacheEntry>, key: string): string | undefi
   return entry.value;
 }
 
-function setCache(cache: Map<string, CacheEntry>, key: string, value: string): void {
+function setCache(
+  cache: Map<string, CacheEntry>,
+  key: string,
+  value: string,
+): void {
   cache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
@@ -35,7 +42,11 @@ function setCache(cache: Map<string, CacheEntry>, key: string, value: string): v
  * 优先使用消息中自带的 fromNick，否则通过 V2NIMUserService 查询。
  * 查询失败时 fallback 到 accid。
  */
-export async function resolveUserNick(nim: any, accid: string, fromNick?: string): Promise<string> {
+export async function resolveUserNick(
+  nim: any,
+  accid: string,
+  fromNick?: string,
+): Promise<string> {
   // 1. 消息自带的 nick 最优先
   if (fromNick) {
     setCache(userNickCache, accid, fromNick);
@@ -60,7 +71,9 @@ export async function resolveUserNick(nim: any, accid: string, fromNick?: string
       }
     }
   } catch (err) {
-    console.error(`[nim] resolveUserNick failed — accid: ${accid}, error: ${String(err)}`);
+    console.error(
+      `[nim] resolveUserNick failed — accid: ${accid}, error: ${String(err)}`,
+    );
   }
 
   // 4. Fallback
@@ -97,7 +110,9 @@ export async function resolveTeamName(
       }
     }
   } catch (err) {
-    console.error(`[nim] resolveTeamName failed — teamId: ${teamId}, error: ${String(err)}`);
+    console.error(
+      `[nim] resolveTeamName failed — teamId: ${teamId}, error: ${String(err)}`,
+    );
   }
 
   // 3. Fallback
@@ -109,7 +124,11 @@ export async function resolveTeamName(
  * 通过 QChat SDK 查询频道信息。
  * 查询失败时 fallback 到 serverId:channelId。
  */
-export async function resolveQChatChannelName(nim: any, serverId: string, channelId: string): Promise<string> {
+export async function resolveQChatChannelName(
+  nim: any,
+  serverId: string,
+  channelId: string,
+): Promise<string> {
   const cacheKey = `${serverId}:${channelId}`;
   const fallback = cacheKey;
 
@@ -119,7 +138,10 @@ export async function resolveQChatChannelName(nim: any, serverId: string, channe
 
   // 2. 调用 SDK 查询
   try {
-    const qchatChannelService = nim.qchatChannel ?? nim.qchat?.channelService ?? nim.V2NIMQChatChannelService;
+    const qchatChannelService =
+      nim.qchatChannel ??
+      nim.qchat?.channelService ??
+      nim.V2NIMQChatChannelService;
     if (qchatChannelService) {
       const channels = await qchatChannelService.getChannels({
         channelIds: [channelId],
@@ -143,7 +165,10 @@ export async function resolveQChatChannelName(nim: any, serverId: string, channe
 /**
  * 构建会话标签。
  */
-export function buildConversationLabel(kind: "p2p" | "team" | "qchat", displayName: string): string {
+export function buildConversationLabel(
+  kind: "p2p" | "team" | "qchat",
+  displayName: string,
+): string {
   switch (kind) {
     case "p2p":
       return `云信·单聊·${displayName}`;

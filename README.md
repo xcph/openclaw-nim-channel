@@ -70,11 +70,11 @@ openclaw plugins install openclaw-nim
 ### Quick Setup (CLI)
 
 ```bash
-openclaw config set channels.nim.appKey "your-app-key"
-openclaw config set channels.nim.account "your-bot-account-id"
-openclaw config set channels.nim.token "your-auth-token"
+openclaw config set channels.nim.nimToken "your-app-key-your-bot-account-id-your-auth-token"
 openclaw config set channels.nim.enabled true
 ```
+
+> `nimToken` format: `appKey-accid-token` (three fields separated by `-`)
 
 #### Private Deployment (CLI)
 
@@ -95,9 +95,7 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
   "channels": {
     "nim": {
       "enabled": true,
-      "appKey": "your-app-key",
-      "account": "your-bot-account-id",
-      "token": "your-auth-token",
+      "nimToken": "your-app-key-your-bot-account-id-your-auth-token",
 
       "p2p": {
         "policy": "open",
@@ -146,13 +144,11 @@ openclaw config set channels.nim.advanced.nos_accelerate_host "your-cdn.example.
 
 #### Top-level Fields
 
-| Field             | Type    | Default | Description                       |
-| ----------------- | ------- | ------- | --------------------------------- |
-| `enabled`         | boolean | `false` | Enable/disable the NIM channel    |
-| `appKey`          | string  | —       | NIM application AppKey (required) |
-| `account`         | string  | —       | Bot account ID (required)         |
-| `token`           | string  | —       | Authentication token (required)   |
-| `antispamEnabled` | boolean | `true`  | Enable anti-spam protection       |
+| Field             | Type    | Default | Description                                 |
+| ----------------- | ------- | ------- | ------------------------------------------- |
+| `enabled`         | boolean | `false` | Enable/disable the NIM channel              |
+| `nimToken`        | string  | —       | Credential: `appKey-accid-token` (required) |
+| `antispamEnabled` | boolean | `true`  | Enable anti-spam protection                 |
 
 #### `p2p` — Private Chat (私聊)
 

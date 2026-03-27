@@ -1,6 +1,6 @@
 {
   "name": "openclaw-nim",
-  "version": "0.4.2",
+  "version": "1.0.0",
   "type": "module",
   "description": "OpenClaw NIM (NetEase IM) channel plugin",
   "license": "MIT",
@@ -46,17 +46,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "nim-web-sdk-ng": "^10.9.77-alpha.3",
+    "@yxim/nim-bot": "^10.9.78",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/node": "^25.0.10",
-    "openclaw": "2026.1.29",
+    "openclaw": "2026.3.23",
     "prettier": "^3.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
   },
   "peerDependencies": {
-    "openclaw": ">=2026.1.29"
+    "openclaw": ">=2026.3.23"
   }
 }
