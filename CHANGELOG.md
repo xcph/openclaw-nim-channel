@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-04-01
+
+### Fixed
+
+- Fix plugin installation failure on OpenClaw 2026.3.28: `npm install failed` followed by `package.json missing openclaw.hooks`
+- Bundle runtime dependencies (`@yxim/nim-bot`, `zod`) via `bundledDependencies` to eliminate external npm registry dependency during isolated plugin install
+- Remove `peerDependencies` declaration for `openclaw` to prevent peer dependency resolution failures in OpenClaw's sandboxed install environment
+
 ## [1.0.0] - 2026-03-27
 
 ### Added

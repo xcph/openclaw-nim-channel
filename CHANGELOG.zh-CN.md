@@ -9,6 +9,14 @@
 
 ## [未发布]
 
+## [1.0.2] - 2026-04-01
+
+### 修复
+
+- 修复 OpenClaw 2026.3.28 上安装插件失败的问题：`npm install failed` + `package.json missing openclaw.hooks`
+- 通过 `bundledDependencies` 打包运行时依赖（`@yxim/nim-bot`、`zod`），消除隔离安装时对外部 npm registry 的依赖
+- 移除 `peerDependencies` 中的 `openclaw` 声明，避免 OpenClaw 沙盒安装环境中的 peer dependency 解析失败
+
 ## [1.0.0] - 2026-03-27
 
 ### 新增
