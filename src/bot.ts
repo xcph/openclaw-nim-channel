@@ -178,11 +178,6 @@ export async function handleNimMessage(params: {
     return;
   }
 
-  console.log(`message.forcePushAccountIds is ${message.forcePushAccountIds}`);
-  console.log(`botAccount:${botAccount}`);
-  
-  
-
   // For team messages, only process when forcePushAccountIds includes the bot
   if (isTeam) {
     const forcePushIds = message.forcePushAccountIds ?? [];
