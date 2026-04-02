@@ -97,6 +97,30 @@ function extractMessageContent(message: NimMessageEvent): string {
   return message.text || "";
 }
 
+function extractReferencedText(message: any): string | null {
+  if (!message || typeof message !== "object") {
+    return null;
+  }
+
+  if (message.messageType === 0 && typeof message.text === "string") {
+    return message.text;
+  }
+
+  if (typeof message.messageType !== "number" && typeof message.text === "string") {
+    return message.text;
+  }
+
+  return null;
+}
+
+function deriveBotAccountId(accountId: string): string {
+  const separatorIndex = accountId.indexOf(":");
+  if (separatorIndex === -1) {
+    return accountId;
+  }
+  return accountId.slice(separatorIndex + 1);
+}
+
 /**
  * Parse a NIM message event into a message context.
  */
@@ -140,7 +164,10 @@ export async function handleNimMessage(params: {
   const nimCfg = account.configured ? account.config : undefined;
   const log = runtime?.log ?? console.log;
   const error = runtime?.error ?? console.error;
-  const botAccount = nimCfg?.account ? String(nimCfg.account) : "";
+  const botAccount =
+    (nimCfg?.account ? String(nimCfg.account) : "") ||
+    account.account ||
+    deriveBotAccountId(accountId);
 
   const isP2P = message.sessionType === "p2p";
   const isTeam =
@@ -151,9 +178,17 @@ export async function handleNimMessage(params: {
     return;
   }
 
+  console.log(`message.forcePushAccountIds is ${message.forcePushAccountIds}`);
+  console.log(`botAccount:${botAccount}`);
+  
+  
+
   // For team messages, only process when forcePushAccountIds includes the bot
   if (isTeam) {
     const forcePushIds = message.forcePushAccountIds ?? [];
+    log(
+      `[nim] team mention gate — botAccount: ${botAccount || "unknown"}, forcePush: [${forcePushIds.join(", ")}]`,
+    );
     if (!forcePushIds.includes(botAccount)) {
       log(`[nim] ignoring team message — reason: bot not in force-push list`);
       return;
@@ -284,8 +319,46 @@ export async function handleNimMessage(params: {
       conversationLabel = buildConversationLabel("p2p", senderDisplayName);
     }
 
+    let inboundPromptText = ctx.text;
+    if (
+      message.threadReply &&
+      nativeNim?.V2NIMMessageService &&
+      typeof ctx.text === "string" &&
+      ctx.text.trim().length > 0
+    ) {
+      try {
+        const referredMessages =
+          await nativeNim.V2NIMMessageService.getMessageListByRefers([
+            message.threadReply,
+          ]);
+        const repliedMessage = Array.isArray(referredMessages)
+          ? referredMessages[0]
+          : Array.isArray(referredMessages?.messages)
+            ? referredMessages.messages[0]
+            : Array.isArray(referredMessages?.data)
+              ? referredMessages.data[0]
+              : undefined;
+        const repliedText = extractReferencedText(repliedMessage);
+
+        if (repliedText && repliedText.trim().length > 0) {
+          inboundPromptText = `${repliedText}\n${ctx.text}`;
+          log(
+            `[nim] thread reply resolved — current: ${ctx.id}, referenced text length: ${repliedText.length}`,
+          );
+        } else {
+          log(
+            `[nim] thread reply resolved without text payload — current: ${ctx.id}`,
+          );
+        }
+      } catch (err) {
+        log(
+          `[nim] thread reply lookup failed — current: ${ctx.id}, error: ${String(err)}`,
+        );
+      }
+    }
+
     // ── System event (uses resolved display names) ──
-    const preview = ctx.text.replace(/\s+/g, " ").slice(0, 160);
+    const preview = inboundPromptText.replace(/\s+/g, " ").slice(0, 160);
     const inboundLabel = isTeam
       ? ` From ${senderDisplayName} in ${teamName ?? message.to}`
       : ` From ${senderDisplayName}`;
@@ -297,9 +370,9 @@ export async function handleNimMessage(params: {
     });
     //@ts-ignore
     const ctxPayload = core.channel.reply.finalizeInboundContext({
-      Body: ctx.text,
-      RawBody: ctx.text,
-      CommandBody: ctx.text,
+      Body: inboundPromptText,
+      RawBody: inboundPromptText,
+      CommandBody: inboundPromptText,
       From: nimFrom,
       To: nimTo,
       SessionKey: route.sessionKey,

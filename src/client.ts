@@ -134,6 +134,7 @@ function convertV2ToMessageEvent(msg: any): NimMessageEvent {
     attach: parseV2Attachment(msg),
     ext: msg.serverExtension ? JSON.parse(msg.serverExtension) : undefined,
     forcePushAccountIds,
+    threadReply: msg.threadReply ?? undefined,
     fromNick: msg.senderName || undefined,
     rawMsg: msg,
   };
@@ -270,6 +271,8 @@ export async function createNimClient(
       console.log(
         `[nim] received message — sender: ${event.from}, type: ${event.type}, session: ${event.sessionType}, target: ${event.to}, message id: ${event.msgId}, timestamp: ${event.time}`,
       );
+      console.log('[debug] msg****************: ', JSON.stringify(msg))
+      
       msgCallbackSet.forEach((cb) => cb(event));
 
       if (event.sessionType === "p2p") {

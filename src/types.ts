@@ -65,6 +65,8 @@ export interface NimMessageEvent {
   ext?: Record<string, unknown>;
   /** 强制推送目标账号列表 (群消息中用于判断是否 @了当前账号) */
   forcePushAccountIds?: string[];
+  /** 线程回复引用信息（用于查询被回复的原消息） */
+  threadReply?: unknown;
   /** 发送者昵称（从 SDK 消息对象中提取，可能为空） */
   fromNick?: string;
   /** 原始消息对象 */
