@@ -261,12 +261,37 @@ export async function createNimClient(
   // 注册消息接收回调
   messageService.on("onReceiveMessages", (messages: any[]) => {
     console.log(`[nim] received messages — count: ${messages.length}`);
+
+    const p2pMessages: any[] = [];
+    const teamMessages: any[] = [];
+
     for (const msg of messages) {
       const event = convertV2ToMessageEvent(msg);
       console.log(
         `[nim] received message — sender: ${event.from}, type: ${event.type}, session: ${event.sessionType}, target: ${event.to}, message id: ${event.msgId}, timestamp: ${event.time}`,
       );
       msgCallbackSet.forEach((cb) => cb(event));
+
+      if (event.sessionType === "p2p") {
+        p2pMessages.push(msg);
+      } else if (event.sessionType === "team" || event.sessionType === "superTeam") {
+        teamMessages.push(msg);
+      }
+    }
+
+    // 发送 P2P 已读回执（每条单独发，取最后一条即可覆盖之前）
+    for (const msg of p2pMessages) {
+      messageService.sendP2PMessageReceipt(msg).catch((err: any) => {
+        console.error(`[nim] send p2p read receipt failed — error: ${err?.message ?? String(err)}`);
+      });
+    }
+
+    // 发送群消息已读回执（每批最多 50 条）
+    for (let i = 0; i < teamMessages.length; i += 50) {
+      const batch = teamMessages.slice(i, i + 50);
+      messageService.sendTeamMessageReceipts(batch).catch((err: any) => {
+        console.error(`[nim] send team read receipt failed — error: ${err?.message ?? String(err)}`);
+      });
     }
   });
 
@@ -330,14 +355,30 @@ export async function createNimClient(
         loggedIn = true;
         instance.loggedIn = true;
         console.log(
-          `*************************[nim] login successful — account: ${creds.account}, aiBot: ${aiBotValue}************************`,
+          [
+            "[nim]",
+            "╔══════════════════════════════════════╗",
+            "║   ✓ NIM LOGIN SUCCESSFUL             ║",
+            `║   account : ${creds.account.padEnd(22)}║`,
+            `║   aiBot   : ${String(aiBotValue).padEnd(22)}║`,
+            "╚══════════════════════════════════════╝",
+            "",
+          ].join("\n"),
         );
         return true;
       } catch (error: any) {
         const errorMessage = error?.message ?? error?.desc ?? String(error);
         const errorCode = error?.code ?? error?.res_code;
         console.error(
-          `[nim] login failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`,
+          [
+            "",
+            "╔══════════════════════════════════════╗",
+            "║   ✗ NIM LOGIN FAILED                 ║",
+            `║   account : ${creds.account.padEnd(22)}║`,
+            `║   error   : ${errorMessage.slice(0, 22).padEnd(22)}║`,
+            "╚══════════════════════════════════════╝",
+            "",
+          ].join("\n"),
         );
         return false;
       }

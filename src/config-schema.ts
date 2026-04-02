@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseNimToken } from "./nim-token.js";
 
 /**
  * Coerce value to string (handles number inputs from YAML).
@@ -123,7 +124,7 @@ export const NimInstanceConfigSchema = z.object({
   enabled: z.boolean().optional().default(false),
 
   /**
-   * Shorthand credential: "appKey-accid-token" (3 segments separated by `-`).
+   * Shorthand credential: "appKey|accid|token" (preferred) or legacy "appKey-accid-token".
    * When present and valid, takes priority over individual appKey/account/token fields.
    */
   nimToken: z.string().optional(),
@@ -163,10 +164,8 @@ const NimInstancesArraySchema = z
       const inst = instances[i];
       let key: string | null = null;
       if (inst.nimToken) {
-        const parts = inst.nimToken.split("-");
-        if (parts.length === 3) {
-          key = `${parts[0].trim()}:${parts[1].trim()}`;
-        }
+        const parsed = parseNimToken(inst.nimToken);
+        if (parsed) key = `${parsed.appKey}:${parsed.account}`;
       } else if (inst.appKey && inst.account) {
         key = `${inst.appKey}:${inst.account}`;
       }

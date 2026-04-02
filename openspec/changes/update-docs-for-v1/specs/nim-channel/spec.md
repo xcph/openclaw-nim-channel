@@ -20,9 +20,9 @@
 #### Scenario: README 推荐 nimToken 三合一配置
 
 - **WHEN** 用户查看配置说明
-- **THEN** 应优先展示 `nimToken` 格式（`appKey-accid-token`）
+- **THEN** 应优先展示 `nimToken` 格式（`appKey|accid|token`）
 - **AND** 应说明这是推荐的配置方式
-- **AND** 应说明旧的独立字段方式仍可用但不推荐
+- **AND** 应说明旧的 `appKey-accid-token` 和独立字段方式仍可用但不推荐
 
 #### Scenario: README 包含流式输出说明
 
@@ -40,8 +40,9 @@
 #### Scenario: README 包含 nimToken 简化配置
 
 - **WHEN** 用户查看快速配置示例
-- **THEN** 应看到 `nimToken` 格式为 `appKey-accid-token`
+- **THEN** 应看到 `nimToken` 格式为 `appKey|accid|token`
 - **AND** 应说明此格式优先于独立字段
+- **AND** 应说明旧格式 `appKey-accid-token` 仍兼容
 
 #### Scenario: README 配置示例使用数组格式
 

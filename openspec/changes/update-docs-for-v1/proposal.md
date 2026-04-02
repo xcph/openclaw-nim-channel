@@ -6,7 +6,7 @@
 
 1. **流式输出支持** (a36cca9, 33e758d) - 实现了私聊(P2P)和群组(Team)的分块流式输出
 2. **AI Bot 登录类型修复** (33e758d) - 将 `aiBot` 参数从 `1` 修正为 `2`，正确标识 AI Bot 身份
-3. **nimToken 三合一配置** (33e758d) - 新增 `appKey-accid-token` 简化配置格式
+3. **nimToken 三合一配置** (33e758d) - 新增 `nimToken` 简化配置格式，现推荐 `appKey|accid|token`，兼容旧 `appKey-accid-token`
 4. **圈组禁用流式** (3f44942) - QChat 强制禁用流式和分块，以单条完整消息形式返回
 5. **多实例配置支持** (3f44942) - 支持同时运行最多 3 个 NIM 实例（不同账号/AppKey）
 
@@ -52,4 +52,4 @@
   1. **OpenClaw 版本要求**: 需要 OpenClaw **2026.3.24 或更新版本**（流式输出和多实例支持依赖新版 OpenClaw API）
   2. **配置格式变更**: `channels.nim` 从单对象改为实例数组格式（支持多实例配置）
   3. **账号类型限制**: 仅支持个人机器人账号登录，不支持普通个人账号
-  4. **凭证配置方式**: 推荐使用 `nimToken` 三合一配置（`appKey-accid-token`），旧的独立字段方式仍可用但不推荐
+  4. **凭证配置方式**: 推荐使用 `nimToken` 三合一配置（`appKey|accid|token`，兼容旧 `appKey-accid-token`），旧的独立字段方式仍可用但不推荐

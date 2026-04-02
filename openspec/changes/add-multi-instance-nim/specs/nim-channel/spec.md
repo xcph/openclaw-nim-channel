@@ -20,7 +20,7 @@ Each instance object MAY contain independent sub-configurations:
 
 The total number of instances in the array SHALL NOT exceed **3**. Validation is enforced at configuration parse time.
 
-The `nimToken` shorthand format (`appKey-accid-token`) behaves identically to the single-instance behavior: when present and valid (contains exactly 3 `-`-separated segments), the plugin uses the parsed values; otherwise it falls back to individual fields.
+The `nimToken` shorthand format behaves identically to the single-instance behavior: preferred `appKey|accid|token`, with legacy `appKey-accid-token` accepted for backward compatibility. When present and valid (contains exactly 3 segments using either supported separator), the plugin uses the parsed values; otherwise it falls back to individual fields.
 
 **BREAKING CHANGE**: The previous single-object format for `channels.nim` is no longer supported. Users must migrate to the array format.
 
@@ -49,6 +49,11 @@ The `nimToken` shorthand format (`appKey-accid-token`) behaves identically to th
 - **AND** no instances are started
 
 #### Scenario: Instance with nimToken shorthand
+
+- **WHEN** an instance entry contains `nimToken: "myAppKey|myAccount|myToken123"`
+- **THEN** the plugin parses it as `appKey=myAppKey`, `account=myAccount`, `token=myToken123` for that instance
+
+#### Scenario: Instance with legacy nimToken shorthand
 
 - **WHEN** an instance entry contains `nimToken: "myAppKey-myAccount-myToken123"`
 - **THEN** the plugin parses it as `appKey=myAppKey`, `account=myAccount`, `token=myToken123` for that instance

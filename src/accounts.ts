@@ -6,6 +6,7 @@ import type {
   NimP2pPolicy,
   NimTeamPolicy,
 } from "./types.js";
+import { parseNimToken } from "./nim-token.js";
 
 /**
  * Default account ID for NIM (legacy single-account mode, kept for compatibility).
@@ -22,21 +23,6 @@ function coerceToString(value: unknown): string {
     return String(value);
   }
   return String(value ?? "");
-}
-
-/**
- * Parse the shorthand nimToken field ("appKey-accid-token").
- * Returns the three credential parts, or null if the format is invalid.
- */
-function parseNimToken(
-  nimToken: string | undefined,
-): { appKey: string; account: string; token: string } | null {
-  if (!nimToken) return null;
-  const parts = nimToken.split("-");
-  if (parts.length !== 3) return null;
-  const [appKey, account, token] = parts.map((p) => p.trim());
-  if (!appKey || !account || !token) return null;
-  return { appKey, account, token };
 }
 
 /**

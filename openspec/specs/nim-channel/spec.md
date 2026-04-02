@@ -34,9 +34,15 @@ The NIM plugin SHALL accept configuration under `channels.nim` with the followin
 - **Required** (at least one方式): `nimToken` (shorthand) OR `appKey` + `account` + `token` (individual fields)
 - **Optional**: other sub-configurations (p2p, team, qchat, advanced)
 
-The `nimToken` field is a shorthand format: `appKey-accid-token` (three segments separated by `-`). When `nimToken` is present and valid (contains exactly 3 segments), the plugin SHALL use the parsed values and ignore the individual `appKey`, `account`, `token` fields. When `nimToken` is absent or invalid, the plugin SHALL fall back to the individual fields.
+The `nimToken` field is a shorthand format: preferred `appKey|accid|token` (three segments separated by `|`), with legacy `appKey-accid-token` remaining valid for backward compatibility. When `nimToken` is present and valid (contains exactly 3 segments using either supported separator), the plugin SHALL use the parsed values and ignore the individual `appKey`, `account`, `token` fields. When `nimToken` is absent or invalid, the plugin SHALL fall back to the individual fields.
 
 #### Scenario: Valid nimToken provided
+
+- **WHEN** configuration includes `nimToken` with value `myAppKey|myAccount|myToken123`
+- **THEN** the plugin parses it as appKey=`myAppKey`, account=`myAccount`, token=`myToken123`
+- **AND** the plugin initializes successfully
+
+#### Scenario: Legacy nimToken format remains valid
 
 - **WHEN** configuration includes `nimToken` with value `myAppKey-myAccount-myToken123`
 - **THEN** the plugin parses it as appKey=`myAppKey`, account=`myAccount`, token=`myToken123`
@@ -57,7 +63,7 @@ The `nimToken` field is a shorthand format: `appKey-accid-token` (three segments
 
 #### Scenario: Invalid nimToken format
 
-- **WHEN** `nimToken` is present but does not contain exactly 3 `-`-separated segments
+- **WHEN** `nimToken` is present but does not contain exactly 3 segments using either `|` or legacy `-`
 - **THEN** the plugin falls back to the individual `appKey`, `account`, `token` fields
 
 #### Scenario: Missing all credentials
@@ -216,4 +222,3 @@ The NIM plugin SHALL identify itself as an AI Bot when logging in to the NIM ser
 
 - **WHEN** the plugin is logged in with `aiBot: 2`
 - **THEN** the server routes messages according to AI Bot policies
-

@@ -55,7 +55,7 @@
   ],
   "devDependencies": {
     "@types/node": "^25.0.10",
-    "openclaw": "2026.3.23",
+    "openclaw": "^2026.3.31",
     "prettier": "^3.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
