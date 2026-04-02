@@ -103,13 +103,13 @@ openclaw config set channels.nim.0.enabled true
 #### Private Deployment (CLI)
 
 ```bash
-openclaw config set channels.nim.0.advanced.weblbsUrl "https://your-lbs.example.com"
-openclaw config set channels.nim.0.advanced.link_web "weblink.netease.im:443"
-openclaw config set channels.nim.0.advanced.nos_uploader "https://your-nos-upload.example.com"
-openclaw config set channels.nim.0.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
-openclaw config set channels.nim.0.advanced.nosSsl true
-openclaw config set channels.nim.0.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
-openclaw config set channels.nim.0.advanced.nos_accelerate_host "your-cdn.example.com"
+openclaw config set channels.nim.instances.0.advanced.weblbsUrl "https://your-lbs.example.com"
+openclaw config set channels.nim.instances.0.advanced.link_web "weblink.netease.im:443"
+openclaw config set channels.nim.instances.0.advanced.nos_uploader "https://your-nos-upload.example.com"
+openclaw config set channels.nim.instances.0.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
+openclaw config set channels.nim.instances.0.advanced.nosSsl true
+openclaw config set channels.nim.instances.0.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
+openclaw config set channels.nim.instances.0.advanced.nos_accelerate_host "your-cdn.example.com"
 ```
 
 ### Single Instance Configuration
@@ -117,51 +117,47 @@ openclaw config set channels.nim.0.advanced.nos_accelerate_host "your-cdn.exampl
 ```json
 {
   "channels": {
-    "nim": [
-      {
-        "enabled": true,
-        "nimToken": "<appKey>|<accid>|<token>",
+    "nim": {
+      "instances": [
+        {
+          "enabled": true,
+          "nimToken": "<appKey>|<accid>|<token>",
 
-        "p2p": {
-          "policy": "open",
-          "allowFrom": ["user_abc", "user_xyz"]
-        },
+          "p2p": {
+            "policy": "open",
+            "allowFrom": ["user_abc", "user_xyz"]
+          },
 
-        "team": {
-          "policy": "open",
-          "allowFrom": [
-            "groupId_1",
-            "groupId_2|user_abc",
-            "1|groupId_3",
-            "2|groupId_4",
-            "1|groupId_5|user_xyz"
-          ]
-        },
+          "team": {
+            "policy": "open",
+            "allowFrom": ["groupId_1", "groupId_2|user_abc", "1|groupId_3", "2|groupId_4", "1|groupId_5|user_xyz"]
+          },
 
-        "qchat": {
-          "policy": "open",
-          "allowFrom": [
-            "serverId_1",
-            "serverId_2|channelId_1",
-            "serverId_2|channelId_2|user_abc",
-            "serverId_3||user_xyz"
-          ]
-        },
+          "qchat": {
+            "policy": "open",
+            "allowFrom": [
+              "serverId_1",
+              "serverId_2|channelId_1",
+              "serverId_2|channelId_2|user_abc",
+              "serverId_3||user_xyz"
+            ]
+          },
 
-        "advanced": {
-          "mediaMaxMb": 30,
-          "textChunkLimit": 4000,
-          "debug": false,
-          "weblbsUrl": "https://your-lbs.example.com",
-          "link_web": "weblink.netease.im:443",
-          "nos_uploader": "https://your-nos-upload.example.com",
-          "nos_downloader_v2": "https://your-nos-download.example.com/{bucket}/{object}",
-          "nosSsl": true,
-          "nos_accelerate": "https://your-cdn.example.com/{bucket}/{object}",
-          "nos_accelerate_host": "your-cdn.example.com"
+          "advanced": {
+            "mediaMaxMb": 30,
+            "textChunkLimit": 4000,
+            "debug": false,
+            "weblbsUrl": "https://your-lbs.example.com",
+            "link_web": "weblink.netease.im:443",
+            "nos_uploader": "https://your-nos-upload.example.com",
+            "nos_downloader_v2": "https://your-nos-download.example.com/{bucket}/{object}",
+            "nosSsl": true,
+            "nos_accelerate": "https://your-cdn.example.com/{bucket}/{object}",
+            "nos_accelerate_host": "your-cdn.example.com"
+          }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 ```
@@ -173,27 +169,29 @@ Run up to 3 NIM instances simultaneously with different accounts or AppKeys:
 ```json
 {
   "channels": {
-    "nim": [
-      {
-        "enabled": true,
-        "nimToken": "<appKey1>|<bot1>|<token1>",
-        "p2p": { "policy": "open" },
-        "team": { "policy": "allowlist", "allowFrom": ["team_abc"] },
-        "qchat": { "policy": "disabled" }
-      },
-      {
-        "enabled": true,
-        "nimToken": "<appKey1>|<bot2>|<token2>",
-        "p2p": { "policy": "allowlist", "allowFrom": ["user_vip"] },
-        "team": { "policy": "disabled" },
-        "qchat": { "policy": "open" }
-      },
-      {
-        "enabled": false,
-        "nimToken": "<appKey2>|<bot3>|<token3>",
-        "p2p": { "policy": "open" }
-      }
-    ]
+    "nim": {
+      "instances": [
+        {
+          "enabled": true,
+          "nimToken": "<appKey1>|<bot1>|<token1>",
+          "p2p": { "policy": "open" },
+          "team": { "policy": "allowlist", "allowFrom": ["team_abc"] },
+          "qchat": { "policy": "disabled" }
+        },
+        {
+          "enabled": true,
+          "nimToken": "<appKey1>|<bot2>|<token2>",
+          "p2p": { "policy": "allowlist", "allowFrom": ["user_vip"] },
+          "team": { "policy": "disabled" },
+          "qchat": { "policy": "open" }
+        },
+        {
+          "enabled": false,
+          "nimToken": "<appKey2>|<bot3>|<token3>",
+          "p2p": { "policy": "open" }
+        }
+      ]
+    }
   }
 }
 ```
@@ -233,11 +231,11 @@ For detailed streaming configuration, see:
 
 #### Top-level Fields
 
-| Field             | Type    | Default | Description                                 |
-| ----------------- | ------- | ------- | ------------------------------------------- |
-| `enabled`         | boolean | `false` | Enable/disable the NIM channel              |
+| Field             | Type    | Default | Description                                                                                |
+| ----------------- | ------- | ------- | ------------------------------------------------------------------------------------------ |
+| `enabled`         | boolean | `false` | Enable/disable the NIM channel                                                             |
 | `nimToken`        | string  | —       | Credential: `appKey\|accid\|token` (preferred), legacy `appKey-accid-token` also supported |
-| `antispamEnabled` | boolean | `true`  | Enable anti-spam protection                 |
+| `antispamEnabled` | boolean | `true`  | Enable anti-spam protection                                                                |
 
 #### `p2p` — Private Chat (私聊)
 
@@ -338,13 +336,7 @@ openclaw onboard
 ### Sending Messages
 
 ```typescript
-import {
-  sendMessageNim,
-  sendImageNim,
-  sendFileNim,
-  sendAudioNim,
-  sendVideoNim,
-} from "openclaw-nim";
+import { sendMessageNim, sendImageNim, sendFileNim, sendAudioNim, sendVideoNim } from "openclaw-nim";
 
 // Send text message
 await sendMessageNim({
