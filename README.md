@@ -1,104 +1,106 @@
-# OpenClaw NIM Plugin
+# OpenClaw NIM 插件
 
-English | [中文](./README.zh-CN.md)
+[English](./README.md) | 中文
 
-A [OpenClaw](https://openclaw.ai/) channel plugin for NetEase IM (网易云信), supporting P2P private chat, team group chat, and QChat (圈组) circle group.
+[OpenClaw](https://openclaw.ai/) 网易云信（NIM）渠道插件，支持 P2P 单聊、群组聊天及圈组（QChat）。
 
-## Requirements
+## 版本要求
 
-> **⚠️ Breaking Changes in v1.0.0**
+> **⚠️ v1.0.0 破坏性变更**
 >
-> 1. **OpenClaw Version**: Requires OpenClaw **2026.3.24 or later** (this version uses the new OpenClaw plugin API and is incompatible with older versions)
-> 2. **Configuration Format**: `channels.nim` changed from single object to **array format** (see examples below)
-> 3. **Account Type**: Only **bot accounts** are supported (regular personal accounts are not supported)
-> 4. **Credentials**: Recommended to use `nimToken` shorthand format (`appKey-accid-token`)
+> 1. **OpenClaw 版本要求**：需要 OpenClaw **2026.3.24 或更新版本**（当前版本使用新的 OpenClaw 插件 API，与旧版本不兼容）
+> 2. **配置格式变更**：`channels.nim` 从单对象改为**数组格式**（见下方示例）
+> 3. **账号类型限制**：仅支持**机器人账号**登录（不支持普通个人账号）
+> 4. **凭证配置方式**：推荐使用 `nimToken` 三合一配置（`appKey|accid|token`，兼容旧 `appKey-accid-token`）
 
-## Features
+## 功能特性
 
-- 💬 Private chat (P2P) message support with configurable access policy
-- 👥 Team group chat support with group/sender allowlist
-- 🔵 QChat (圈组) circle group support with unified allowlist
-- 🌊 **Streaming output support** (P2P and team messages support block streaming; QChat uses complete message delivery)
-- 🔄 **Multi-instance support** (run up to 3 NIM instances simultaneously with different accounts/AppKeys)
-- 📷 Media support (images, files, audio, video)
-- 🔐 Simplified `nimToken` authentication (`appKey-accid-token` format)
-- 🔄 Automatic reconnection handling
-- 📝 Message chunking for long responses
-- 🔒 Private deployment (privatization) support with custom server URLs
+- 💬 P2P 单聊消息，支持可配置的访问策略
+- 👥 群组聊天，支持群/发送者白名单
+- 🔵 圈组（QChat）消息，支持统一白名单
+- 🌊 **流式输出支持**（私聊和群组支持分块流式，圈组强制完整消息返回）
+- 🔄 **多实例支持**（支持同时运行最多 3 个 NIM 实例，不同账号/AppKey）
+- 📷 多媒体支持（图片、文件、音频、视频）
+- 🔐 简化的 `nimToken` 认证（推荐 `appKey|accid|token`，兼容旧 `appKey-accid-token`）
+- 🔄 自动重连处理
+- 📝 长消息自动分片
+- 🔒 私有化部署支持，可自定义服务器地址
 
-## Installation
+## 安装
 
-### Install Node.js
+### 安装 Node.js
 
-> **Recommended**: Node.js **v24.x** (>=24.0.0, <25.0.0)
+> **推荐版本**：Node.js **v24.x** (>=24.0.0, <25.0.0)
 
-#### Option 1: Official Installer (Recommended)
+#### 方式一：官方安装包（推荐）
 
-1. Visit [nodejs.org](https://nodejs.org/).
-2. Download **Node.js v24.x**.
-3. Run the installer and follow the prompts.
+1. 访问 [nodejs.org](https://nodejs.org/)。
+2. 下载 **Node.js v24.x**。
+3. 运行安装包并按提示操作。
 
-#### Option 2: NVM (Node Version Manager)
+#### 方式二：NVM（Node 版本管理器）
 
 ```bash
-# Install nvm (if not already installed)
+# 安装 nvm（如未安装）
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 
-# Restart terminal or run:
-source ~/.zshrc  # or ~/.bashrc for bash
+# 重启终端或执行：
+source ~/.zshrc  # bash 用户使用 ~/.bashrc
 
-# Install Node.js v24
+# 安装 Node.js v24
 nvm install 24
 nvm use 24
 ```
 
-#### Option 3: Homebrew (macOS)
+#### 方式三：Homebrew（macOS）
 
 ```bash
-# Install Node.js v24
+# 安装 Node.js v24
 brew install node@24
 brew link node@24
 ```
 
-#### Verify Installation
+#### 验证安装
 
 ```bash
-node --version  # Should show v24.x.x
+node --version  # 应显示 v24.x.x
 ```
 
-### Install OpenClaw
+### 安装 OpenClaw
 
 ```bash
 npm install -g openclaw@latest
 ```
 
-> **Note:** If you see permission errors, use `sudo npm install -g openclaw@latest`
+> **注意：** 如遇权限错误，请使用 `sudo npm install -g openclaw@latest`
 
-### Install Plugin
+### 安装插件
 
 ```bash
 openclaw plugins install openclaw-nim
 ```
 
-## Configuration
+## 配置
 
-> **Note**: Starting from v1.0.0, `channels.nim` uses an **array format** to support multiple NIM instances (up to 3). Each instance can have different credentials and policies.
+> **注意**：从 v1.0.0 开始，`channels.nim` 使用**数组格式**以支持多实例（最多 3 个）。每个实例可以有不同的凭证和策略。
 
-### Quick Setup (CLI)
+### 快速配置（CLI）
 
 ```bash
-# Note: CLI commands configure the first instance (index 0)
-openclaw config set channels.nim.0.nimToken "<appKey>-<accid>-<token>"
+# 注意：CLI 命令配置第一个实例（索引 0）
+openclaw config set channels.nim.0.nimToken "<appKey>|<accid>|<token>"
 openclaw config set channels.nim.0.enabled true
 ```
 
-> **`nimToken` format**: `<appKey>-<accid>-<token>` (three fields separated by `-`) — **Recommended**
+> **`nimToken` 格式**：`<appKey>|<accid>|<token>`（用 `|` 分隔三个字段）— **推荐**
 >
-> Example: `45c6af3c98409b18a84451215d0bdd6e-testbot001-a1b2c3d4e5f6`
+> 示例：`45c6af3c98409b18a84451215d0bdd6e|testbot001|a1b2c3d4e5f6`
 >
-> Alternative: Use separate `appKey`, `account`, `token` fields (deprecated but still supported)
+> 向后兼容：旧格式 `<appKey>-<accid>-<token>` 仍然可用
+>
+> 备选方式：使用独立的 `appKey`、`account`、`token` 字段（已弃用但仍支持）
 
-#### Private Deployment (CLI)
+#### 私有化部署配置（CLI）
 
 ```bash
 openclaw config set channels.nim.0.advanced.weblbsUrl "https://your-lbs.example.com"
@@ -110,7 +112,7 @@ openclaw config set channels.nim.0.advanced.nos_accelerate "https://your-cdn.exa
 openclaw config set channels.nim.0.advanced.nos_accelerate_host "your-cdn.example.com"
 ```
 
-### Single Instance Configuration
+### 单实例配置
 
 ```json
 {
@@ -118,7 +120,7 @@ openclaw config set channels.nim.0.advanced.nos_accelerate_host "your-cdn.exampl
     "nim": [
       {
         "enabled": true,
-        "nimToken": "<appKey>-<accid>-<token>",
+        "nimToken": "<appKey>|<accid>|<token>",
 
         "p2p": {
           "policy": "open",
@@ -164,9 +166,9 @@ openclaw config set channels.nim.0.advanced.nos_accelerate_host "your-cdn.exampl
 }
 ```
 
-### Multi-Instance Configuration
+### 多实例配置
 
-Run up to 3 NIM instances simultaneously with different accounts or AppKeys:
+同时运行最多 3 个 NIM 实例，使用不同账号或 AppKey：
 
 ```json
 {
@@ -174,21 +176,21 @@ Run up to 3 NIM instances simultaneously with different accounts or AppKeys:
     "nim": [
       {
         "enabled": true,
-        "nimToken": "<appKey1>-<bot1>-<token1>",
+        "nimToken": "<appKey1>|<bot1>|<token1>",
         "p2p": { "policy": "open" },
         "team": { "policy": "allowlist", "allowFrom": ["team_abc"] },
         "qchat": { "policy": "disabled" }
       },
       {
         "enabled": true,
-        "nimToken": "<appKey1>-<bot2>-<token2>",
+        "nimToken": "<appKey1>|<bot2>|<token2>",
         "p2p": { "policy": "allowlist", "allowFrom": ["user_vip"] },
         "team": { "policy": "disabled" },
         "qchat": { "policy": "open" }
       },
       {
         "enabled": false,
-        "nimToken": "<appKey2>-<bot3>-<token3>",
+        "nimToken": "<appKey2>|<bot3>|<token3>",
         "p2p": { "policy": "open" }
       }
     ]
@@ -196,13 +198,13 @@ Run up to 3 NIM instances simultaneously with different accounts or AppKeys:
 }
 ```
 
-> **Note**: Maximum 3 instances total (enabled or disabled). Each instance maintains its own connection and can have different policies.
+> **注意**：最多 3 个实例（无论是否启用）。每个实例保持独立连接，可以有不同的策略。
 
-### Streaming Output Configuration
+### 流式输出配置
 
-**P2P and Team messages** support block streaming for real-time response delivery. **QChat messages** use complete message delivery (streaming is force-disabled).
+**私聊和群组消息**支持分块流式输出，实现实时响应传递。**圈组消息**使用完整消息传递（流式被强制禁用）。
 
-To enable streaming, configure OpenClaw's block streaming settings:
+要启用流式输出，配置 OpenClaw 的分块流式设置：
 
 ```yaml
 # config.yaml
@@ -220,120 +222,120 @@ channels:
       nimToken: "your-credentials"
 ```
 
-For detailed streaming configuration, see:
+流式输出详细配置，请参阅：
 
-- [`BLOCK_STREAMING_CONFIG.md`](./BLOCK_STREAMING_CONFIG.md) — Block streaming setup guide
-- [`STREAMING_GUIDE.md`](./STREAMING_GUIDE.md) — Real-time streaming data usage
+- [`BLOCK_STREAMING_CONFIG.md`](./BLOCK_STREAMING_CONFIG.md) — 分块流式配置指南
+- [`STREAMING_GUIDE.md`](./STREAMING_GUIDE.md) — 实时流式数据使用说明
 
-> **QChat Special Note**: Streaming and text chunking are force-disabled for QChat messages to prevent message fragmentation and improve user experience. QChat always delivers complete messages.
+> **圈组特别说明**：圈组消息强制禁用流式输出和文本分块，以避免消息碎片化，提升用户体验。圈组始终以完整消息形式传递。
 
-### Configuration Reference
+### 配置参考
 
-#### Top-level Fields
+#### 顶层字段
 
-| Field             | Type    | Default | Description                                 |
-| ----------------- | ------- | ------- | ------------------------------------------- |
-| `enabled`         | boolean | `false` | Enable/disable the NIM channel              |
-| `nimToken`        | string  | —       | Credential: `appKey-accid-token` (required) |
-| `antispamEnabled` | boolean | `true`  | Enable anti-spam protection                 |
+| 字段              | 类型    | 默认值  | 说明                               |
+| ----------------- | ------- | ------- | ---------------------------------- |
+| `enabled`         | boolean | `false` | 启用/禁用 NIM 渠道                 |
+| `nimToken`        | string  | —       | 凭证：推荐 `appKey\|accid\|token`，兼容旧 `appKey-accid-token` |
+| `antispamEnabled` | boolean | `true`  | 启用反垃圾邮件保护                 |
 
-#### `p2p` — Private Chat (私聊)
+#### `p2p` — 单聊（私聊）
 
-| Field       | Type   | Default  | Description                                                 |
-| ----------- | ------ | -------- | ----------------------------------------------------------- |
-| `policy`    | string | `"open"` | `open` · `allowlist` · `disabled`                           |
-| `allowFrom` | array  | `[]`     | Allowed sender account IDs (used when `policy="allowlist"`) |
+| 字段        | 类型   | 默认值   | 说明                                               |
+| ----------- | ------ | -------- | -------------------------------------------------- |
+| `policy`    | string | `"open"` | `open` · `allowlist` · `disabled`                  |
+| `allowFrom` | array  | `[]`     | 允许的发送者账号 ID（`policy="allowlist"` 时生效） |
 
-**Policy behavior:**
+**策略行为：**
 
-| `policy`    | `allowFrom` | Message handling                | Friend request auto-accept      |
-| ----------- | ----------- | ------------------------------- | ------------------------------- |
-| `open`      | any         | Accept all messages             | Auto-accept all                 |
-| `allowlist` | non-empty   | Accept only listed senders      | Auto-accept only listed senders |
-| `allowlist` | empty       | Same as `disabled` — reject all | Do not auto-accept              |
-| `disabled`  | any         | Reject all messages             | Do not auto-accept              |
+| `policy`    | `allowFrom` | 消息处理                     | 好友申请自动同意         |
+| ----------- | ----------- | ---------------------------- | ------------------------ |
+| `open`      | 任意        | 接受所有消息                 | 自动同意所有             |
+| `allowlist` | 非空        | 仅接受列表中的发送者         | 仅自动同意列表中的发送者 |
+| `allowlist` | 空          | 等同于 `disabled` — 拒绝所有 | 不自动同意               |
+| `disabled`  | 任意        | 拒绝所有消息                 | 不自动同意               |
 
-#### `team` — Group Chat (群组)
+#### `team` — 群组
 
-| Field       | Type   | Default  | Description                                                            |
-| ----------- | ------ | -------- | ---------------------------------------------------------------------- |
-| `policy`    | string | `"open"` | `open` · `allowlist` · `disabled`                                      |
-| `allowFrom` | array  | `[]`     | Allowlist entries — see formats below (used when `policy="allowlist"`) |
+| 字段        | 类型   | 默认值   | 说明                                                   |
+| ----------- | ------ | -------- | ------------------------------------------------------ |
+| `policy`    | string | `"open"` | `open` · `allowlist` · `disabled`                      |
+| `allowFrom` | array  | `[]`     | 白名单条目 — 格式见下方（`policy="allowlist"` 时生效） |
 
-**Policy behavior:** same rules as P2P — `allowlist` with an empty `allowFrom` behaves as `disabled`.
+**策略行为：** 与 P2P 规则一致 — `allowlist` 且 `allowFrom` 为空时等同于 `disabled`。
 
-**`team.allowFrom` entry formats:**
+**`team.allowFrom` 条目格式：**
 
-| Format                   | Description                                                   |
-| ------------------------ | ------------------------------------------------------------- |
-| `"teamId"`               | Any sender in this team (matches both regular and super team) |
-| `"teamId\|accountId"`    | Specific sender in this team (matches both types)             |
-| `"1\|teamId"`            | Any sender, regular team only (高级群)                        |
-| `"2\|teamId"`            | Any sender, super team only (超大群)                          |
-| `"1\|teamId\|accountId"` | Specific sender, regular team only                            |
-| `"2\|teamId\|accountId"` | Specific sender, super team only                              |
+| 格式                     | 说明                                   |
+| ------------------------ | -------------------------------------- |
+| `"teamId"`               | 该群任意发送者（高级群和超大群均匹配） |
+| `"teamId\|accountId"`    | 该群中指定发送者（两种群类型均匹配）   |
+| `"1\|teamId"`            | 任意发送者，仅高级群                   |
+| `"2\|teamId"`            | 任意发送者，仅超大群                   |
+| `"1\|teamId\|accountId"` | 指定发送者，仅高级群                   |
+| `"2\|teamId\|accountId"` | 指定发送者，仅超大群                   |
 
-#### `qchat` — QChat Circle Group (圈组)
+#### `qchat` — 圈组
 
-| Field       | Type   | Default  | Description                                                            |
-| ----------- | ------ | -------- | ---------------------------------------------------------------------- |
-| `policy`    | string | `"open"` | `open` · `allowlist` · `disabled`                                      |
-| `allowFrom` | array  | `[]`     | Allowlist entries — see formats below (used when `policy="allowlist"`) |
+| 字段        | 类型   | 默认值   | 说明                                                   |
+| ----------- | ------ | -------- | ------------------------------------------------------ |
+| `policy`    | string | `"open"` | `open` · `allowlist` · `disabled`                      |
+| `allowFrom` | array  | `[]`     | 白名单条目 — 格式见下方（`policy="allowlist"` 时生效） |
 
-QChat starts automatically whenever NIM credentials are configured. Set `policy: "disabled"` to opt out entirely.
+配置了 NIM 凭证后，圈组功能会自动启动。设置 `policy: "disabled"` 可完全关闭。
 
-**Policy behavior:** same rules as P2P — `allowlist` with an empty `allowFrom` behaves as `disabled`.
+**策略行为：** 与 P2P 规则一致 — `allowlist` 且 `allowFrom` 为空时等同于 `disabled`。
 
-**`qchat.allowFrom` entry formats:**
+**`qchat.allowFrom` 条目格式：**
 
-| Format                             | Description                                   |
-| ---------------------------------- | --------------------------------------------- |
-| `"serverId"`                       | Any channel, any sender in this server        |
-| `"serverId\|channelId"`            | Any sender in this server+channel             |
-| `"serverId\|channelId\|accountId"` | Specific sender in this server+channel        |
-| `"serverId\|\|accountId"`          | Specific sender in any channel of this server |
+| 格式                               | 说明                           |
+| ---------------------------------- | ------------------------------ |
+| `"serverId"`                       | 该服务器下所有频道、所有发送者 |
+| `"serverId\|channelId"`            | 该服务器+频道下所有发送者      |
+| `"serverId\|channelId\|accountId"` | 该服务器+频道下指定发送者      |
+| `"serverId\|\|accountId"`          | 该服务器下任意频道的指定发送者 |
 
-The `allowFrom` list (when `policy="allowlist"`) also controls:
+`allowFrom` 列表（`policy="allowlist"` 时）还控制以下行为：
 
-- **Server subscription**: server IDs extracted from entries are subscribed to automatically; `policy="open"` triggers auto-discovery of all joined servers.
-- **Server invite auto-accept**: controlled by `policy`:
-  - `open` — auto-accept all server invites
-  - `allowlist` — auto-accept only invites from server IDs in the `allowFrom` list; empty list rejects all
-  - `disabled` — do not auto-accept any invites
+- **服务器订阅**：自动订阅条目中提取的服务器 ID；`policy="open"` 时自动发现所有已加入的服务器。
+- **服务器邀请自动同意**：由 `policy` 控制：
+  - `open` — 自动同意所有服务器邀请
+  - `allowlist` — 仅自动同意 `allowFrom` 列表中服务器 ID 的邀请；空列表则拒绝所有
+  - `disabled` — 不自动同意任何邀请
 
-#### `advanced` — Advanced Settings
+#### `advanced` — 高级设置
 
-| Field                 | Type    | Default | Description                                          |
-| --------------------- | ------- | ------- | ---------------------------------------------------- |
-| `mediaMaxMb`          | number  | `30`    | Max media file size in MB                            |
-| `textChunkLimit`      | number  | `4000`  | Max characters per message chunk                     |
-| `debug`               | boolean | `false` | Enable SDK debug logging                             |
-| `weblbsUrl`           | string  | —       | LBS URL (private deployment)                         |
-| `link_web`            | string  | —       | WebSocket/TCP link address (private deployment)      |
-| `nos_uploader`        | string  | —       | NOS upload URL (private deployment)                  |
-| `nos_downloader_v2`   | string  | —       | NOS download URL format (private deployment)         |
-| `nosSsl`              | boolean | —       | Whether NOS download uses HTTPS (private deployment) |
-| `nos_accelerate`      | string  | —       | CDN accelerate URL format (private deployment)       |
-| `nos_accelerate_host` | string  | —       | CDN accelerate host domain (private deployment)      |
+| 字段                  | 类型    | 默认值  | 说明                                 |
+| --------------------- | ------- | ------- | ------------------------------------ |
+| `mediaMaxMb`          | number  | `30`    | 最大媒体文件大小（MB）               |
+| `textChunkLimit`      | number  | `4000`  | 每条消息最大字符数                   |
+| `debug`               | boolean | `false` | 启用 SDK 调试日志                    |
+| `weblbsUrl`           | string  | —       | LBS 地址（私有化部署）               |
+| `link_web`            | string  | —       | WebSocket/TCP 连接地址（私有化部署） |
+| `nos_uploader`        | string  | —       | NOS 上传地址（私有化部署）           |
+| `nos_downloader_v2`   | string  | —       | NOS 下载地址格式（私有化部署）       |
+| `nosSsl`              | boolean | —       | NOS 下载是否启用 HTTPS（私有化部署） |
+| `nos_accelerate`      | string  | —       | CDN 加速 URL 格式（私有化部署）      |
+| `nos_accelerate_host` | string  | —       | CDN 加速命中域名（私有化部署）       |
 
-## Getting Credentials
+## 获取凭证
 
-> **Important**: Only **bot accounts** are supported. Regular personal accounts cannot be used with this plugin.
+> **重要提示**：仅支持**机器人账号**。普通个人账号无法使用此插件。
 
-1. Log in to the [NetEase IM Console](https://app.netease.im/)
-2. Create or select an application
-3. Copy the **AppKey** from the application settings
-4. **Create a bot account** (not a regular personal account) and obtain its **Account ID** and **Token**
+1. 登录[网易云信控制台](https://app.netease.im/)
+2. 创建或选择应用
+3. 在应用设置中复制 **AppKey**
+4. **创建机器人账号**（而非普通个人账号）并获取 **Account ID** 和 **Token**
 
-## Start the Bot
+## 启动机器人
 
 ```bash
 openclaw onboard
 ```
 
-## Usage
+## 使用
 
-### Sending Messages
+### 发送消息
 
 ```typescript
 import {
@@ -344,39 +346,39 @@ import {
   sendVideoNim,
 } from "openclaw-nim";
 
-// Send text message
+// 发送文本消息
 await sendMessageNim({
   cfg: openclawConfig,
   to: "user123",
   text: "Hello from NIM bot!",
 });
 
-// Send image (supports: .jpg, .jpeg, .png, .gif, .webp, .bmp)
+// 发送图片（支持：.jpg, .jpeg, .png, .gif, .webp, .bmp）
 await sendImageNim({
   cfg: openclawConfig,
   to: "user123",
   imagePath: "/path/to/image.png",
 });
 
-// Send video (supports: .mp4, .mov, .avi, .mkv, .webm, .flv)
+// 发送视频（支持：.mp4, .mov, .avi, .mkv, .webm, .flv）
 await sendVideoNim({
   cfg: openclawConfig,
   to: "user123",
   videoPath: "/path/to/video.mp4",
-  duration: 60, // duration in seconds
+  duration: 60, // 时长（秒）
   width: 1920,
   height: 1080,
 });
 
-// Send audio (supports: .mp3, .wav, .aac, .m4a, .ogg, .amr)
+// 发送音频（支持：.mp3, .wav, .aac, .m4a, .ogg, .amr）
 await sendAudioNim({
   cfg: openclawConfig,
   to: "user123",
   audioPath: "/path/to/audio.mp3",
-  duration: 30, // duration in seconds
+  duration: 30, // 时长（秒）
 });
 
-// Send file (any file type)
+// 发送文件（任意文件类型）
 await sendFileNim({
   cfg: openclawConfig,
   to: "user123",
@@ -384,42 +386,42 @@ await sendFileNim({
 });
 ```
 
-### Target Formats
+### 目标格式
 
-| Format         | Description           |
-| -------------- | --------------------- |
-| `user123`      | Plain account ID      |
-| `nim:user123`  | Prefixed with `nim:`  |
-| `user:user123` | Prefixed with `user:` |
+| 格式           | 说明            |
+| -------------- | --------------- |
+| `user123`      | 纯账号 ID       |
+| `nim:user123`  | 带 `nim:` 前缀  |
+| `user:user123` | 带 `user:` 前缀 |
 
-## Supported Message Types
+## 支持的消息类型
 
-| Type     | Receive | Send |
-| -------- | ------- | ---- |
-| Text     | ✅      | ✅   |
-| Image    | ✅      | ✅   |
-| File     | ✅      | ✅   |
-| Audio    | ✅      | ✅   |
-| Video    | ✅      | ✅   |
-| Location | ✅      | ❌   |
-| Custom   | ✅      | ❌   |
+| 类型   | 接收 | 发送 |
+| ------ | ---- | ---- |
+| 文本   | ✅   | ✅   |
+| 图片   | ✅   | ✅   |
+| 文件   | ✅   | ✅   |
+| 音频   | ✅   | ✅   |
+| 视频   | ✅   | ✅   |
+| 位置   | ✅   | ❌   |
+| 自定义 | ✅   | ❌   |
 
-## Development
+## 开发
 
 ```bash
-# Install dependencies
+# 安装依赖
 npm install
 
-# Build
+# 构建
 npm run build
 
-# Run tests
+# 运行测试
 npm test
 
-# Watch mode
+# 监听模式
 npm run dev
 ```
 
-## License
+## 许可证
 
 MIT

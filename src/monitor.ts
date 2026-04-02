@@ -97,11 +97,8 @@ export async function monitorNimProvider(params: {
     const loginSuccess = await client.login();
 
     if (!loginSuccess) {
-      console.error("[nim] login failed — monitor not started");
       return;
     }
-
-    console.log(`[nim] login successful — account: ${creds.account}`);
 
     // QChat phase 2: activate (discover servers + subscribe) AFTER login success
     if (params.qchatClient) {
@@ -137,7 +134,17 @@ export async function monitorNimProvider(params: {
       }
 
       console.log(
-        `[nim] received message — sender: ${msg.from}, type: ${msg.type}, session: ${msg.sessionType}, target: ${msg.to}, message id: ${msg.msgId}, timestamp: ${msg.time}`,
+        [
+          "[nim]",
+          "┌─────────────────────────────────────────┐",
+          "│  📨 NIM MESSAGE RECEIVED                │",
+          `│  from    : ${msg.from.padEnd(28)}│`,
+          `│  type    : ${String(msg.type).padEnd(28)}│`,
+          `│  session : ${String(msg.sessionType).padEnd(28)}│`,
+          `│  to      : ${String(msg.to).padEnd(28)}│`,
+          "└─────────────────────────────────────────┘",
+          "",
+        ].join("\n"),
       );
 
       try {

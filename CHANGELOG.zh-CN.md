@@ -9,6 +9,10 @@
 
 ## [未发布]
 
+### 变更
+
+- `nimToken` 文档和规范现推荐使用 `appKey|accid|token`；旧格式 `appKey-accid-token` 继续保留兼容
+
 ## [1.0.2] - 2026-04-01
 
 ### 修复
@@ -23,7 +27,7 @@
 
 - **流式输出支持**：私聊和群组消息支持分块流式输出，实现实时响应传递；圈组消息使用完整消息传递（强制禁用流式以避免碎片化）
 - **多实例配置**：支持同时运行最多 3 个 NIM 实例，使用不同账号或 AppKey；每个实例保持独立连接和策略
-- `nimToken` 三合一凭证配置：支持 `appKey-accid-token` 格式，简化配置流程，优先于独立的 `appKey`/`account`/`token` 字段（推荐）
+- `nimToken` 三合一凭证配置：支持推荐格式 `appKey|accid|token` 和旧格式 `appKey-accid-token`，简化配置流程，优先于独立的 `appKey`/`account`/`token` 字段（推荐）
 - 技术文档：[`BLOCK_STREAMING_CONFIG.md`](./BLOCK_STREAMING_CONFIG.md) 分块流式配置指南和 [`STREAMING_GUIDE.md`](./STREAMING_GUIDE.md) 实时流式数据使用说明
 
 ### 变更
@@ -31,7 +35,7 @@
 - **破坏性变更**：需要 OpenClaw **2026.3.24 或更新版本**（流式输出和多实例支持需要新版本）
 - **破坏性变更**：`channels.nim` 配置从单对象改为**数组格式**以支持多实例
 - **破坏性变更**：仅支持**机器人账号**，不再支持普通个人账号
-- **破坏性变更**：推荐使用 `nimToken` 三合一配置（`appKey-accid-token`）；独立的 `appKey`/`account`/`token` 字段已弃用但仍可用
+- **破坏性变更**：推荐使用 `nimToken` 三合一配置（`appKey|accid|token`，兼容旧 `appKey-accid-token`）；独立的 `appKey`/`account`/`token` 字段已弃用但仍可用
 - 圈组消息强制禁用流式输出和文本分块，以完整消息形式传递（避免圈组内消息碎片化）
 
 ### 修复
