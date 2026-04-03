@@ -8,7 +8,7 @@
 
 > **⚠️ v1.0.0 破坏性变更**
 >
-> 1. **OpenClaw 版本要求**：需要 OpenClaw **2026.3.24 或更新版本**（当前版本使用新的 OpenClaw 插件 API，与旧版本不兼容）
+> 1. **OpenClaw 版本要求**：当前版本基于 OpenClaw **2026.4.1** 进行开发。如遇到兼容性问题，请升级至 **2026.4.1 及更新版本**
 > 2. **配置格式变更**：`channels.nim` 从单对象改为**数组格式**（见下方示例）
 > 3. **账号类型限制**：仅支持**机器人账号**登录（不支持普通个人账号）
 > 4. **凭证配置方式**：推荐使用 `nimToken` 三合一配置（`appKey|accid|token`，兼容旧 `appKey-accid-token`）
@@ -88,8 +88,8 @@ openclaw plugins install openclaw-nim
 
 ```bash
 # 注意：CLI 命令配置第一个实例（索引 0）
-openclaw config set channels.nim.0.nimToken "<appKey>|<accid>|<token>"
-openclaw config set channels.nim.0.enabled true
+openclaw config set channels.nim.instances.0.nimToken "<appKey>|<accid>|<token>"
+openclaw config set channels.nim.instances.0.enabled true
 ```
 
 > **`nimToken` 格式**：`<appKey>|<accid>|<token>`（用 `|` 分隔三个字段）— **推荐**

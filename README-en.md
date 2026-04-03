@@ -8,7 +8,7 @@ A [OpenClaw](https://openclaw.ai/) channel plugin for NetEase IM (网易云信),
 
 > **⚠️ Breaking Changes in v1.0.0**
 >
-> 1. **OpenClaw Version**: Requires OpenClaw **2026.3.24 or later** (this version uses the new OpenClaw plugin API and is incompatible with older versions)
+> 1. **OpenClaw Version**: This version is developed based on OpenClaw **2026.4.1**. If you encounter compatibility issues, please upgrade to **2026.4.1 or later**
 > 2. **Configuration Format**: `channels.nim` changed from single object to **array format** (see examples below)
 > 3. **Account Type**: Only **bot accounts** are supported (regular personal accounts are not supported)
 > 4. **Credentials**: Recommended to use `nimToken` shorthand format (`appKey|accid|token`, legacy `appKey-accid-token` still supported)
@@ -88,8 +88,8 @@ openclaw plugins install openclaw-nim
 
 ```bash
 # Note: CLI commands configure the first instance (index 0)
-openclaw config set channels.nim.0.nimToken "<appKey>|<accid>|<token>"
-openclaw config set channels.nim.0.enabled true
+openclaw config set channels.nim.instances.0.nimToken "<appKey>|<accid>|<token>"
+openclaw config set channels.nim.instances.0.enabled true
 ```
 
 > **`nimToken` format**: `<appKey>|<accid>|<token>` (three fields separated by `|`) — **Recommended**

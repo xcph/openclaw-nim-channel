@@ -409,7 +409,8 @@ export async function createNimClient(cfg: NimInstanceConfig): Promise<NimClient
         console.error(`[nim] text send failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`);
         return {
           success: false,
-          error: error.message || String(error),
+          error: errorMessage,
+          errorCode: errorCode,
         };
       }
     },
@@ -438,7 +439,11 @@ export async function createNimClient(cfg: NimInstanceConfig): Promise<NimClient
         const errorMessage = error?.message ?? error?.desc ?? String(error);
         const errorCode = error?.code ?? error?.res_code;
         console.error(`[nim] image send failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`);
-        return { success: false, error: error.message || String(error) };
+        return {
+          success: false,
+          error: errorMessage,
+          errorCode: errorCode,
+        };
       }
     },
 
@@ -466,7 +471,11 @@ export async function createNimClient(cfg: NimInstanceConfig): Promise<NimClient
         const errorMessage = error?.message ?? error?.desc ?? String(error);
         const errorCode = error?.code ?? error?.res_code;
         console.error(`[nim] file send failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`);
-        return { success: false, error: error.message || String(error) };
+        return {
+          success: false,
+          error: errorMessage,
+          errorCode: errorCode,
+        };
       }
     },
 
@@ -495,7 +504,11 @@ export async function createNimClient(cfg: NimInstanceConfig): Promise<NimClient
         const errorMessage = error?.message ?? error?.desc ?? String(error);
         const errorCode = error?.code ?? error?.res_code;
         console.error(`[nim] audio send failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`);
-        return { success: false, error: error.message || String(error) };
+        return {
+          success: false,
+          error: errorMessage,
+          errorCode: errorCode,
+        };
       }
     },
 
@@ -526,7 +539,11 @@ export async function createNimClient(cfg: NimInstanceConfig): Promise<NimClient
         const errorMessage = error?.message ?? error?.desc ?? String(error);
         const errorCode = error?.code ?? error?.res_code;
         console.error(`[nim] video send failed — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`);
-        return { success: false, error: error.message || String(error) };
+        return {
+          success: false,
+          error: errorMessage,
+          errorCode: errorCode,
+        };
       }
     },
 

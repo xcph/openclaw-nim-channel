@@ -3,23 +3,51 @@
  */
 
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type {
-  NimInstanceConfig,
-  NimSendResult,
-  NimSessionType,
-} from "./types.js";
+import type { NimInstanceConfig, NimSendResult, NimSessionType } from "./types.js";
 import { createNimClient, getCachedNimClient } from "./client.js";
 import { normalizeNimTarget } from "./targets.js";
 import { resolveNimAccountById, resolveAllNimAccounts } from "./accounts.js";
+import { V2NIMConst } from "@yxim/nim-bot";
+
+/**
+ * 获取 NIM 错误描述
+ * 优先级：
+ * 1. SDK 运行时返回的 error.message/error.desc（最准确）
+ * 2. V2NIMErrorDesc[errorCode]（SDK 提供的错误码映射表）
+ * 3. "发送失败"（默认值）
+ */
+export function getNimErrorDescription(errorCode?: number | string, errorMessage?: string): string {
+  // 1. 优先使用 SDK 运行时返回的错误描述
+  if (errorMessage && errorMessage.trim()) {
+    return errorMessage;
+  }
+
+  // 2. 尝试从 SDK 的 V2NIMErrorDesc 查询错误码描述
+  if (errorCode !== undefined && V2NIMConst.V2NIMErrorDesc) {
+    const code = typeof errorCode === "string" ? parseInt(errorCode, 10) : errorCode;
+    if (!isNaN(code) && V2NIMConst.V2NIMErrorDesc[code]) {
+      return V2NIMConst.V2NIMErrorDesc[code];
+    }
+  }
+
+  // 3. 返回默认错误提示
+  return "发送失败";
+}
+
+/**
+ * 格式化发送失败消息
+ */
+export function formatSendFailureMessage(errorCode?: number | string, errorMessage?: string): string {
+  const description = getNimErrorDescription(errorCode, errorMessage);
+  const codeStr = errorCode !== undefined ? String(errorCode) : "unknown";
+  return `消息发送失败：${description}(${codeStr})`;
+}
 
 /**
  * Resolve the NIM instance config for a given accountId, or fall back to
  * the first configured instance if no accountId is provided.
  */
-export function resolveInstCfg(
-  cfg: OpenClawConfig,
-  accountId?: string,
-): NimInstanceConfig | null {
+export function resolveInstCfg(cfg: OpenClawConfig, accountId?: string): NimInstanceConfig | null {
   if (accountId) {
     const acct = resolveNimAccountById({ cfg, accountId });
     return acct.configured ? acct.config : null;
@@ -61,9 +89,7 @@ export async function sendMessageNim(params: {
       await client.login();
     }
 
-    console.log(
-      `[nim] ✅ sendMessageNim using client — account: ${client.account}`,
-    );
+    console.log(`[nim] ✅ sendMessageNim using client — account: ${client.account}`);
 
     return await client.sendText(targetId, text, sessionType);
   } catch (error) {
@@ -86,15 +112,7 @@ export async function replyMessageNim(params: {
   sessionType?: NimSessionType;
   accountId?: string; // 🔥 Add accountId parameter
 }): Promise<NimSendResult> {
-  const {
-    cfg,
-    to,
-    text,
-    originalMsg,
-    forcePushAccountIds,
-    sessionType = "team",
-    accountId,
-  } = params;
+  const { cfg, to, text, originalMsg, forcePushAccountIds, sessionType = "team", accountId } = params;
   const nimCfg = resolveInstCfg(cfg, accountId); // 🔥 Pass accountId
 
   if (!nimCfg) {
@@ -109,25 +127,15 @@ export async function replyMessageNim(params: {
 
   try {
     let client = getCachedNimClient(nimCfg);
-    console.log(
-      `[nim] reply client — cached: ${client ? "yes" : "no"}, logged in: ${client?.loggedIn ? "yes" : "no"}`,
-    );
+    console.log(`[nim] reply client — cached: ${client ? "yes" : "no"}, logged in: ${client?.loggedIn ? "yes" : "no"}`);
     if (!client || !client.loggedIn) {
       console.log("[nim] reply client initializing");
       client = await createNimClient(nimCfg);
       await client.login();
     }
 
-    console.log(
-      `[nim] ✅ replyMessageNim using client — account: ${client.account}`,
-    );
-    const result = await client.replyText(
-      targetId,
-      text,
-      originalMsg,
-      forcePushAccountIds,
-      sessionType,
-    );
+    console.log(`[nim] ✅ replyMessageNim using client — account: ${client.account}`);
+    const result = await client.replyText(targetId, text, originalMsg, forcePushAccountIds, sessionType);
     console.log(
       `[nim] reply completed — message id: ${result.msgId ?? "unknown"}, status: ${result.success ? "sent" : "failed"}`,
     );
@@ -161,10 +169,7 @@ export async function editMessageNim(params: {
 /**
  * 将长文本分割成多条消息
  */
-export function splitMessageIntoChunks(
-  text: string,
-  maxLength: number = MAX_MESSAGE_LENGTH,
-): string[] {
+export function splitMessageIntoChunks(text: string, maxLength: number = MAX_MESSAGE_LENGTH): string[] {
   if (text.length <= maxLength) {
     return [text];
   }
@@ -211,16 +216,7 @@ export async function sendStreamMessageNim(params: {
   baseMessage?: any; // 基础消息体，复用于整个流式会话
   accountId?: string; // 🔥 Add accountId parameter
 }): Promise<NimSendResult> {
-  const {
-    cfg,
-    to,
-    text,
-    sessionType = "p2p",
-    chunkIndex,
-    isComplete,
-    baseMessage,
-    accountId,
-  } = params;
+  const { cfg, to, text, sessionType = "p2p", chunkIndex, isComplete, baseMessage, accountId } = params;
   const nimCfg = resolveInstCfg(cfg, accountId); // 🔥 Pass accountId
 
   console.log(
@@ -276,16 +272,7 @@ export async function replyStreamMessageNim(params: {
   replyMessage?: any; // 被回复的消息
   accountId?: string; // 🔥 Add accountId parameter
 }): Promise<NimSendResult> {
-  const {
-    cfg,
-    conversationId,
-    text,
-    chunkIndex,
-    isComplete,
-    baseMessage,
-    replyMessage,
-    accountId,
-  } = params;
+  const { cfg, conversationId, text, chunkIndex, isComplete, baseMessage, replyMessage, accountId } = params;
   const nimCfg = resolveInstCfg(cfg, accountId); // 🔥 Pass accountId
 
   console.log(
