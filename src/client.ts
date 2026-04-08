@@ -255,7 +255,7 @@ export async function createNimClient(cfg: NimInstanceConfig): Promise<NimClient
       console.log(
         `[nim] received message — sender: ${event.from}, type: ${event.type}, session: ${event.sessionType}, target: ${event.to}, message id: ${event.msgId}, timestamp: ${event.time}`,
       );
-      
+
       msgCallbackSet.forEach((cb) => cb(event));
 
       if (event.sessionType === "p2p") {
@@ -391,18 +391,92 @@ export async function createNimClient(cfg: NimInstanceConfig): Promise<NimClient
         const conversationId = buildConversationId(nim, to, sessionType);
         console.log(`[nim] sending text — target: ${conversationId}, session: ${sessionType}, length: ${text.length}`);
 
-        const result = await messageService.sendMessage(message, conversationId, {
-          antispamConfig: {
-            antispamEnabled: cfg.antispamEnabled ?? true,
-          },
-        });
+        // 🔥 等待 onSendMessage 回调来获取真正的发送结果
+        return new Promise((resolve) => {
+          let sendCallbackFired = false;
+          const messageClientId = message.messageClientId;
 
-        console.log(`[nim] text sent — message id: ${result.message?.messageServerId ?? "unknown"}`);
-        return {
-          success: true,
-          msgId: result.message?.messageServerId,
-          clientMsgId: result.message?.messageClientId,
-        };
+          // 监听 onSendMessage 回调（会异步触发多次）
+          // sendingState: 3 = 发送中, 1 = 已发送（成功或失败，需检查 errorCode）, 2 = 发送失败
+          const sendListener = (msg: any) => {
+            if (msg.messageClientId !== messageClientId) return;
+
+            // 🔥 只有当 sendingState 不是 3（发送中）时才处理，跳过中间状态
+            if (msg.sendingState === 3) {
+              console.log(`[nim] text sending (intermediate) — messageClientId: ${messageClientId}`);
+              return; // 跳过发送中的中间状态
+            }
+
+            if (sendCallbackFired) return;
+            sendCallbackFired = true;
+            messageService.off("onSendMessage", sendListener);
+
+            // 检查发送状态：sendingState === 1 且 errorCode !== 200 表示失败
+            // 或者 sendingState === 2 表示发送失败
+            const errorCode = msg.messageStatus?.errorCode;
+            const isFailed = msg.sendingState === 2 || (msg.sendingState === 1 && errorCode !== 200);
+
+            if (isFailed) {
+              const errorMessage = msg.messageStatus?.errorDesc || `发送失败(${errorCode})`;
+              console.error(
+                `[nim] text send failed (callback) — error: ${errorMessage}, code: ${errorCode}, messageServerId: ${msg.messageServerId}`,
+              );
+              resolve({
+                success: false,
+                error: errorMessage,
+                errorCode: errorCode,
+              });
+            } else {
+              console.log(`[nim] text sent (callback) — message id: ${msg.messageServerId ?? "unknown"}`);
+              resolve({
+                success: true,
+                msgId: msg.messageServerId,
+                clientMsgId: msg.messageClientId,
+              });
+            }
+          };
+
+          messageService.on("onSendMessage", sendListener);
+
+          // 发送消息
+          messageService
+            .sendMessage(message, conversationId, {
+              antispamConfig: {
+                antispamEnabled: cfg.antispamEnabled ?? true,
+              },
+            })
+            .catch((error: any) => {
+              // 同步异常（如网络错误、参数错误等）
+              if (!sendCallbackFired) {
+                sendCallbackFired = true;
+                messageService.off("onSendMessage", sendListener);
+                const errorMessage = error?.message ?? error?.desc ?? String(error);
+                const errorCode = error?.code ?? error?.res_code;
+                console.error(
+                  `[nim] text send failed (sync) — error: ${errorMessage}${errorCode ? ` (code: ${errorCode})` : ""}`,
+                );
+                resolve({
+                  success: false,
+                  error: errorMessage,
+                  errorCode: errorCode,
+                });
+              }
+            });
+
+          // 超时保护（30秒）
+          setTimeout(() => {
+            if (!sendCallbackFired) {
+              sendCallbackFired = true;
+              messageService.off("onSendMessage", sendListener);
+              console.error(`[nim] text send timeout — messageClientId: ${messageClientId}`);
+              resolve({
+                success: false,
+                error: "发送超时",
+                errorCode: 508,
+              });
+            }
+          }, 30000);
+        });
       } catch (error: any) {
         const errorMessage = error?.message ?? error?.desc ?? String(error);
         const errorCode = error?.code ?? error?.res_code;

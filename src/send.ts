@@ -10,24 +10,68 @@ import { resolveNimAccountById, resolveAllNimAccounts } from "./accounts.js";
 import { V2NIMConst } from "@yxim/nim-bot";
 
 /**
+ * 常见错误码的中文描述映射
+ */
+const ERROR_CODE_DESCRIPTIONS: Record<number, string> = {
+  // 反垃圾
+  195001: "消息被本地反垃圾拦截",
+  195002: "消息被云端反垃圾拦截",
+  // 账号
+  102404: "用户不存在",
+  102426: "用户已被拉黑",
+  102421: "用户被禁言",
+  102422: "用户被禁用",
+  // 消息
+  107451: "消息命中反垃圾",
+  107404: "消息不存在",
+  107323: "消息发送频率超限",
+  107410: "应用被禁言",
+  // 群组
+  108404: "群不存在",
+  108306: "群普通成员禁言",
+  108423: "群全体禁言",
+  109424: "群成员被禁言",
+  109404: "群成员不存在",
+  // 通用
+  414: "参数错误",
+  416: "频率超限",
+  403: "没有权限",
+  404: "资源不存在",
+  // 连接
+  192001: "连接失败",
+  192002: "连接超时",
+  192004: "协议超时",
+  191005: "请求超时",
+};
+
+/**
  * 获取 NIM 错误描述
  * 优先级：
- * 1. SDK 运行时返回的 error.message/error.desc（最准确）
- * 2. V2NIMErrorDesc[errorCode]（SDK 提供的错误码映射表）
+ * 1. 中文错误描述映射表（用户友好）
+ * 2. SDK 的 V2NIMErrorDesc[code]（code -> message 映射）
  * 3. "发送失败"（默认值）
+ *
+ * 注意：不使用 SDK 运行时的 errorMessage，因为它通常已经包含错误码格式如 "发送失败(195002)"
  */
-export function getNimErrorDescription(errorCode?: number | string, errorMessage?: string): string {
-  // 1. 优先使用 SDK 运行时返回的错误描述
-  if (errorMessage && errorMessage.trim()) {
-    return errorMessage;
+export function getNimErrorDescription(errorCode?: number | string, _errorMessage?: string): string {
+  if (errorCode === undefined) {
+    return "发送失败";
   }
 
-  // 2. 尝试从 SDK 的 V2NIMErrorDesc 查询错误码描述
-  if (errorCode !== undefined && V2NIMConst.V2NIMErrorDesc) {
-    const code = typeof errorCode === "string" ? parseInt(errorCode, 10) : errorCode;
-    if (!isNaN(code) && V2NIMConst.V2NIMErrorDesc[code]) {
-      return V2NIMConst.V2NIMErrorDesc[code];
-    }
+  const code = typeof errorCode === "string" ? parseInt(errorCode, 10) : errorCode;
+  if (isNaN(code)) {
+    return "发送失败";
+  }
+
+  // 1. 优先使用中文描述映射表
+  if (ERROR_CODE_DESCRIPTIONS[code]) {
+    return ERROR_CODE_DESCRIPTIONS[code];
+  }
+
+  // 2. 尝试从 V2NIMErrorDesc 中获取英文描述
+  // V2NIMErrorDesc 结构: { code: message, ... } 如 { 195002: 'server anti-spam', ... }
+  if (V2NIMConst?.V2NIMErrorDesc && V2NIMConst.V2NIMErrorDesc[code]) {
+    return V2NIMConst.V2NIMErrorDesc[code];
   }
 
   // 3. 返回默认错误提示
@@ -40,6 +84,11 @@ export function getNimErrorDescription(errorCode?: number | string, errorMessage
 export function formatSendFailureMessage(errorCode?: number | string, errorMessage?: string): string {
   const description = getNimErrorDescription(errorCode, errorMessage);
   const codeStr = errorCode !== undefined ? String(errorCode) : "unknown";
+
+  // 如果 description 已经包含了错误码，不要再重复添加
+  if (description.includes(`(${codeStr})`)) {
+    return `消息发送失败：${description}`;
+  }
   return `消息发送失败：${description}(${codeStr})`;
 }
 

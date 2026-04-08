@@ -25,12 +25,9 @@ import {
   splitMessageIntoChunks,
   sendStreamMessageNim,
   replyStreamMessageNim,
+  formatSendFailureMessage,
 } from "./send.js";
-import {
-  resolveUserNick,
-  resolveTeamName,
-  buildConversationLabel,
-} from "./name-resolver.js";
+import { resolveUserNick, resolveTeamName, buildConversationLabel } from "./name-resolver.js";
 import { getCachedNimClient } from "./client.js";
 
 /**
@@ -77,11 +74,7 @@ function extractMessageContent(message: NimMessageEvent): string {
   if (message.type === "custom" && message.ext) {
     try {
       const parsed = message.ext;
-      return (
-        (parsed as any).text ||
-        (parsed as any).content ||
-        JSON.stringify(parsed)
-      );
+      return (parsed as any).text || (parsed as any).content || JSON.stringify(parsed);
     } catch {
       return String(message.ext);
     }
@@ -124,13 +117,9 @@ function deriveBotAccountId(accountId: string): string {
 /**
  * Parse a NIM message event into a message context.
  */
-export function parseNimMessageEvent(
-  message: NimMessageEvent,
-): NimMessageContext {
+export function parseNimMessageEvent(message: NimMessageEvent): NimMessageContext {
   const isDirectMessage = message.sessionType === "p2p";
-  const sessionId = isDirectMessage
-    ? `p2p-${message.from}`
-    : `team-${message.to}`;
+  const sessionId = isDirectMessage ? `p2p-${message.from}` : `team-${message.to}`;
 
   return {
     id: message.clientMsgId,
@@ -165,13 +154,10 @@ export async function handleNimMessage(params: {
   const log = runtime?.log ?? console.log;
   const error = runtime?.error ?? console.error;
   const botAccount =
-    (nimCfg?.account ? String(nimCfg.account) : "") ||
-    account.account ||
-    deriveBotAccountId(accountId);
+    (nimCfg?.account ? String(nimCfg.account) : "") || account.account || deriveBotAccountId(accountId);
 
   const isP2P = message.sessionType === "p2p";
-  const isTeam =
-    message.sessionType === "team" || message.sessionType === "superTeam";
+  const isTeam = message.sessionType === "team" || message.sessionType === "superTeam";
 
   if (!isP2P && !isTeam) {
     log(`[nim] ignoring message — session: ${message.sessionType}`);
@@ -181,9 +167,7 @@ export async function handleNimMessage(params: {
   // For team messages, only process when forcePushAccountIds includes the bot
   if (isTeam) {
     const forcePushIds = message.forcePushAccountIds ?? [];
-    log(
-      `[nim] team mention gate — botAccount: ${botAccount || "unknown"}, forcePush: [${forcePushIds.join(", ")}]`,
-    );
+    log(`[nim] team mention gate — botAccount: ${botAccount || "unknown"}, forcePush: [${forcePushIds.join(", ")}]`);
     if (!forcePushIds.includes(botAccount)) {
       log(`[nim] ignoring team message — reason: bot not in force-push list`);
       return;
@@ -209,9 +193,7 @@ export async function handleNimMessage(params: {
       if (result.reason === "disabled") {
         log(`[nim] p2p disabled — sender: ${ctx.senderId}`);
       } else {
-        log(
-          `[nim] p2p blocked — sender: ${ctx.senderId}, policy: ${p2pPolicy}`,
-        );
+        log(`[nim] p2p blocked — sender: ${ctx.senderId}, policy: ${p2pPolicy}`);
       }
       return;
     }
@@ -231,9 +213,7 @@ export async function handleNimMessage(params: {
         sessionType: message.sessionType as "team" | "superTeam",
       })
     ) {
-      log(
-        `[nim] team message blocked — group: ${message.to}, sender: ${ctx.senderId}, policy: ${teamPolicy}`,
-      );
+      log(`[nim] team message blocked — group: ${message.to}, sender: ${ctx.senderId}, policy: ${teamPolicy}`);
       return;
     }
   }
@@ -299,15 +279,9 @@ export async function handleNimMessage(params: {
 
     if (isTeam) {
       teamName = nativeNim
-        ? await resolveTeamName(
-            nativeNim,
-            message.to,
-            message.sessionType as "team" | "superTeam",
-          )
+        ? await resolveTeamName(nativeNim, message.to, message.sessionType as "team" | "superTeam")
         : message.to;
-      log(
-        `[nim] resolved team name — teamId: ${message.to}, teamName: ${teamName}, hasNativeNim: ${!!nativeNim}`,
-      );
+      log(`[nim] resolved team name — teamId: ${message.to}, teamName: ${teamName}, hasNativeNim: ${!!nativeNim}`);
       conversationLabel = buildConversationLabel("team", teamName);
       groupSubject = buildConversationLabel("team", teamName);
     } else {
@@ -322,10 +296,7 @@ export async function handleNimMessage(params: {
       ctx.text.trim().length > 0
     ) {
       try {
-        const referredMessages =
-          await nativeNim.V2NIMMessageService.getMessageListByRefers([
-            message.threadReply,
-          ]);
+        const referredMessages = await nativeNim.V2NIMMessageService.getMessageListByRefers([message.threadReply]);
         const repliedMessage = Array.isArray(referredMessages)
           ? referredMessages[0]
           : Array.isArray(referredMessages?.messages)
@@ -337,18 +308,12 @@ export async function handleNimMessage(params: {
 
         if (repliedText && repliedText.trim().length > 0) {
           inboundPromptText = `${repliedText}\n${ctx.text}`;
-          log(
-            `[nim] thread reply resolved — current: ${ctx.id}, referenced text length: ${repliedText.length}`,
-          );
+          log(`[nim] thread reply resolved — current: ${ctx.id}, referenced text length: ${repliedText.length}`);
         } else {
-          log(
-            `[nim] thread reply resolved without text payload — current: ${ctx.id}`,
-          );
+          log(`[nim] thread reply resolved without text payload — current: ${ctx.id}`);
         }
       } catch (err) {
-        log(
-          `[nim] thread reply lookup failed — current: ${ctx.id}, error: ${String(err)}`,
-        );
+        log(`[nim] thread reply lookup failed — current: ${ctx.id}, error: ${String(err)}`);
       }
     }
 
@@ -383,9 +348,7 @@ export async function handleNimMessage(params: {
       CommandAuthorized: true,
       OriginatingChannel: "nim" as const,
       OriginatingTo: nimTo,
-      ...(isTeam
-        ? { GroupSubject: groupSubject ?? message.to, WasMentioned: true }
-        : {}),
+      ...(isTeam ? { GroupSubject: groupSubject ?? message.to, WasMentioned: true } : {}),
       ...mediaPayload,
     });
 
@@ -393,17 +356,12 @@ export async function handleNimMessage(params: {
     let streamChunkIndex = 0;
     let baseMessage: any = null;
 
-    const deliver = async (
-      payload: any,
-      info?: { kind: string },
-    ): Promise<void> => {
-      const mediaList =
-        payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []);
+    const deliver = async (payload: any, info?: { kind: string }): Promise<void> => {
+      const mediaList = payload.mediaUrls ?? (payload.mediaUrl ? [payload.mediaUrl] : []);
       const text = payload.text ?? "";
       const kind = info?.kind ?? "unknown";
 
-      const isTeamMessage =
-        sessionType === "team" || sessionType === "superTeam";
+      const isTeamMessage = sessionType === "team" || sessionType === "superTeam";
 
       // Stream blocks via NIM SDK stream API; fall back to normal send on failure
       if (text && kind === "block") {
@@ -442,9 +400,7 @@ export async function handleNimMessage(params: {
             return;
           }
         } catch (err) {
-          log(
-            `[nim] stream send failed, falling back to normal send — error: ${String(err)}`,
-          );
+          log(`[nim] stream send failed, falling back to normal send — error: ${String(err)}`);
         }
       }
 
@@ -459,9 +415,7 @@ export async function handleNimMessage(params: {
         if (mediaList.length > 0) {
           for (const mediaUrl of mediaList) {
             const mediaType = inferMessageType(mediaUrl);
-            log(
-              `[nim] sending media — target: ${ctx.senderId}, type: ${mediaType}, file: ${mediaUrl}`,
-            );
+            log(`[nim] sending media — target: ${ctx.senderId}, type: ${mediaType}, file: ${mediaUrl}`);
 
             if (mediaType === "image") {
               await sendImageNim({
@@ -494,17 +448,12 @@ export async function handleNimMessage(params: {
 
         // Send text if present
         if (text) {
-          const isTeamReply =
-            (sessionType === "team" || sessionType === "superTeam") &&
-            message.rawMsg &&
-            ctx.senderId;
+          const isTeamReply = (sessionType === "team" || sessionType === "superTeam") && message.rawMsg && ctx.senderId;
           log(
             `[nim] reply mode selected — session: ${sessionType}, reply: ${isTeamReply ? "quoted" : "standard"}, streaming: ${isTeamMessage ? "disabled (team message)" : "enabled for P2P"}`,
           );
           const chunks = splitMessageIntoChunks(text, chunkLimit);
-          log(
-            `[nim] reply chunking — chunks: ${chunks.length}, limit: ${chunkLimit}`,
-          );
+          log(`[nim] reply chunking — chunks: ${chunks.length}, limit: ${chunkLimit}`);
           for (const chunk of chunks) {
             // 🔥 Debug: log accountId before sending
             log(
@@ -527,6 +476,32 @@ export async function handleNimMessage(params: {
               log(
                 `[nim] reply result — message id: ${result.msgId ?? "unknown"}, status: ${result.success ? "sent" : "failed"}`,
               );
+
+              // 🔥 Send failure notification for team reply
+              if (!result.success) {
+                const failureMessage = formatSendFailureMessage(result.errorCode, result.error);
+                log(`[nim] sending team failure notification — target: ${message.to}, message: ${failureMessage}`);
+                try {
+                  const notifyResult = await replyMessageNim({
+                    cfg,
+                    to: message.to,
+                    text: failureMessage,
+                    originalMsg: message.rawMsg,
+                    forcePushAccountIds: [ctx.senderId],
+                    sessionType,
+                    accountId,
+                  });
+                  if (notifyResult.success) {
+                    log(`[nim] team failure notification sent — message id: ${notifyResult.msgId ?? "unknown"}`);
+                  } else {
+                    log(
+                      `[nim] team failure notification also failed — error: ${notifyResult.error ?? "unknown"}, not retrying`,
+                    );
+                  }
+                } catch (notifyErr) {
+                  log(`[nim] team failure notification exception — error: ${String(notifyErr)}, not retrying`);
+                }
+              }
             } else {
               const result = await sendMessageNim({
                 cfg,
@@ -536,9 +511,29 @@ export async function handleNimMessage(params: {
                 accountId, // 🔥 Pass accountId
               });
               if (!result.success) {
-                log(
-                  `[nim] send failed — target: ${ctx.senderId}, error: ${result.error ?? "unknown"}`,
-                );
+                log(`[nim] send failed — target: ${ctx.senderId}, error: ${result.error ?? "unknown"}`);
+
+                // 🔥 Send failure notification to user
+                const failureMessage = formatSendFailureMessage(result.errorCode, result.error);
+                log(`[nim] sending failure notification — target: ${ctx.senderId}, message: ${failureMessage}`);
+                try {
+                  const notifyResult = await sendMessageNim({
+                    cfg,
+                    to: ctx.senderId,
+                    text: failureMessage,
+                    sessionType,
+                    accountId,
+                  });
+                  if (notifyResult.success) {
+                    log(`[nim] failure notification sent — message id: ${notifyResult.msgId ?? "unknown"}`);
+                  } else {
+                    log(
+                      `[nim] failure notification also failed — error: ${notifyResult.error ?? "unknown"}, not retrying`,
+                    );
+                  }
+                } catch (notifyErr) {
+                  log(`[nim] failure notification exception — error: ${String(notifyErr)}, not retrying`);
+                }
               }
             }
             log(
@@ -552,9 +547,7 @@ export async function handleNimMessage(params: {
       }
     };
 
-    log(
-      `[nim] dispatching to agent — session: ${route.sessionKey}, chat: ${chatType}, agent: ${route.agentId}`,
-    );
+    log(`[nim] dispatching to agent — session: ${route.sessionKey}, chat: ${chatType}, agent: ${route.agentId}`);
 
     //@ts-ignore
     await core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
@@ -567,14 +560,10 @@ export async function handleNimMessage(params: {
           log(`[nim] reply dispatcher idle`);
         },
         onError: (err: Error, info: { kind: string }) => {
-          log(
-            `[nim] reply dispatcher error — kind: ${info.kind}, error: ${String(err)}`,
-          );
+          log(`[nim] reply dispatcher error — kind: ${info.kind}, error: ${String(err)}`);
         },
         onSkip: (_payload: unknown, info: { kind: string; reason: string }) => {
-          log(
-            `[nim] reply skipped by normalizer — kind: ${info.kind}, reason: ${info.reason}`,
-          );
+          log(`[nim] reply skipped by normalizer — kind: ${info.kind}, reason: ${info.reason}`);
         },
       },
       replyOptions: {
