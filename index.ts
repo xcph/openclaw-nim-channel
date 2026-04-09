@@ -7,11 +7,7 @@ import { setNimRuntime } from "./src/runtime.js";
 console.log("[nim] plugin module loaded — multi-instance v2");
 
 // Export monitor functions
-export {
-  monitorNimProvider,
-  stopNimMonitor,
-  isNimMonitorRunning,
-} from "./src/monitor.js";
+export { monitorNimProvider, stopNimMonitor, isNimMonitorRunning } from "./src/monitor.js";
 
 // Export send functions
 export { sendMessageNim, editMessageNim } from "./src/send.js";
@@ -27,12 +23,7 @@ export {
 } from "./src/outbound.js";
 
 // Export media functions
-export {
-  sendImageNim,
-  sendFileNim,
-  sendAudioNim,
-  sendVideoNim,
-} from "./src/media.js";
+export { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim } from "./src/media.js";
 
 // Export probe function
 export { probeNim, probeNimWithConnect } from "./src/probe.js";
@@ -56,23 +47,11 @@ export type {
 } from "./src/types.js";
 
 // Export utility functions
-export {
-  normalizeNimTarget,
-  looksLikeNimId,
-  formatNimTarget,
-} from "./src/targets.js";
-export {
-  resolveNimCredentials,
-  resolveNimAccount,
-  isNimP2pAllowed,
-} from "./src/accounts.js";
+export { normalizeNimTarget, looksLikeNimId, formatNimTarget } from "./src/targets.js";
+export { resolveNimCredentials, resolveNimAccount, isNimP2pAllowed } from "./src/accounts.js";
 
 // Export QChat functions
-export {
-  sendQChatMessage,
-  setSharedQChatClient,
-  getSharedQChatClient,
-} from "./src/qchat-send.js";
+export { sendQChatMessage, setSharedQChatClient, getSharedQChatClient } from "./src/qchat-send.js";
 export { parseQChatMessage, handleQChatInbound } from "./src/qchat-inbound.js";
 export { QChatClient } from "./src/qchat-client.js";
 
@@ -82,7 +61,7 @@ export { QChatClient } from "./src/qchat-client.js";
  * A Clawdbot channel plugin for NetEase IM (NIM).
  */
 const plugin = {
-  id: "openclaw-nim",
+  id: "nimsuite-openclaw-nim-channel",
   name: "NIM",
   description: "NetEase IM (网易云信) channel plugin",
   configSchema: emptyPluginConfigSchema(),

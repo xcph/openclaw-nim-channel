@@ -1,5 +1,5 @@
 {
-  "id": "openclaw-nim",
+  "id": "nimsuite-openclaw-nim-channel",
   "channels": ["nim"],
   "configSchema": {
     "type": "object",

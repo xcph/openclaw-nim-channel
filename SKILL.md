@@ -18,7 +18,7 @@
 ## 安装
 
 ```bash
-openclaw plugins install openclaw-nim
+openclaw plugins install @nimsuite/openclaw-nim-channel
 ```
 
 ## 快速配置

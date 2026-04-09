@@ -122,7 +122,7 @@ channels:
     enabled: true
     blockStreaming: true # 🔥 NIM 渠道启用分块
     textChunkLimit: 4000
-    plugin: "./plugins/openclaw-nim"
+    plugin: "./plugins/@nimsuite/openclaw-nim-channel"
 
 logging:
   level: "info"

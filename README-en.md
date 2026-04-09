@@ -77,7 +77,7 @@ npm install -g openclaw@latest
 ### Install Plugin
 
 ```bash
-openclaw plugins install openclaw-nim
+openclaw plugins install @nimsuite/openclaw-nim-channel
 ```
 
 ## Configuration
@@ -336,7 +336,7 @@ openclaw onboard
 ### Sending Messages
 
 ```typescript
-import { sendMessageNim, sendImageNim, sendFileNim, sendAudioNim, sendVideoNim } from "openclaw-nim";
+import { sendMessageNim, sendImageNim, sendFileNim, sendAudioNim, sendVideoNim } from "@nimsuite/openclaw-nim-channel";
 
 // Send text message
 await sendMessageNim({

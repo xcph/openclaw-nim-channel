@@ -77,7 +77,7 @@ npm install -g openclaw@latest
 ### 安装插件
 
 ```bash
-openclaw plugins install openclaw-nim
+openclaw plugins install @nimsuite/openclaw-nim-channel
 ```
 
 ## 配置
@@ -336,7 +336,7 @@ openclaw onboard
 ### 发送消息
 
 ```typescript
-import { sendMessageNim, sendImageNim, sendFileNim, sendAudioNim, sendVideoNim } from "openclaw-nim";
+import { sendMessageNim, sendImageNim, sendFileNim, sendAudioNim, sendVideoNim } from "@nimsuite/openclaw-nim-channel";
 
 // 发送文本消息
 await sendMessageNim({

@@ -137,7 +137,7 @@ agents:
 channels:
   nim:
     enabled: true
-    plugin: "./plugins/openclaw-nim"
+    plugin: "./plugins/@nimsuite/openclaw-nim-channel"
 
 logging:
   level: "info"

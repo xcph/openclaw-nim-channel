@@ -3,16 +3,18 @@
 ## Purpose
 
 Provide an OpenClaw channel plugin that connects to the NetEase NIM IM service, enabling AI bots to send and receive messages via the NIM SDK.
+
 ## Requirements
+
 ### Requirement: Plugin Registration
 
-The NIM plugin SHALL register as a Clawdbot channel plugin with the channel ID `nim` and package name `openclaw-nim`.
+The NIM plugin SHALL register as a Clawdbot channel plugin with the channel ID `nim` and package name `@nimsuite/openclaw-nim-channel`.
 
 #### Scenario: Plugin loaded by Clawdbot
 
 - **WHEN** Clawdbot loads the NIM plugin
 - **THEN** the plugin registers with:
-  - Plugin ID: `openclaw-nim`
+  - Plugin ID: `nimsuite-openclaw-nim-channel`
   - Channel ID: `nim`
   - Display name: `OpenClaw NIM Plugin`
 - **AND** the plugin exposes the `nimPlugin` ChannelPlugin implementation

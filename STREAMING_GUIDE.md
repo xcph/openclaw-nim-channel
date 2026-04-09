@@ -39,7 +39,7 @@ NIM_STREAMING_AUTH_TOKEN=your-secret-token
 您也可以在代码中动态配置：
 
 ```typescript
-import { createNimReplyDispatcher, type StreamingOptions } from "openclaw-nim";
+import { createNimReplyDispatcher, type StreamingOptions } from "@nimsuite/openclaw-nim-channel";
 
 const streamingOptions: StreamingOptions = {
   enabled: true,
