@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `nimToken` documentation and spec now recommend `appKey|accid|token`; legacy `appKey-accid-token` remains supported for backward compatibility
 
+## [1.0.3] - 2026-04-10
+
+### Fixed
+
+- Fix plugin installation failure on OpenClaw 2026.4.9: plugin API version compatibility check now uses semver range (`^2026.4.5`) instead of exact version to allow forward compatibility with newer OpenClaw patch releases
+
 ## [1.0.2] - 2026-04-01
 
 ### Fixed
