@@ -176,6 +176,8 @@ export type NimP2pPolicy = "open" | "allowlist" | "disabled";
 export interface ResolvedNimAccount {
   id: string;
   accountId: string;
+  configKey: string;
+  runtimeAccountId: string;
   appKey: string;
   account: string;
   token: string;

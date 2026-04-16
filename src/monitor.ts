@@ -26,11 +26,11 @@ const monitorStates = new Map<string, MonitorState>();
 
 /**
  * 启动 NIM 消息监听（多实例版本）
- * accountId 指定要启动的实例（"appKey:accid"），与 monitorStates Map 的键一致。
+ * accountId 指定要启动的实例配置键；底层 NIM 协议身份仍由 appKey+accid 决定。
  */
 export async function monitorNimProvider(params: {
   cfg: OpenClawConfig;
-  /** The derived accountId ("appKey:accid") for this instance. */
+  /** Stable config key for this instance. */
   accountId: string;
   runtime: RuntimeEnv;
   abortSignal?: AbortSignal;

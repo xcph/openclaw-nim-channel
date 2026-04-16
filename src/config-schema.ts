@@ -116,11 +116,12 @@ export const QChatSubConfigSchema = z.object({
 });
 
 /**
- * A single NIM instance configuration (one bot account).
- * `accountId` is automatically derived as `appKey:accid` — no manual `id` needed.
+ * A single NIM account configuration (one bot account).
+ * The outer `accounts` object key is the stable instance selector used by the
+ * gateway. The protocol identity remains `appKey:accid`.
  */
 export const NimInstanceConfigSchema = z.object({
-  /** Whether this instance is enabled (used when inside an `instances` array) */
+  /** Whether this account is enabled */
   enabled: z.boolean().optional().default(false),
 
   /**
@@ -154,14 +155,29 @@ export const NimInstanceConfigSchema = z.object({
   qchat: QChatSubConfigSchema.optional(),
 });
 
-const NimInstancesArraySchema = z
-  .array(NimInstanceConfigSchema)
-  .min(1, "channels.nim.instances must have at least one instance")
-  .max(3, "channels.nim.instances may have at most 3 instances")
-  .superRefine((instances, ctx) => {
+const NimAccountsSchema = z
+  .record(z.string(), NimInstanceConfigSchema)
+  .superRefine((accounts, ctx) => {
+    const entries = Object.entries(accounts);
+    if (entries.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "channels.nim.accounts must have at least one account",
+        path: [],
+      });
+      return;
+    }
+
+    if (entries.length > 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "channels.nim.accounts may have at most 3 accounts",
+        path: [],
+      });
+    }
+
     const seen = new Set<string>();
-    for (let i = 0; i < instances.length; i++) {
-      const inst = instances[i];
+    for (const [accountKey, inst] of entries) {
       let key: string | null = null;
       if (inst.nimToken) {
         const parsed = parseNimToken(inst.nimToken);
@@ -173,8 +189,8 @@ const NimInstancesArraySchema = z
         if (seen.has(key)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Duplicate NIM instance credentials: "${key}" appears more than once`,
-            path: [i],
+            message: `Duplicate NIM account credentials: "${key}" appears more than once`,
+            path: [accountKey],
           });
         }
         seen.add(key);
@@ -185,15 +201,17 @@ const NimInstancesArraySchema = z
 /**
  * NIM channel configuration schema.
  *
- * Multi-instance format (up to 3 instances):
- *   { instances: [ { enabled, appKey, account, token, p2p, ... }, ... ] }
+ * Multi-account format (up to 3 accounts):
+ *   { accounts: { primary: { enabled, appKey, account, token, p2p, ... }, ... } }
  *
  * The outer object wrapper is required so that the framework correctly detects
  * channels.nim as a configured channel (isRecord check in config-presence.ts).
- * Each instance's accountId is automatically derived as "<appKey>:<accid>".
+ * Each account has:
+ * - a stable config key (`accounts.<key>`) used for routing / task delivery
+ * - a runtime protocol identity derived as "<appKey>:<accid>"
  */
 export const NimConfigSchema = z.object({
-  instances: NimInstancesArraySchema,
+  accounts: NimAccountsSchema,
 });
 
 /** Single instance config type */

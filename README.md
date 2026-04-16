@@ -9,7 +9,7 @@
 > **⚠️ v1.0.0 破坏性变更**
 >
 > 1. **OpenClaw 版本要求**：当前版本基于 OpenClaw **2026.4.5** 进行开发。如遇到兼容性问题，请升级至 **2026.4.5 及更新版本**
-> 2. **配置格式变更**：`channels.nim` 从单对象改为**数组格式**（见下方示例）
+> 2. **配置格式变更**：`channels.nim` 使用 `accounts.<accountKey>` 命名账户格式（不再支持旧的 `instances[]`）
 > 3. **账号类型限制**：仅支持**机器人账号**登录（不支持普通个人账号）
 > 4. **凭证配置方式**：推荐使用 `nimToken` 三合一配置（`appKey|accid|token`，兼容旧 `appKey-accid-token`）
 
@@ -82,15 +82,28 @@ openclaw plugins install @nimsuite/openclaw-nim-channel
 
 ## 配置
 
-> **注意**：从 v1.0.0 开始，`channels.nim` 使用**数组格式**以支持多实例（最多 3 个）。每个实例可以有不同的凭证和策略。
+> **注意**：从 v1.0.0 开始，`channels.nim` 使用 `accounts.<accountKey>` 命名账户格式以支持多实例（最多 3 个）。旧的 `instances[]` 已不再支持。
+>
+> **推荐实践**：`accountKey` 应该使用稳定的实例标识符，例如 `nim_a1b2c3d4`、`primary_bot`，不要直接使用 `accid` 作为 key。因为不同 `appKey` 下可能存在同名账号，`accountKey` 的职责是区分配置实例，而不是表达协议层身份。
+
+### 为什么不用 `instances[]`
+
+- OpenClaw 多账号渠道通常使用 `accounts.<accountKey>` 作为约定俗成的配置形式，便于启停、删除、状态展示和外部引用。
+- `instances[]` 只有数组位置，没有稳定主键。调整顺序、插入、删除后，外部保存的实例引用容易错位。
+- NIM 的协议身份是 `appKey + accid`。不同 `appKey` 下可以出现同名 `accid`，因此不能把账号名本身当成配置主键。
+- 推荐做法是：`accountKey` 负责标识配置实例，`nimToken` / `appKey + accid` 负责标识 NIM 协议身份。两者分层，路由和定时任务才稳定。
 
 ### 快速配置（CLI）
 
 ```bash
-# 注意：CLI 命令配置第一个实例（索引 0）
-openclaw config set channels.nim.instances.0.nimToken "<appKey>|<accid>|<token>"
-openclaw config set channels.nim.instances.0.enabled true
+# 注意：nim_a1b2c3d4 是你自定义的稳定实例键
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.nimToken "<appKey>|<accid>|<token>"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.enabled true
+openclaw config set session.dmScope per-account-channel-peer
 ```
+
+> **多机器人必配**：如果你在原版 OpenClaw 下同时配置多个 NIM 机器人，必须把 `session.dmScope` 设为 `per-account-channel-peer`。  
+> 否则不同机器人给同一个用户发出的私聊，会在 UI 中被合并到同一个会话里。
 
 > **`nimToken` 格式**：`<appKey>|<accid>|<token>`（用 `|` 分隔三个字段）— **推荐**
 >
@@ -103,13 +116,13 @@ openclaw config set channels.nim.instances.0.enabled true
 #### 私有化部署配置（CLI）
 
 ```bash
-openclaw config set channels.nim.instances.0.advanced.weblbsUrl "https://your-lbs.example.com"
-openclaw config set channels.nim.instances.0.advanced.link_web "weblink.netease.im:443"
-openclaw config set channels.nim.instances.0.advanced.nos_uploader "https://your-nos-upload.example.com"
-openclaw config set channels.nim.instances.0.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
-openclaw config set channels.nim.instances.0.advanced.nosSsl true
-openclaw config set channels.nim.instances.0.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
-openclaw config set channels.nim.instances.0.advanced.nos_accelerate_host "your-cdn.example.com"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.weblbsUrl "https://your-lbs.example.com"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.link_web "weblink.netease.im:443"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.nos_uploader "https://your-nos-upload.example.com"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.nosSsl true
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.nos_accelerate_host "your-cdn.example.com"
 ```
 
 ### 单实例配置
@@ -118,8 +131,8 @@ openclaw config set channels.nim.instances.0.advanced.nos_accelerate_host "your-
 {
   "channels": {
     "nim": {
-      "instances": [
-        {
+      "accounts": {
+        "nim_a1b2c3d4": {
           "enabled": true,
           "nimToken": "<appKey>|<accid>|<token>",
 
@@ -156,7 +169,7 @@ openclaw config set channels.nim.instances.0.advanced.nos_accelerate_host "your-
             "nos_accelerate_host": "your-cdn.example.com"
           }
         }
-      ]
+      }
     }
   }
 }
@@ -170,33 +183,35 @@ openclaw config set channels.nim.instances.0.advanced.nos_accelerate_host "your-
 {
   "channels": {
     "nim": {
-      "instances": [
-        {
+      "accounts": {
+        "nim_a1b2c3d4": {
           "enabled": true,
-          "nimToken": "<appKey1>|<bot1>|<token1>",
+          "nimToken": "<appKey1>|<openclaw>|<token1>",
           "p2p": { "policy": "open" },
           "team": { "policy": "allowlist", "allowFrom": ["team_abc"] },
           "qchat": { "policy": "disabled" }
         },
-        {
+        "nim_b9e8f102": {
           "enabled": true,
-          "nimToken": "<appKey1>|<bot2>|<token2>",
+          "nimToken": "<appKey2>|<openclaw>|<token2>",
           "p2p": { "policy": "allowlist", "allowFrom": ["user_vip"] },
           "team": { "policy": "disabled" },
           "qchat": { "policy": "open" }
         },
-        {
+        "nim_c3f74d88": {
           "enabled": false,
-          "nimToken": "<appKey2>|<bot3>|<token3>",
+          "nimToken": "<appKey3>|<jiajia01>|<token3>",
           "p2p": { "policy": "open" }
         }
-      ]
+      }
     }
   }
 }
 ```
 
-> **注意**：最多 3 个实例（无论是否启用）。每个实例保持独立连接，可以有不同的策略。
+> **注意**：最多 3 个账户条目（无论是否启用）。每个账户条目保持独立连接，可以有不同的策略。
+>
+> 上面的示例故意展示了两个不同 `appKey` 下都使用 `openclaw` 作为 `accid` 的场景。此时仍然应该使用不同的 `accountKey`（如 `nim_a1b2c3d4`、`nim_b9e8f102`）区分实例，而不是直接把 `accid` 当 key。
 
 ### 流式输出配置
 
@@ -216,8 +231,10 @@ agents:
 
 channels:
   nim:
-    - enabled: true
-      nimToken: "your-credentials"
+    accounts:
+      nim_a1b2c3d4:
+        enabled: true
+        nimToken: "your-credentials"
 ```
 
 流式输出详细配置，请参阅：
@@ -231,9 +248,15 @@ channels:
 
 #### 顶层字段
 
+| 字段       | 类型   | 默认值 | 说明                                 |
+| ---------- | ------ | ------ | ------------------------------------ |
+| `accounts` | object | —      | 命名账户映射，键名为稳定实例标识符，推荐不要直接使用 `accid` |
+
+#### 账户字段
+
 | 字段              | 类型    | 默认值  | 说明                                                           |
 | ----------------- | ------- | ------- | -------------------------------------------------------------- |
-| `enabled`         | boolean | `false` | 启用/禁用 NIM 渠道                                             |
+| `enabled`         | boolean | `false` | 启用/禁用该账户                                                |
 | `nimToken`        | string  | —       | 凭证：推荐 `appKey\|accid\|token`，兼容旧 `appKey-accid-token` |
 | `antispamEnabled` | boolean | `true`  | 启用反垃圾邮件保护                                             |
 

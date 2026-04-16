@@ -10,7 +10,7 @@ import { parseNimToken } from "./nim-token.js";
 
 /**
  * Default account ID for NIM (legacy single-account mode, kept for compatibility).
- * @deprecated Multi-instance mode uses derived "appKey:accid" keys.
+ * @deprecated Multi-instance mode uses explicit config keys.
  */
 export const DEFAULT_NIM_ACCOUNT_ID = "default";
 
@@ -51,7 +51,7 @@ export function resolveNimCredentials(
 }
 
 /**
- * Derive the accountId key for an instance: "<appKey>:<accid>".
+ * Derive the protocol identity for an instance: "<appKey>:<accid>".
  * Returns null if credentials cannot be resolved.
  */
 export function deriveNimAccountId(
@@ -62,16 +62,25 @@ export function deriveNimAccountId(
   return `${creds.appKey}:${creds.account}`;
 }
 
+function resolveConfigKey(entryKey: string, inst: NimInstanceConfig): string {
+  const normalized = entryKey.trim();
+  if (normalized) return normalized;
+  return deriveNimAccountId(inst) ?? "";
+}
+
 /**
- * Resolve a single NIM instance config into a ResolvedNimAccount.
+ * Resolve a single NIM account config into a ResolvedNimAccount.
  */
-function resolveInstance(inst: NimInstanceConfig): ResolvedNimAccount {
+function resolveInstance(entryKey: string, inst: NimInstanceConfig): ResolvedNimAccount {
   const creds = resolveNimCredentials(inst);
-  const accountId = creds ? `${creds.appKey}:${creds.account}` : "";
+  const runtimeAccountId = creds ? `${creds.appKey}:${creds.account}` : "";
+  const configKey = resolveConfigKey(entryKey, inst) || runtimeAccountId;
 
   return {
-    id: accountId,
-    accountId,
+    id: configKey,
+    accountId: configKey,
+    configKey,
+    runtimeAccountId,
     appKey: creds?.appKey ?? coerceToString(inst.appKey),
     account: creds?.account ?? coerceToString(inst.account),
     token: creds?.token ?? "",
@@ -86,8 +95,8 @@ function resolveInstance(inst: NimInstanceConfig): ResolvedNimAccount {
 }
 
 /**
- * Resolve all NIM instances from OpenClaw configuration.
- * Supports the multi-instance format: channels.nim.instances = [...]
+ * Resolve all NIM accounts from OpenClaw configuration.
+ * Supports the multi-account format: channels.nim.accounts = { ... }
  * Returns an empty array if channels.nim is not configured.
  */
 export function resolveAllNimAccounts(params: {
@@ -97,17 +106,22 @@ export function resolveAllNimAccounts(params: {
   const nimCfg = cfg.channels?.nim as NimConfig | undefined;
   if (!nimCfg) return [];
 
-  // Multi-instance format: { instances: [...] }
-  const instances = (nimCfg as { instances?: unknown }).instances;
-  if (Array.isArray(instances) && instances.length > 0) {
-    return instances.map(resolveInstance);
+  const accounts = (nimCfg as { accounts?: unknown }).accounts;
+  if (accounts && typeof accounts === "object") {
+    const entries = Object.entries(
+      accounts as Record<string, NimInstanceConfig>,
+    );
+    if (entries.length > 0) {
+      return entries.map(([entryKey, inst]) => resolveInstance(entryKey, inst));
+    }
   }
 
   return [];
 }
 
 /**
- * Resolve a single NIM account by its derived accountId ("appKey:accid").
+ * Resolve a single NIM account by either its stable config key or legacy
+ * runtime identity ("appKey:accid").
  * Returns a not-configured stub if not found.
  */
 export function resolveNimAccountById(params: {
@@ -116,13 +130,21 @@ export function resolveNimAccountById(params: {
 }): ResolvedNimAccount {
   const { cfg, accountId } = params;
   const all = resolveAllNimAccounts({ cfg });
-  const found = all.find((a) => a.accountId === accountId);
+  const normalizedAccountId = accountId.trim();
+  const found = all.find(
+    (a) =>
+      a.accountId === normalizedAccountId ||
+      a.configKey === normalizedAccountId ||
+      a.runtimeAccountId === normalizedAccountId,
+  );
   if (found) return found;
 
   // Return a not-configured stub so callers don't need to handle undefined
   return {
-    id: accountId,
-    accountId,
+    id: normalizedAccountId,
+    accountId: normalizedAccountId,
+    configKey: normalizedAccountId,
+    runtimeAccountId: normalizedAccountId,
     appKey: "",
     account: "",
     token: "",
@@ -137,8 +159,7 @@ export function resolveNimAccountById(params: {
 }
 
 /**
- * Resolve a single NIM account by its derived accountId ("appKey:accid").
- * Alias for resolveNimAccountById — used by channel.ts.
+ * Alias for resolveNimAccountById — kept for compatibility.
  */
 export function resolveNimAccountByKey(params: {
   cfg: OpenClawConfig;
@@ -148,7 +169,7 @@ export function resolveNimAccountByKey(params: {
 }
 
 /**
- * Return derived accountId keys for all configured instances (enabled or disabled).
+ * Return stable config keys for all configured accounts (enabled or disabled).
  */
 export function listNimAccountIds(cfg: OpenClawConfig): string[] {
   return resolveAllNimAccounts({ cfg }).map((a) => a.accountId);
@@ -166,7 +187,7 @@ export function resolveNimAccount(params: {
   if (accountId) {
     return resolveNimAccountById({ cfg, accountId });
   }
-  // Fallback: return first instance
+  // Fallback: return first configured account
   const all = resolveAllNimAccounts({ cfg });
   if (all.length > 0) return all[0];
   return resolveNimAccountById({ cfg, accountId: "" });

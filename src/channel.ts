@@ -38,6 +38,42 @@ const meta = {
   order: 80,
 };
 
+function getNimAccountsMap(nimCfg: NimConfig | undefined): Record<string, any> {
+  const accounts = (nimCfg as { accounts?: unknown } | undefined)?.accounts;
+  if (!accounts || typeof accounts !== "object" || Array.isArray(accounts)) {
+    return {};
+  }
+  return accounts as Record<string, any>;
+}
+
+function findAccountEntryKey(
+  accounts: Record<string, any>,
+  accountId: string,
+): string | null {
+  if (accountId in accounts) return accountId;
+  for (const [entryKey, inst] of Object.entries(accounts)) {
+    const creds = resolveNimCredentials(inst);
+    const derived = creds ? `${creds.appKey}:${creds.account}` : null;
+    if (derived === accountId) return entryKey;
+  }
+  return null;
+}
+
+function resolveDmScope(cfg: OpenClawConfig): string {
+  const sessionCfg = (cfg as { session?: { dmScope?: unknown } }).session;
+  return typeof sessionCfg?.dmScope === "string" ? sessionCfg.dmScope : "";
+}
+
+function buildDmScopeWarning(cfg: OpenClawConfig): string | null {
+  const accounts = resolveAllNimAccounts({ cfg }).filter((account) => account.enabled);
+  if (accounts.length <= 1) return null;
+
+  const dmScope = resolveDmScope(cfg);
+  if (dmScope === "per-account-channel-peer") return null;
+
+  return `[nim] multi-account DM isolation requires session.dmScope="per-account-channel-peer"; current value is "${dmScope || "unset"}", so different bot accounts may share one direct-message session`;
+}
+
 /**
  * NIM channel plugin implementation.
  */
@@ -72,11 +108,11 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       type: "object",
       additionalProperties: false,
       properties: {
-        instances: {
-          type: "array",
-          minItems: 1,
-          maxItems: 3,
-          items: {
+        accounts: {
+          type: "object",
+          minProperties: 1,
+          maxProperties: 3,
+          additionalProperties: {
             type: "object",
             additionalProperties: false,
             properties: {
@@ -213,24 +249,25 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
     defaultAccountId: (cfg) => listNimAccountIds(cfg)[0] ?? "",
     setAccountEnabled: ({ cfg, accountId, enabled }) => {
       const nimCfg = cfg.channels?.nim as NimConfig | undefined;
-      const instances = (nimCfg as { instances?: unknown[] } | undefined)
-        ?.instances;
-      if (!Array.isArray(instances)) return cfg;
-      const updated = instances.map((inst: any) => {
-        const creds = resolveNimCredentials(inst);
-        const key = creds ? `${creds.appKey}:${creds.account}` : null;
-        if (key === accountId) return { ...inst, enabled };
-        return inst;
-      });
+      const accounts = getNimAccountsMap(nimCfg);
+      const entryKey = findAccountEntryKey(accounts, accountId);
+      if (!entryKey) return cfg;
       return {
         ...cfg,
-        channels: { ...cfg.channels, nim: { ...nimCfg, instances: updated } },
+        channels: {
+          ...cfg.channels,
+          nim: {
+            ...nimCfg,
+            accounts: {
+              ...accounts,
+              [entryKey]: { ...accounts[entryKey], enabled },
+            },
+          },
+        },
       };
     },
     deleteAccount: ({ cfg, accountId }) => {
       const nimCfg = cfg.channels?.nim as NimConfig | undefined;
-      const instances = (nimCfg as { instances?: unknown[] } | undefined)
-        ?.instances;
       const deleteChannel = () => {
         const next = { ...cfg } as OpenClawConfig;
         const nextChannels = { ...cfg.channels };
@@ -239,16 +276,18 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
         else delete next.channels;
         return next;
       };
-      if (!Array.isArray(instances)) return deleteChannel();
-      const filtered = instances.filter((inst: any) => {
-        const creds = resolveNimCredentials(inst);
-        const key = creds ? `${creds.appKey}:${creds.account}` : null;
-        return key !== accountId;
-      });
-      if (filtered.length === 0) return deleteChannel();
+      const accounts = getNimAccountsMap(nimCfg);
+      const entryKey = findAccountEntryKey(accounts, accountId);
+      if (!entryKey) return cfg;
+      const nextAccounts = { ...accounts };
+      delete nextAccounts[entryKey];
+      if (Object.keys(nextAccounts).length === 0) return deleteChannel();
       return {
         ...cfg,
-        channels: { ...cfg.channels, nim: { ...nimCfg, instances: filtered } },
+        channels: {
+          ...cfg.channels,
+          nim: { ...nimCfg, accounts: nextAccounts },
+        },
       };
     },
     isConfigured: (_account, cfg) => {
@@ -257,6 +296,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
     },
     describeAccount: (account) => ({
       accountId: account.accountId,
+      runtimeAccountId: account.runtimeAccountId,
       enabled: account.enabled,
       configured: account.configured,
     }),
@@ -276,7 +316,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
     resolveDmPolicy: ({ account }) => ({
       policy: account.p2pPolicy ?? "open",
       allowFrom: account.allowFrom ?? [],
-      allowFromPath: `channels.nim[${account.accountId}].p2p.`,
+      allowFromPath: "channels.nim.accounts.<accountKey>.p2p.",
       normalizeEntry: (raw: string) => raw.replace(/^(nim|user|account):/i, ""),
       approveHint:
         "Set p2p.policy to 'allowlist' and configure p2p.allowFrom to control who can message the bot.",
@@ -284,9 +324,14 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
     collectWarnings: ({ cfg }) => {
       const all = resolveAllNimAccounts({ cfg });
       const warnings: string[] = [];
+      const dmScopeWarning = buildDmScopeWarning(cfg);
+
+      if (dmScopeWarning) {
+        warnings.push(`- ${dmScopeWarning.replace(/^\[nim\]\s*/, "")}.`);
+      }
 
       for (const account of all) {
-        const label = account.accountId || account.account;
+        const label = account.runtimeAccountId || account.accountId || account.account;
         const inst = account.config as NimInstanceConfig | undefined;
 
         // P2P policy warnings
@@ -323,18 +368,19 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
     resolveAccountId: ({ cfg }) => listNimAccountIds(cfg)[0] ?? "",
     applyAccountConfig: ({ cfg }) => {
       const nimCfg = cfg.channels?.nim as NimConfig | undefined;
-      const instances = (nimCfg as { instances?: unknown[] } | undefined)
-        ?.instances;
-      if (!Array.isArray(instances)) return cfg;
+      const accounts = getNimAccountsMap(nimCfg);
+      const firstEntryKey = Object.keys(accounts)[0];
+      if (!firstEntryKey) return cfg;
       return {
         ...cfg,
         channels: {
           ...cfg.channels,
           nim: {
             ...nimCfg,
-            instances: instances.map((inst: any, i: number) =>
-              i === 0 ? { ...inst, enabled: true } : inst,
-            ),
+            accounts: {
+              ...accounts,
+              [firstEntryKey]: { ...accounts[firstEntryKey], enabled: true },
+            },
           },
         },
       };
@@ -399,6 +445,10 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       ctx.log?.info(
         `[nim] provider starting — account: ${account.account || "unknown"}, instanceId: ${ctx.accountId}`,
       );
+      const dmScopeWarning = buildDmScopeWarning(ctx.cfg);
+      if (dmScopeWarning) {
+        ctx.log?.warn(dmScopeWarning);
+      }
 
       // Prepare QChat client for this instance
       const qchatCfg = (nimCfg as Record<string, unknown> | undefined)

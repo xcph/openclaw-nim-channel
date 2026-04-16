@@ -5,7 +5,7 @@
 import { getNimRuntime } from "./runtime.js";
 import { QChatClient } from "./qchat-client.js";
 
-/** Per-instance QChat clients keyed by accountId ("appKey:accid") */
+/** Per-instance QChat clients keyed by the stable account config key. */
 const qchatClients = new Map<string, QChatClient>();
 
 /** Per-instance reply-enabled flags keyed by accountId */

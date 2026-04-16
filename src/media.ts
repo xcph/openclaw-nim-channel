@@ -17,9 +17,10 @@ export async function sendImageNim(params: {
   to: string;
   imagePath: string;
   sessionType?: NimSessionType;
+  accountId?: string;
 }): Promise<NimSendResult> {
-  const { cfg, to, imagePath, sessionType = "p2p" } = params;
-  const nimCfg = resolveInstCfg(cfg);
+  const { cfg, to, imagePath, sessionType = "p2p", accountId } = params;
+  const nimCfg = resolveInstCfg(cfg, accountId);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -51,9 +52,10 @@ export async function sendFileNim(params: {
   to: string;
   filePath: string;
   sessionType?: NimSessionType;
+  accountId?: string;
 }): Promise<NimSendResult> {
-  const { cfg, to, filePath, sessionType = "p2p" } = params;
-  const nimCfg = resolveInstCfg(cfg);
+  const { cfg, to, filePath, sessionType = "p2p", accountId } = params;
+  const nimCfg = resolveInstCfg(cfg, accountId);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -86,9 +88,10 @@ export async function sendAudioNim(params: {
   audioPath: string;
   duration: number;
   sessionType?: NimSessionType;
+  accountId?: string;
 }): Promise<NimSendResult> {
-  const { cfg, to, audioPath, duration, sessionType = "p2p" } = params;
-  const nimCfg = resolveInstCfg(cfg);
+  const { cfg, to, audioPath, duration, sessionType = "p2p", accountId } = params;
+  const nimCfg = resolveInstCfg(cfg, accountId);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -123,6 +126,7 @@ export async function sendVideoNim(params: {
   width: number;
   height: number;
   sessionType?: NimSessionType;
+  accountId?: string;
 }): Promise<NimSendResult> {
   const {
     cfg,
@@ -132,8 +136,9 @@ export async function sendVideoNim(params: {
     width,
     height,
     sessionType = "p2p",
+    accountId,
   } = params;
-  const nimCfg = resolveInstCfg(cfg);
+  const nimCfg = resolveInstCfg(cfg, accountId);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };

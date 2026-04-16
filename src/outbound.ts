@@ -119,7 +119,7 @@ export async function sendNimOutboundText(params: {
   accountId?: string;
   isFailureNotification?: boolean; // 🔥 Internal flag to prevent recursion
 }): Promise<NimOutboundResult> {
-  const { to, text, cfg, isFailureNotification = false } = params;
+  const { to, text, cfg, accountId, isFailureNotification = false } = params;
   const parsed = parseNimTarget(to);
   const targetId = parsed?.id ?? normalizeNimTarget(to) ?? to;
   const sessionType = parsed?.sessionType ?? "p2p";
@@ -134,6 +134,7 @@ export async function sendNimOutboundText(params: {
       to: targetId,
       text,
       sessionType,
+      accountId,
     });
 
     if (result.success) {
@@ -157,7 +158,7 @@ export async function sendNimOutboundText(params: {
 
         try {
           // 🔥 Directly call client.sendText to bypass outbound layer and prevent recursion
-          const nimCfg = resolveInstCfg(cfg);
+          const nimCfg = resolveInstCfg(cfg, accountId);
           if (nimCfg) {
             const { createNimClient, getCachedNimClient } = await import("./client.js");
             let client = getCachedNimClient(nimCfg);
@@ -200,7 +201,7 @@ export async function sendNimOutboundText(params: {
 
       try {
         // 🔥 Directly call client.sendText to bypass outbound layer and prevent recursion
-        const nimCfg = resolveInstCfg(cfg);
+        const nimCfg = resolveInstCfg(cfg, accountId);
         if (nimCfg) {
           const { createNimClient, getCachedNimClient } = await import("./client.js");
           let client = getCachedNimClient(nimCfg);
@@ -245,7 +246,7 @@ export async function sendNimOutboundMedia(params: {
   cfg: OpenClawConfig;
   accountId?: string;
 }): Promise<NimOutboundResult> {
-  const { to, text, mediaUrl, mediaPath, cfg } = params;
+  const { to, text, mediaUrl, mediaPath, cfg, accountId } = params;
   const media = mediaPath || mediaUrl;
   const parsed = parseNimTarget(to);
   const targetId = parsed?.id ?? normalizeNimTarget(to) ?? to;
@@ -267,6 +268,7 @@ export async function sendNimOutboundMedia(params: {
           to: targetId,
           imagePath: media,
           sessionType,
+          accountId,
         });
       } else if (mediaType === "audio") {
         mediaResult = await sendAudioNim({
@@ -275,6 +277,7 @@ export async function sendNimOutboundMedia(params: {
           audioPath: media,
           duration: 0,
           sessionType,
+          accountId,
         });
       } else if (mediaType === "video") {
         mediaResult = await sendVideoNim({
@@ -285,6 +288,7 @@ export async function sendNimOutboundMedia(params: {
           width: 1920,
           height: 1080,
           sessionType,
+          accountId,
         });
       } else {
         mediaResult = await sendFileNim({
@@ -292,6 +296,7 @@ export async function sendNimOutboundMedia(params: {
           to: targetId,
           filePath: media,
           sessionType,
+          accountId,
         });
       }
 
@@ -321,7 +326,7 @@ export async function sendNimOutboundMedia(params: {
 
     // Send text if provided (pass original `to` so parseNimTarget re-runs)
     if (text) {
-      return await sendNimOutboundText({ to, text, cfg });
+      return await sendNimOutboundText({ to, text, cfg, accountId });
     }
 
     // Nothing to send

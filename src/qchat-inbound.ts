@@ -225,8 +225,8 @@ export async function handleQChatInbound(params: {
     channel: CHANNEL_ID,
     accountId,
     peer: {
-      kind: "dm",
-      id: `qchat-${peerId}`,
+      kind: "channel",
+      id: peerId,
     },
   });
 

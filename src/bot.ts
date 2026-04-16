@@ -141,7 +141,7 @@ export function parseNimMessageEvent(message: NimMessageEvent): NimMessageContex
  */
 export async function handleNimMessage(params: {
   cfg: OpenClawConfig;
-  /** The derived accountId ("appKey:accid") for the receiving instance. */
+  /** Stable instance selector for the receiving account config. */
   accountId: string;
   message: NimMessageEvent;
   runtime?: RuntimeEnv;
@@ -225,15 +225,16 @@ export async function handleNimMessage(params: {
     const replyTarget = isTeam ? message.to : ctx.senderId;
     const nimFrom = `nim:${ctx.senderId}`;
     const nimTo = isTeam ? `team:${message.to}` : `user:${ctx.senderId}`;
-    const chatType = "direct";
-    const peerKind = "dm";
-    const peerId = isTeam ? `team-${message.to}` : ctx.senderId;
+    const chatType = isTeam ? "group" : "direct";
+    const peerKind = isTeam ? "group" : "direct";
+    const peerId = isTeam ? message.to : ctx.senderId;
     const sessionType: NimSessionType = isTeam ? message.sessionType : "p2p";
 
     //@ts-ignore
     const route = core.channel.routing.resolveAgentRoute({
       cfg,
       channel: "nim",
+      accountId,
       peer: {
         kind: peerKind,
         id: peerId,

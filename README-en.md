@@ -9,7 +9,7 @@ A [OpenClaw](https://openclaw.ai/) channel plugin for NetEase IM (网易云信),
 > **⚠️ Breaking Changes in v1.0.0**
 >
 > 1. **OpenClaw Version**: This version is developed based on OpenClaw **2026.4.5**. If you encounter compatibility issues, please upgrade to **2026.4.5 or later**
-> 2. **Configuration Format**: `channels.nim` changed from single object to **array format** (see examples below)
+> 2. **Configuration Format**: `channels.nim` now uses named accounts under `accounts.<accountKey>`; the old `instances[]` format is no longer supported
 > 3. **Account Type**: Only **bot accounts** are supported (regular personal accounts are not supported)
 > 4. **Credentials**: Recommended to use `nimToken` shorthand format (`appKey|accid|token`, legacy `appKey-accid-token` still supported)
 
@@ -82,15 +82,28 @@ openclaw plugins install @nimsuite/openclaw-nim-channel
 
 ## Configuration
 
-> **Note**: Starting from v1.0.0, `channels.nim` uses an **array format** to support multiple NIM instances (up to 3). Each instance can have different credentials and policies.
+> **Note**: Starting from v1.0.0, `channels.nim` uses named accounts under `accounts.<accountKey>` to support multiple NIM instances (up to 3). The legacy `instances[]` format is no longer supported.
+>
+> **Recommended practice**: `accountKey` should be a stable instance identifier such as `nim_a1b2c3d4` or `primary_bot`. Do not use the raw `accid` as the key. Different `appKey`s may contain the same account name, and the key's job is to identify the config entry, not the protocol identity.
+
+### Why Not `instances[]`
+
+- OpenClaw multi-account channels conventionally use `accounts.<accountKey>` because it gives each account a stable external identifier.
+- `instances[]` only provides array position, not a durable key. Reordering, inserting, or deleting entries can break saved references.
+- For NIM, the protocol identity is `appKey + accid`. The same `accid` can exist under different `appKey`s, so the account name itself is not a safe config primary key.
+- The recommended split is: `accountKey` identifies the config instance, while `nimToken` / `appKey + accid` identifies the NIM protocol identity. This keeps routing and scheduled delivery stable.
 
 ### Quick Setup (CLI)
 
 ```bash
-# Note: CLI commands configure the first instance (index 0)
-openclaw config set channels.nim.instances.0.nimToken "<appKey>|<accid>|<token>"
-openclaw config set channels.nim.instances.0.enabled true
+# Note: nim_a1b2c3d4 is your own stable instance key
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.nimToken "<appKey>|<accid>|<token>"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.enabled true
+openclaw config set session.dmScope per-account-channel-peer
 ```
+
+> **Required for multi-bot setups**: if you configure multiple NIM bot accounts in vanilla OpenClaw, you must set `session.dmScope` to `per-account-channel-peer`.  
+> Otherwise direct messages from different bot accounts to the same user will be merged into a single UI session.
 
 > **`nimToken` format**: `<appKey>|<accid>|<token>` (three fields separated by `|`) — **Recommended**
 >
@@ -103,13 +116,13 @@ openclaw config set channels.nim.instances.0.enabled true
 #### Private Deployment (CLI)
 
 ```bash
-openclaw config set channels.nim.instances.0.advanced.weblbsUrl "https://your-lbs.example.com"
-openclaw config set channels.nim.instances.0.advanced.link_web "weblink.netease.im:443"
-openclaw config set channels.nim.instances.0.advanced.nos_uploader "https://your-nos-upload.example.com"
-openclaw config set channels.nim.instances.0.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
-openclaw config set channels.nim.instances.0.advanced.nosSsl true
-openclaw config set channels.nim.instances.0.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
-openclaw config set channels.nim.instances.0.advanced.nos_accelerate_host "your-cdn.example.com"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.weblbsUrl "https://your-lbs.example.com"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.link_web "weblink.netease.im:443"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.nos_uploader "https://your-nos-upload.example.com"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.nos_downloader_v2 "https://your-nos-download.example.com/{bucket}/{object}"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.nosSsl true
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.nos_accelerate "https://your-cdn.example.com/{bucket}/{object}"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.advanced.nos_accelerate_host "your-cdn.example.com"
 ```
 
 ### Single Instance Configuration
@@ -118,8 +131,8 @@ openclaw config set channels.nim.instances.0.advanced.nos_accelerate_host "your-
 {
   "channels": {
     "nim": {
-      "instances": [
-        {
+      "accounts": {
+        "nim_a1b2c3d4": {
           "enabled": true,
           "nimToken": "<appKey>|<accid>|<token>",
 
@@ -156,7 +169,7 @@ openclaw config set channels.nim.instances.0.advanced.nos_accelerate_host "your-
             "nos_accelerate_host": "your-cdn.example.com"
           }
         }
-      ]
+      }
     }
   }
 }
@@ -170,33 +183,35 @@ Run up to 3 NIM instances simultaneously with different accounts or AppKeys:
 {
   "channels": {
     "nim": {
-      "instances": [
-        {
+      "accounts": {
+        "nim_a1b2c3d4": {
           "enabled": true,
-          "nimToken": "<appKey1>|<bot1>|<token1>",
+          "nimToken": "<appKey1>|<openclaw>|<token1>",
           "p2p": { "policy": "open" },
           "team": { "policy": "allowlist", "allowFrom": ["team_abc"] },
           "qchat": { "policy": "disabled" }
         },
-        {
+        "nim_b9e8f102": {
           "enabled": true,
-          "nimToken": "<appKey1>|<bot2>|<token2>",
+          "nimToken": "<appKey2>|<openclaw>|<token2>",
           "p2p": { "policy": "allowlist", "allowFrom": ["user_vip"] },
           "team": { "policy": "disabled" },
           "qchat": { "policy": "open" }
         },
-        {
+        "nim_c3f74d88": {
           "enabled": false,
-          "nimToken": "<appKey2>|<bot3>|<token3>",
+          "nimToken": "<appKey3>|<jiajia01>|<token3>",
           "p2p": { "policy": "open" }
         }
-      ]
+      }
     }
   }
 }
 ```
 
-> **Note**: Maximum 3 instances total (enabled or disabled). Each instance maintains its own connection and can have different policies.
+> **Note**: Maximum 3 account entries total (enabled or disabled). Each entry maintains its own connection and can have different policies.
+>
+> The example above intentionally shows two different `appKey`s that both use `openclaw` as the `accid`. You should still use different `accountKey`s such as `nim_a1b2c3d4` and `nim_b9e8f102` to distinguish config instances.
 
 ### Streaming Output Configuration
 
@@ -216,8 +231,10 @@ agents:
 
 channels:
   nim:
-    - enabled: true
-      nimToken: "your-credentials"
+    accounts:
+      nim_a1b2c3d4:
+        enabled: true
+        nimToken: "your-credentials"
 ```
 
 For detailed streaming configuration, see:
@@ -231,9 +248,15 @@ For detailed streaming configuration, see:
 
 #### Top-level Fields
 
+| Field      | Type   | Default | Description                                  |
+| ---------- | ------ | ------- | -------------------------------------------- |
+| `accounts` | object | —       | Named account map keyed by stable instance IDs; do not use raw `accid` directly |
+
+#### Account Fields
+
 | Field             | Type    | Default | Description                                                                                |
 | ----------------- | ------- | ------- | ------------------------------------------------------------------------------------------ |
-| `enabled`         | boolean | `false` | Enable/disable the NIM channel                                                             |
+| `enabled`         | boolean | `false` | Enable/disable this account entry                                                          |
 | `nimToken`        | string  | —       | Credential: `appKey\|accid\|token` (preferred), legacy `appKey-accid-token` also supported |
 | `antispamEnabled` | boolean | `true`  | Enable anti-spam protection                                                                |
 

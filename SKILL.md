@@ -24,8 +24,9 @@ openclaw plugins install @nimsuite/openclaw-nim-channel
 ## 快速配置
 
 ```bash
-openclaw config set channels.nim.instances.0.nimToken "<appKey>|<accid>|<token>"
-openclaw config set channels.nim.instances.0.enabled true
+# 使用稳定实例键，不要直接用 accid 作为 key
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.nimToken "<appKey>|<accid>|<token>"
+openclaw config set channels.nim.accounts.nim_a1b2c3d4.enabled true
 ```
 
 ## 支持的消息类型

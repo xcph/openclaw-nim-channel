@@ -15,6 +15,7 @@ import type {
   NimP2pPolicy,
 } from "./types.js";
 import { resolveNimCredentials, isNimP2pAllowed } from "./accounts.js";
+import NIM from "@yxim/nim-bot";
 
 // 客户端缓存
 const clientCache = new Map<string, NimClientInstance>();
@@ -145,10 +146,6 @@ export async function createNimClient(cfg: NimInstanceConfig): Promise<NimClient
   if (cached && cached.initialized) {
     return cached;
   }
-
-  // 动态导入 @yxim/nim-bot
-  const NIMModule = await import("@yxim/nim-bot");
-  const NIM = NIMModule.default;
 
   // Build privateConf from NIMOtherOptionsPrivateConfig fields (excluding data reporting)
   const privateConf: Record<string, unknown> = {};
