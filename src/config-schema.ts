@@ -13,6 +13,12 @@ const coerceToString = z.preprocess(
 /** Union type for allow-list entries (string or number from YAML) */
 const AllowEntryArray = z.array(z.union([z.string(), z.number()])).optional();
 
+export interface ConfigUiHint {
+  label: string;
+  sensitive?: boolean;
+  advanced?: boolean;
+}
+
 /**
  * P2P (私聊) sub-configuration.
  */
@@ -213,6 +219,142 @@ const NimAccountsSchema = z
 export const NimConfigSchema = z.object({
   accounts: NimAccountsSchema,
 });
+
+export const nimChannelConfigJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    accounts: {
+      type: "object",
+      minProperties: 1,
+      maxProperties: 3,
+      additionalProperties: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          enabled: { type: "boolean" },
+          nimToken: { type: "string" },
+          appKey: { type: "string" },
+          account: { type: "string" },
+          token: { type: "string" },
+          antispamEnabled: { type: "boolean" },
+          p2p: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              policy: {
+                type: "string",
+                enum: ["open", "allowlist", "disabled"],
+              },
+              allowFrom: {
+                type: "array",
+                items: { oneOf: [{ type: "string" }, { type: "number" }] },
+              },
+            },
+          },
+          team: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              policy: {
+                type: "string",
+                enum: ["open", "allowlist", "disabled"],
+              },
+              allowFrom: {
+                type: "array",
+                items: { oneOf: [{ type: "string" }, { type: "number" }] },
+              },
+            },
+          },
+          advanced: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              mediaMaxMb: { type: "number", minimum: 0 },
+              textChunkLimit: { type: "integer", minimum: 1 },
+              debug: { type: "boolean" },
+              legacyLogin: { type: "boolean" },
+              weblbsUrl: { type: "string" },
+              link_web: { type: "string" },
+              nos_uploader: { type: "string" },
+              nos_downloader_v2: { type: "string" },
+              nosSsl: { type: "boolean" },
+              nos_accelerate: { type: "string" },
+              nos_accelerate_host: { type: "string" },
+            },
+          },
+          qchat: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              policy: {
+                type: "string",
+                enum: ["open", "allowlist", "disabled"],
+              },
+              allowFrom: {
+                type: "array",
+                items: { oneOf: [{ type: "string" }, { type: "number" }] },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+export const nimChannelConfigUiHints: Record<string, ConfigUiHint> = {
+  enabled: { label: "Enable" },
+  nimToken: { label: "NIM Token", sensitive: true },
+  appKey: { label: "App Key" },
+  account: { label: "Account ID" },
+  token: { label: "Token", sensitive: true },
+  antispamEnabled: { label: "Anti-spam Protection" },
+  p2p: { label: "P2P" },
+  "p2p.policy": { label: "Message Policy" },
+  "p2p.allowFrom": { label: "Account Allowlist" },
+  team: { label: "Team" },
+  "team.policy": { label: "Message Policy" },
+  "team.allowFrom": { label: "Team Allowlist" },
+  qchat: { label: "QChat" },
+  "qchat.policy": { label: "Message Policy" },
+  "qchat.allowFrom": {
+    label: "Server / Channel / Account Allowlist",
+  },
+  advanced: { label: "Advanced", advanced: true },
+  "advanced.mediaMaxMb": { label: "Max Media Size (MB)" },
+  "advanced.textChunkLimit": { label: "Text Chunk Limit" },
+  "advanced.debug": { label: "Debug Mode", advanced: true },
+  "advanced.legacyLogin": { label: "Legacy Login Mode", advanced: true },
+  "advanced.weblbsUrl": {
+    label: "LBS URL (Private Deploy)",
+    advanced: true,
+  },
+  "advanced.link_web": {
+    label: "Link Server URL (Private Deploy)",
+    advanced: true,
+  },
+  "advanced.nos_uploader": {
+    label: "NOS Upload URL (Private Deploy)",
+    advanced: true,
+  },
+  "advanced.nos_downloader_v2": {
+    label: "NOS Download URL Format (Private Deploy)",
+    advanced: true,
+  },
+  "advanced.nosSsl": {
+    label: "NOS Download HTTPS (Private Deploy)",
+    advanced: true,
+  },
+  "advanced.nos_accelerate": {
+    label: "CDN Accelerate URL (Private Deploy)",
+    advanced: true,
+  },
+  "advanced.nos_accelerate_host": {
+    label: "CDN Accelerate Host (Private Deploy)",
+    advanced: true,
+  },
+};
 
 /** Single instance config type */
 export type NimInstanceConfig = z.infer<typeof NimInstanceConfigSchema>;
