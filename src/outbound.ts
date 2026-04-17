@@ -1,6 +1,6 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type { NimConfig } from "./types.js";
-import { sendMessageNim, splitMessageIntoChunks } from "./send.js";
+import type { NimInstanceConfig } from "./types.js";
+import { sendMessageNim, splitMessageIntoChunks, resolveInstCfg, formatSendFailureMessage } from "./send.js";
 import { sendImageNim, sendFileNim, sendAudioNim, sendVideoNim, inferMessageType } from "./media.js";
 import { normalizeNimTarget, parseNimTarget } from "./targets.js";
 
@@ -13,6 +13,7 @@ const DEFAULT_TEXT_CHUNK_LIMIT = 5000;
 export type NimOutboundResult = {
   channel: "nim";
   ok: boolean;
+  messageId: string;
   msgId?: string;
   clientMsgId?: string;
   error?: string;
@@ -31,9 +32,7 @@ export type NimOutboundOptions = {
 /**
  * Target resolution result
  */
-type TargetResolveResult =
-  | { ok: true; to: string }
-  | { ok: false; error: string };
+type TargetResolveResult = { ok: true; to: string } | { ok: false; error: Error };
 
 /**
  * Resolve NIM target from various input formats.
@@ -48,9 +47,7 @@ export function resolveNimOutboundTarget(params: {
   const trimmed = to?.trim() ?? "";
 
   // Normalize allowFrom list
-  const allowListRaw = (allowFrom ?? [])
-    .map((entry) => String(entry).trim())
-    .filter(Boolean);
+  const allowListRaw = (allowFrom ?? []).map((entry) => String(entry).trim()).filter(Boolean);
   const hasWildcard = allowListRaw.includes("*");
   const allowList = allowListRaw
     .filter((entry) => entry !== "*")
@@ -77,7 +74,9 @@ export function resolveNimOutboundTarget(params: {
       }
       return {
         ok: false,
-        error: `Invalid NIM target: ${trimmed}. Provide a valid NIM account ID or configure channels.nim.allowFrom.`,
+        error: new Error(
+          `Invalid NIM target: ${trimmed}. Provide a valid NIM account ID or configure channels.nim.allowFrom.`,
+        ),
       };
     }
 
@@ -103,52 +102,133 @@ export function resolveNimOutboundTarget(params: {
 
   return {
     ok: false,
-    error: `Missing NIM target. Provide a target ID or configure channels.nim.allowFrom.`,
+    error: new Error(`Missing NIM target. Provide a target ID or configure channels.nim.allowFrom.`),
   };
 }
 
 /**
  * Send text message through NIM channel.
  * Implements the standard outbound.sendText interface.
+ *
+ * @param params.isFailureNotification - Internal flag to prevent recursive failure notifications
  */
 export async function sendNimOutboundText(params: {
   to: string;
   text: string;
   cfg: OpenClawConfig;
   accountId?: string;
+  isFailureNotification?: boolean; // 🔥 Internal flag to prevent recursion
 }): Promise<NimOutboundResult> {
-  const { to, text, cfg } = params;
+  const { to, text, cfg, accountId, isFailureNotification = false } = params;
   const parsed = parseNimTarget(to);
   const targetId = parsed?.id ?? normalizeNimTarget(to) ?? to;
   const sessionType = parsed?.sessionType ?? "p2p";
 
-  console.log(`[nim] outbound text send — target: ${targetId}, session: ${sessionType}, length: ${text.length}`);
+  console.log(
+    `[nim] outbound text send — target: ${targetId}, session: ${sessionType}, length: ${text.length}${isFailureNotification ? " (failure notification)" : ""}`,
+  );
 
   try {
-    const result = await sendMessageNim({ cfg, to: targetId, text, sessionType });
+    const result = await sendMessageNim({
+      cfg,
+      to: targetId,
+      text,
+      sessionType,
+      accountId,
+    });
 
     if (result.success) {
       console.log(`[nim] outbound text sent — message id: ${result.msgId ?? "unknown"}`);
       return {
         channel: "nim",
         ok: true,
+        messageId: result.msgId ?? "",
         msgId: result.msgId,
         clientMsgId: result.clientMsgId,
       };
     } else {
-      console.error(`[nim] outbound text failed — error: ${result.error ?? "unknown"}`);
+      const errorCode = result.errorCode;
+      const errorMsg = result.error ?? "unknown";
+      console.error(`[nim] outbound text failed — error: ${errorMsg}${errorCode ? ` (code: ${errorCode})` : ""}`);
+
+      // 🔥 Send failure notification to user (only if not already a failure notification)
+      if (!isFailureNotification) {
+        const failureMessage = formatSendFailureMessage(errorCode, errorMsg);
+        console.log(`[nim] sending failure notification — target: ${targetId}, message: ${failureMessage}`);
+
+        try {
+          // 🔥 Directly call client.sendText to bypass outbound layer and prevent recursion
+          const nimCfg = resolveInstCfg(cfg, accountId);
+          if (nimCfg) {
+            const { createNimClient, getCachedNimClient } = await import("./client.js");
+            let client = getCachedNimClient(nimCfg);
+            if (!client || !client.loggedIn) {
+              client = await createNimClient(nimCfg);
+              await client.login();
+            }
+            const notifyResult = await client.sendText(targetId, failureMessage, sessionType);
+
+            if (notifyResult.success) {
+              console.log(`[nim] failure notification sent — message id: ${notifyResult.msgId ?? "unknown"}`);
+            } else {
+              console.error(
+                `[nim] failure notification also failed — error: ${notifyResult.error ?? "unknown"}, not retrying`,
+              );
+            }
+          }
+        } catch (notifyError) {
+          const notifyErrorMsg = notifyError instanceof Error ? notifyError.message : String(notifyError);
+          console.error(`[nim] failure notification exception — error: ${notifyErrorMsg}, not retrying`);
+        }
+      }
+
       return {
         channel: "nim",
         ok: false,
-        error: result.error,
+        messageId: "",
+        error: errorMsg,
       };
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorCode = (error as any)?.code ?? (error as any)?.res_code;
     console.error(`[nim] outbound text exception — error: ${errorMsg}`);
+
+    // 🔥 Send failure notification to user (only if not already a failure notification)
+    if (!isFailureNotification) {
+      const failureMessage = formatSendFailureMessage(errorCode, errorMsg);
+      console.log(`[nim] sending failure notification — target: ${targetId}, message: ${failureMessage}`);
+
+      try {
+        // 🔥 Directly call client.sendText to bypass outbound layer and prevent recursion
+        const nimCfg = resolveInstCfg(cfg, accountId);
+        if (nimCfg) {
+          const { createNimClient, getCachedNimClient } = await import("./client.js");
+          let client = getCachedNimClient(nimCfg);
+          if (!client || !client.loggedIn) {
+            client = await createNimClient(nimCfg);
+            await client.login();
+          }
+          const notifyResult = await client.sendText(targetId, failureMessage, sessionType);
+
+          if (notifyResult.success) {
+            console.log(`[nim] failure notification sent — message id: ${notifyResult.msgId ?? "unknown"}`);
+          } else {
+            console.error(
+              `[nim] failure notification also failed — error: ${notifyResult.error ?? "unknown"}, not retrying`,
+            );
+          }
+        }
+      } catch (notifyError) {
+        const notifyErrorMsg = notifyError instanceof Error ? notifyError.message : String(notifyError);
+        console.error(`[nim] failure notification exception — error: ${notifyErrorMsg}, not retrying`);
+      }
+    }
+
     return {
       channel: "nim",
       ok: false,
+      messageId: "",
       error: errorMsg,
     };
   }
@@ -166,7 +246,7 @@ export async function sendNimOutboundMedia(params: {
   cfg: OpenClawConfig;
   accountId?: string;
 }): Promise<NimOutboundResult> {
-  const { to, text, mediaUrl, mediaPath, cfg } = params;
+  const { to, text, mediaUrl, mediaPath, cfg, accountId } = params;
   const media = mediaPath || mediaUrl;
   const parsed = parseNimTarget(to);
   const targetId = parsed?.id ?? normalizeNimTarget(to) ?? to;
@@ -183,9 +263,22 @@ export async function sendNimOutboundMedia(params: {
       let mediaResult;
 
       if (mediaType === "image") {
-        mediaResult = await sendImageNim({ cfg, to: targetId, imagePath: media, sessionType });
+        mediaResult = await sendImageNim({
+          cfg,
+          to: targetId,
+          imagePath: media,
+          sessionType,
+          accountId,
+        });
       } else if (mediaType === "audio") {
-        mediaResult = await sendAudioNim({ cfg, to: targetId, audioPath: media, duration: 0, sessionType });
+        mediaResult = await sendAudioNim({
+          cfg,
+          to: targetId,
+          audioPath: media,
+          duration: 0,
+          sessionType,
+          accountId,
+        });
       } else if (mediaType === "video") {
         mediaResult = await sendVideoNim({
           cfg,
@@ -195,9 +288,16 @@ export async function sendNimOutboundMedia(params: {
           width: 1920,
           height: 1080,
           sessionType,
+          accountId,
         });
       } else {
-        mediaResult = await sendFileNim({ cfg, to: targetId, filePath: media, sessionType });
+        mediaResult = await sendFileNim({
+          cfg,
+          to: targetId,
+          filePath: media,
+          sessionType,
+          accountId,
+        });
       }
 
       if (!mediaResult.success) {
@@ -205,6 +305,7 @@ export async function sendNimOutboundMedia(params: {
         return {
           channel: "nim",
           ok: false,
+          messageId: "",
           error: mediaResult.error,
         };
       }
@@ -216,6 +317,7 @@ export async function sendNimOutboundMedia(params: {
         return {
           channel: "nim",
           ok: true,
+          messageId: mediaResult.msgId ?? "",
           msgId: mediaResult.msgId,
           clientMsgId: mediaResult.clientMsgId,
         };
@@ -224,13 +326,14 @@ export async function sendNimOutboundMedia(params: {
 
     // Send text if provided (pass original `to` so parseNimTarget re-runs)
     if (text) {
-      return await sendNimOutboundText({ to, text, cfg });
+      return await sendNimOutboundText({ to, text, cfg, accountId });
     }
 
     // Nothing to send
     return {
       channel: "nim",
       ok: true,
+      messageId: "",
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -238,6 +341,7 @@ export async function sendNimOutboundMedia(params: {
     return {
       channel: "nim",
       ok: false,
+      messageId: "",
       error: errorMsg,
     };
   }
@@ -306,7 +410,7 @@ export const nimOutboundConfig = {
  */
 export async function nimOutbound(params: NimOutboundOptions): Promise<void> {
   const { cfg, to, text, mediaPath } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig | undefined;
+  const nimCfg = resolveInstCfg(cfg);
 
   const targetId = normalizeNimTarget(to);
   if (!targetId) {
@@ -333,7 +437,11 @@ export async function nimOutbound(params: NimOutboundOptions): Promise<void> {
     const chunks = splitMessageIntoChunks(text, chunkLimit);
 
     for (const chunk of chunks) {
-      const result = await sendNimOutboundText({ cfg, to: targetId, text: chunk });
+      const result = await sendNimOutboundText({
+        cfg,
+        to: targetId,
+        text: chunk,
+      });
       if (!result.ok) {
         throw new Error(result.error || "Failed to send text");
       }

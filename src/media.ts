@@ -1,11 +1,12 @@
 /**
- * NIM Media - 媒体消息处理模块 (nim-web-sdk-ng 版本)
+ * NIM Media - 媒体消息处理模块 (@yxim/nim-bot 版本)
  */
 
 import type { OpenClawConfig } from "openclaw/plugin-sdk";
-import type { NimConfig, NimSendResult, NimMediaInfo, NimSessionType } from "./types.js";
+import type { NimSendResult, NimMediaInfo, NimSessionType } from "./types.js";
 import { createNimClient, getCachedNimClient } from "./client.js";
 import { normalizeNimTarget } from "./targets.js";
+import { resolveInstCfg } from "./send.js";
 import { extname } from "path";
 
 /**
@@ -16,9 +17,10 @@ export async function sendImageNim(params: {
   to: string;
   imagePath: string;
   sessionType?: NimSessionType;
+  accountId?: string;
 }): Promise<NimSendResult> {
-  const { cfg, to, imagePath, sessionType = "p2p" } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const { cfg, to, imagePath, sessionType = "p2p", accountId } = params;
+  const nimCfg = resolveInstCfg(cfg, accountId);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -50,9 +52,10 @@ export async function sendFileNim(params: {
   to: string;
   filePath: string;
   sessionType?: NimSessionType;
+  accountId?: string;
 }): Promise<NimSendResult> {
-  const { cfg, to, filePath, sessionType = "p2p" } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const { cfg, to, filePath, sessionType = "p2p", accountId } = params;
+  const nimCfg = resolveInstCfg(cfg, accountId);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -85,9 +88,10 @@ export async function sendAudioNim(params: {
   audioPath: string;
   duration: number;
   sessionType?: NimSessionType;
+  accountId?: string;
 }): Promise<NimSendResult> {
-  const { cfg, to, audioPath, duration, sessionType = "p2p" } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const { cfg, to, audioPath, duration, sessionType = "p2p", accountId } = params;
+  const nimCfg = resolveInstCfg(cfg, accountId);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -122,9 +126,19 @@ export async function sendVideoNim(params: {
   width: number;
   height: number;
   sessionType?: NimSessionType;
+  accountId?: string;
 }): Promise<NimSendResult> {
-  const { cfg, to, videoPath, duration, width, height, sessionType = "p2p" } = params;
-  const nimCfg = cfg.channels?.nim as NimConfig;
+  const {
+    cfg,
+    to,
+    videoPath,
+    duration,
+    width,
+    height,
+    sessionType = "p2p",
+    accountId,
+  } = params;
+  const nimCfg = resolveInstCfg(cfg, accountId);
 
   if (!nimCfg) {
     return { success: false, error: "NIM channel not configured" };
@@ -139,7 +153,14 @@ export async function sendVideoNim(params: {
       await client.login();
     }
 
-    return await client.sendVideo(targetId, videoPath, duration, width, height, sessionType);
+    return await client.sendVideo(
+      targetId,
+      videoPath,
+      duration,
+      width,
+      height,
+      sessionType,
+    );
   } catch (error) {
     return {
       success: false,
@@ -151,7 +172,9 @@ export async function sendVideoNim(params: {
 /**
  * 从媒体信息列表构建 payload
  */
-export function buildNimMediaPayload(mediaList: NimMediaInfo[]): Record<string, unknown> {
+export function buildNimMediaPayload(
+  mediaList: NimMediaInfo[],
+): Record<string, unknown> {
   if (!mediaList || mediaList.length === 0) {
     return {};
   }
@@ -190,9 +213,11 @@ export function inferMediaPlaceholder(messageType: string): string {
 /**
  * 根据文件扩展名推断消息类型
  */
-export function inferMessageType(filePath: string): "image" | "file" | "audio" | "video" {
+export function inferMessageType(
+  filePath: string,
+): "image" | "file" | "audio" | "video" {
   const ext = extname(filePath).toLowerCase();
-  
+
   const imageExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
   const audioExts = [".mp3", ".wav", ".aac", ".m4a", ".ogg", ".amr"];
   const videoExts = [".mp4", ".mov", ".avi", ".mkv", ".webm", ".flv"];

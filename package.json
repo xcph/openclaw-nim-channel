@@ -1,6 +1,6 @@
 {
-  "name": "openclaw-nim",
-  "version": "0.4.0-beta.3",
+  "name": "@nimsuite/openclaw-nim-channel",
+  "version": "1.0.3",
   "type": "module",
   "description": "OpenClaw NIM (NetEase IM) channel plugin",
   "license": "MIT",
@@ -23,6 +23,12 @@
     "extensions": [
       "./index.ts"
     ],
+    "compat": {
+      "pluginApi": "^2026.4.5"
+    },
+    "build": {
+      "openclawVersion": "^2026.4.5"
+    },
     "channel": {
       "id": "nim",
       "label": "NIM",
@@ -41,19 +47,24 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --noEmit"
+    "format": "prettier --write \"src/**/*.ts\" \"*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "publish:clawhub": "bash scripts/publish-clawhub.sh"
   },
   "dependencies": {
-    "nim-web-sdk-ng": "^10.9.77-alpha.3",
+    "@yxim/nim-bot": "^10.9.78",
     "zod": "^4.3.6"
   },
+  "bundledDependencies": [
+    "@yxim/nim-bot",
+    "zod"
+  ],
   "devDependencies": {
     "@types/node": "^25.0.10",
-    "openclaw": "2026.1.29",
+    "openclaw": "^2026.3.31",
+    "prettier": "^3.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
-  },
-  "peerDependencies": {
-    "openclaw": ">=2026.1.29"
   }
 }

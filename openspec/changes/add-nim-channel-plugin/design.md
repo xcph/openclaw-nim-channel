@@ -37,16 +37,18 @@ MoltBot NIM 插件是一个基于网易云信 IM SDK 的渠道插件，需要在
 
 **历史决策**：
 - 最初考虑使用 `nim-web-sdk-ng`（Web SDK），但需要大量浏览器 polyfill，兼容性问题多
-- 改为使用 `node-nim`，这是官方的 Node.js 原生 SDK，性能更好，API 更稳定
+- 后改为使用 `node-nim`，这是官方的 Node.js 原生 SDK，性能更好，API 更稳定
+- 最终迁移到 `@yxim/nim-bot`，这是网易云信官方 IM Bot SDK
 
 **备选方案考虑**：
 | 方案 | 优点 | 缺点 |
 |------|------|------|
-| node-nim (✅ 选用) | 原生 SDK，性能好，官方维护 | 需要原生编译 |
-| nim-web-sdk-ng | 纯 JS，跨平台 | 需要 polyfill，Node.js 兼容性问题 |
+| @yxim/nim-bot (✅ 选用) | 官方 Bot SDK，专为 Bot 场景设计 | — |
+| node-nim | 原生 SDK，性能好，官方维护 | 需要原生编译 |
+| nim-web-sdk-ng (已废弃) | 纯 JS，跨平台 | 需要 polyfill，Node.js 兼容性问题，已停止维护 |
 | HTTP API | 简单，无状态 | 实时性差，需要轮询 |
 
-**理由**：`node-nim` 是官方维护的 Node.js SDK，直接封装 C++ SDK，原生性能，无需浏览器 polyfill。
+**理由**：`@yxim/nim-bot` 是网易云信官方 IM Bot SDK，专为机器人场景优化，API 简洁稳定。
 
 ### 2. 架构模式
 

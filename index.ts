@@ -3,17 +3,20 @@ import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
 import { nimPlugin } from "./src/channel.js";
 import { setNimRuntime } from "./src/runtime.js";
 
+// Version stamp — confirms new code is loaded
+console.log("[nim] plugin module loaded — multi-instance v2");
+
 // Export monitor functions
 export { monitorNimProvider, stopNimMonitor, isNimMonitorRunning } from "./src/monitor.js";
 
 // Export send functions
-export { sendMessageNim, editMessageNim, getMessageNim, sendLongMessageNim } from "./src/send.js";
+export { sendMessageNim, editMessageNim } from "./src/send.js";
 
 // Export outbound functions
-export { 
-  nimOutboundConfig, 
-  sendNimOutboundText, 
-  sendNimOutboundMedia, 
+export {
+  nimOutboundConfig,
+  sendNimOutboundText,
+  sendNimOutboundMedia,
   resolveNimOutboundTarget,
   nimOutbound,
   type NimOutboundResult,
@@ -58,12 +61,12 @@ export { QChatClient } from "./src/qchat-client.js";
  * A Clawdbot channel plugin for NetEase IM (NIM).
  */
 const plugin = {
-  id: "openclaw-nim",
+  id: "nimsuite-openclaw-nim-channel",
   name: "NIM",
   description: "NetEase IM (网易云信) channel plugin",
   configSchema: emptyPluginConfigSchema(),
   register(api: OpenClawPluginApi) {
-    setNimRuntime(api.runtime);
+    setNimRuntime(api.runtime as any);
 
     api.registerChannel({ plugin: nimPlugin });
   },

@@ -2,14 +2,14 @@
  * NIM Probe - 连接探测模块 (node-nim 版本)
  */
 
-import type { NimConfig, NimProbeResult } from "./types.js";
+import type { NimInstanceConfig, NimProbeResult } from "./types.js";
 import { resolveNimCredentials } from "./accounts.js";
 import { createNimClient, getCachedNimClient } from "./client.js";
 
 /**
  * 探测 NIM 连接状态（使用缓存的客户端）
  */
-export async function probeNim(cfg: NimConfig): Promise<NimProbeResult> {
+export async function probeNim(cfg: NimInstanceConfig): Promise<NimProbeResult> {
   try {
     const creds = resolveNimCredentials(cfg);
     const client = getCachedNimClient(cfg);
@@ -38,7 +38,9 @@ export async function probeNim(cfg: NimConfig): Promise<NimProbeResult> {
 /**
  * 探测 NIM 连接状态（尝试建立连接）
  */
-export async function probeNimWithConnect(cfg: NimConfig): Promise<NimProbeResult> {
+export async function probeNimWithConnect(
+  cfg: NimInstanceConfig,
+): Promise<NimProbeResult> {
   try {
     const creds = resolveNimCredentials(cfg);
 
@@ -72,7 +74,7 @@ export async function probeNimWithConnect(cfg: NimConfig): Promise<NimProbeResul
 /**
  * 快速检查配置是否完整
  */
-export function isNimConfigComplete(cfg: NimConfig): boolean {
+export function isNimConfigComplete(cfg: NimInstanceConfig): boolean {
   try {
     const creds = resolveNimCredentials(cfg);
     return !!(creds.appKey && creds.account && creds.token);

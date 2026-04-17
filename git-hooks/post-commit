@@ -1,3 +1,2 @@
 #!/bin/bash
-/bin/post-aicode.sh
-sh ~/.git-ai/bin/post-aicode.sh
+bash ~/.git-ai/bin/git-hooks.sh post-commit

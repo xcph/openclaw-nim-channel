@@ -2,18 +2,26 @@
  * NIM Types - node-nim SDK 版本
  */
 
-import type { NimConfigSchema } from "./config-schema.js";
+import type {
+  NimConfigSchema,
+  NimInstanceConfigSchema,
+} from "./config-schema.js";
 import type { z } from "zod";
 
 /**
- * NIM 配置类型
+ * NIM 实例配置类型（单实例）
+ */
+export type NimInstanceConfig = z.infer<typeof NimInstanceConfigSchema>;
+
+/**
+ * NIM 配置类型（实例数组）
  */
 export type NimConfig = z.infer<typeof NimConfigSchema>;
 
 /**
  * NIM 消息类型
  */
-export type NimMessageType = 
+export type NimMessageType =
   | "text"
   | "image"
   | "audio"
@@ -57,6 +65,8 @@ export interface NimMessageEvent {
   ext?: Record<string, unknown>;
   /** 强制推送目标账号列表 (群消息中用于判断是否 @了当前账号) */
   forcePushAccountIds?: string[];
+  /** 线程回复引用信息（用于查询被回复的原消息） */
+  threadReply?: unknown;
   /** 发送者昵称（从 SDK 消息对象中提取，可能为空） */
   fromNick?: string;
   /** 原始消息对象 */
@@ -142,6 +152,7 @@ export interface NimSendResult {
   clientMsgId?: string;
   error?: string;
   errorCode?: number;
+  baseMessage?: any;
 }
 
 /**
@@ -165,6 +176,8 @@ export type NimP2pPolicy = "open" | "allowlist" | "disabled";
 export interface ResolvedNimAccount {
   id: string;
   accountId: string;
+  configKey: string;
+  runtimeAccountId: string;
   appKey: string;
   account: string;
   token: string;
@@ -174,7 +187,7 @@ export interface ResolvedNimAccount {
   allowFrom: Array<string | number>;
   teamPolicy: NimTeamPolicy;
   teamIds: Array<string | number>;
-  config: NimConfig;
+  config: NimInstanceConfig;
 }
 
 /**
@@ -192,17 +205,58 @@ export interface NimClientInstance {
   /** 登出 */
   logout(): Promise<void>;
   /** 发送文本消息 */
-  sendText(to: string, text: string, sessionType?: NimSessionType): Promise<NimSendResult>;
+  sendText(
+    to: string,
+    text: string,
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 回复文本消息（群组中引用原消息并 @发送者） */
-  replyText(to: string, text: string, originalMsg: unknown, forcePushAccountIds: string[], sessionType?: NimSessionType): Promise<NimSendResult>;
+  replyText(
+    to: string,
+    text: string,
+    originalMsg: unknown,
+    forcePushAccountIds: string[],
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
+  /** 发送流式消息 */
+  sendStreamMessage(params: {
+    to: string;
+    sessionType?: NimSessionType;
+    baseMessage?: any; // 基础消息体，复用于整个流式会话
+    streamChunkParams: {
+      text: string;
+      index?: number;
+      finish?: number;
+    };
+  }): Promise<NimSendResult>;
   /** 发送图片消息 */
-  sendImage(to: string, filePath: string, sessionType?: NimSessionType): Promise<NimSendResult>;
+  sendImage(
+    to: string,
+    filePath: string,
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 发送文件消息 */
-  sendFile(to: string, filePath: string, sessionType?: NimSessionType): Promise<NimSendResult>;
+  sendFile(
+    to: string,
+    filePath: string,
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 发送音频消息 */
-  sendAudio(to: string, filePath: string, duration: number, sessionType?: NimSessionType): Promise<NimSendResult>;
+  sendAudio(
+    to: string,
+    filePath: string,
+    duration: number,
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 发送视频消息 */
-  sendVideo(to: string, filePath: string, duration: number, width: number, height: number, sessionType?: NimSessionType): Promise<NimSendResult>;
+  sendVideo(
+    to: string,
+    filePath: string,
+    duration: number,
+    width: number,
+    height: number,
+    sessionType?: NimSessionType,
+  ): Promise<NimSendResult>;
   /** 注册消息回调 */
   onMessage(callback: (msg: NimMessageEvent) => void): void;
   /** 移除消息回调 */
@@ -210,7 +264,10 @@ export interface NimClientInstance {
   /** 注册连接状态回调 */
   onConnectionChange(callback: (state: string) => void): void;
   /** 更新 P2P 好友申请自动同意策略（config reload 时调用） */
-  updateP2pPolicy(policy: NimP2pPolicy, allowFrom: Array<string | number>): void;
+  updateP2pPolicy(
+    policy: NimP2pPolicy,
+    allowFrom: Array<string | number>,
+  ): void;
   /** 底层 NIM SDK 实例（用于 QChat 等复用） */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   nativeNim: any;
@@ -260,4 +317,6 @@ export interface QChatInboundMessage {
   mentionAccids?: string[];
   /** Raw QChat message object from SDK, used for reply-to reference */
   rawMessage?: unknown;
+  /** QChat channel information (name, topic, etc.) fetched from SDK */
+  channelInfo?: any;
 }
