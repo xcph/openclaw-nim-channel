@@ -8,36 +8,6 @@ export const DEFAULT_NIM_LEGACY_HOST = "https://api.netease.im";
 
 export type NimServerFlavor = "im-v10" | "nim-legacy";
 
-function buildChecksum(appSecret: string, nonce: string, curTime: string): string {
-  return createHash("sha1").update(`${appSecret}${nonce}${curTime}`, "utf8").digest("hex");
-}
-
-function pickMsg(root: Record<string, unknown>): string {
-  if (typeof root.msg === "string" && root.msg.trim()) return root.msg.trim();
-  if (typeof root.desc === "string" && root.desc.trim()) return root.desc.trim();
-  return JSON.stringify(root).slice(0, 400);
-}
-
-function parseLegacyInfoToken(info: unknown, fallbackToken: string): string {
-  if (info && typeof info === "object" && !Array.isArray(info)) {
-    const o = info as Record<string, unknown>;
-    const t = o.token;
-    if (typeof t === "string" && t.trim()) return t.trim();
-  }
-  if (typeof info === "string" && info.trim()) {
-    try {
-      const inner = JSON.parse(info) as unknown;
-      if (inner && typeof inner === "object" && !Array.isArray(inner)) {
-        const t = (inner as Record<string, unknown>).token;
-        if (typeof t === "string" && t.trim()) return t.trim();
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-  return fallbackToken.trim();
-}
-
 export type CreateNimUserParams = {
   /**
    * REST 根地址，勿带尾部路径。
@@ -61,11 +31,66 @@ export type CreateNimUserResult = {
   token: string;
 };
 
+function buildChecksum(appSecret: string, nonce: string, curTime: string): string {
+  return createHash("sha1").update(`${appSecret}${nonce}${curTime}`, "utf8").digest("hex");
+}
+
+function pickMsg(root: Record<string, unknown>): string {
+  if (typeof root.msg === "string" && root.msg.trim()) return root.msg.trim();
+  if (typeof root.desc === "string" && root.desc.trim()) return root.desc.trim();
+  return JSON.stringify(root).slice(0, 400);
+}
+
+/** 去掉复制粘贴常见的 BOM / 零宽字符，避免 Header 里 Key 与控制台不一致 */
+function stripCopyArtifacts(s: string): string {
+  return s.replace(/\uFEFF/g, "").replace(/\u200b/g, "").trim();
+}
+
+function normalizeParams(params: CreateNimUserParams): CreateNimUserParams {
+  return {
+    ...params,
+    nimApiHost: params.nimApiHost !== undefined ? stripCopyArtifacts(params.nimApiHost) : undefined,
+    appKey: stripCopyArtifacts(params.appKey),
+    appSecret: stripCopyArtifacts(params.appSecret),
+    accountId: stripCopyArtifacts(params.accountId),
+    name: params.name !== undefined ? stripCopyArtifacts(params.name) : undefined,
+    token: params.token !== undefined ? stripCopyArtifacts(params.token) : undefined,
+  };
+}
+
+function parseLegacyInfoToken(info: unknown, fallbackToken: string): string {
+  if (info && typeof info === "object" && !Array.isArray(info)) {
+    const o = info as Record<string, unknown>;
+    const t = o.token;
+    if (typeof t === "string" && t.trim()) return t.trim();
+  }
+  if (typeof info === "string" && info.trim()) {
+    try {
+      const inner = JSON.parse(info) as unknown;
+      if (inner && typeof inner === "object" && !Array.isArray(inner)) {
+        const t = (inner as Record<string, unknown>).token;
+        if (typeof t === "string" && t.trim()) return t.trim();
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return fallbackToken.trim();
+}
+
 function hint414(flavor: NimServerFlavor): string {
   if (flavor === "im-v10") {
     return "（414：多为 CheckSum 失败，或域名/接口版本不匹配。请确认使用 IM **V10** 域名 **open.yunxinapi.com** 与路径 **/im/v2/accounts**，不要在 open 域上调用 nimserver。另核对 AppSecret 与 App Key 同属一应用、复制无多余空白；容器 NTP 与时间差须小于 5 分钟。备用域：open-bak.yunxinapi.com。）";
   }
   return "（414：多为 CheckSum 失败。请核对 AppSecret、NTP；legacy 模式确认 nimApiHost 与 nimserver 路由可达。）";
+}
+
+function hintForKnownCodes(code: number, flavor: NimServerFlavor): string {
+  if (code === 414) return hint414(flavor);
+  if (code === 101303) {
+    return "（101303：**服务端不认当前 AppKey**。请到网易云信控制台核对：是否为 **IM 即时通讯** 应用的 App Key（勿用其它产品线密钥、勿保留 __REPLACE__ 类占位符）；Key/Secret 是否同属一个应用；海外数据中心应用请将 qrLogin.nimApiHost 设为 **https://open-sg.yunxinapi.com**（或文档给出的该区域 open 域名）。）";
+  }
+  return "";
 }
 
 function coerceV10Host(host: string): string {
@@ -83,7 +108,7 @@ async function createImV10Accounts(params: CreateNimUserParams): Promise<CreateN
   const url = `${host}/im/v2/accounts`;
   const nonce = randomBytes(16).toString("hex");
   const curTime = String(Math.floor(Date.now() / 1000));
-  const checkSum = buildChecksum(params.appSecret.trim(), nonce, curTime);
+  const checkSum = buildChecksum(params.appSecret, nonce, curTime);
 
   const payload: Record<string, unknown> = {
     account_id: params.accountId.trim(),
@@ -120,7 +145,7 @@ async function createImV10Accounts(params: CreateNimUserParams): Promise<CreateN
   const code = typeof codeRaw === "number" ? codeRaw : Number(codeRaw);
   if (!Number.isFinite(code) || code !== 200) {
     const msg = pickMsg(root);
-    const hint = code === 414 ? hint414("im-v10") : "";
+    const hint = hintForKnownCodes(code, "im-v10");
     throw new Error(`网易云信 IM V10 注册账号失败：code=${String(codeRaw)} ${msg}${hint}`);
   }
 
@@ -146,7 +171,7 @@ async function createNimLegacyForm(params: CreateNimUserParams): Promise<CreateN
   const url = `${host}/nimserver/user/create.action`;
   const nonce = randomBytes(16).toString("hex");
   const curTime = String(Math.floor(Date.now() / 1000));
-  const checkSum = buildChecksum(params.appSecret.trim(), nonce, curTime);
+  const checkSum = buildChecksum(params.appSecret, nonce, curTime);
 
   const body = new URLSearchParams();
   body.set("accid", params.accountId.trim());
@@ -180,7 +205,7 @@ async function createNimLegacyForm(params: CreateNimUserParams): Promise<CreateN
   const code = typeof codeRaw === "number" ? codeRaw : Number(codeRaw);
   if (!Number.isFinite(code) || code !== 200) {
     const msg = pickMsg(root);
-    const hint = code === 414 ? hint414("nim-legacy") : "";
+    const hint = hintForKnownCodes(code, "nim-legacy");
     throw new Error(`网易云信 nimserver user/create 失败：code=${String(codeRaw)} ${msg}${hint}`);
   }
 
@@ -200,9 +225,15 @@ async function createNimLegacyForm(params: CreateNimUserParams): Promise<CreateN
  * @see https://doc.commsease.com/messaging2/server-apis/TQyNjgyMzc
  */
 export async function createNimUserViaServerApi(params: CreateNimUserParams): Promise<CreateNimUserResult> {
-  const flavor: NimServerFlavor = params.nimServerFlavor ?? "im-v10";
-  if (flavor === "nim-legacy") {
-    return createNimLegacyForm(params);
+  const p = normalizeParams(params);
+  if (!p.appKey || !p.appSecret) {
+    throw new Error(
+      "网易云信：channels.nim.qrLogin 中 appKey / appSecret 不能为空（请填入控制台真实密钥，勿保留 __REPLACE__ 等占位符）。",
+    );
   }
-  return createImV10Accounts(params);
+  const flavor: NimServerFlavor = p.nimServerFlavor ?? "im-v10";
+  if (flavor === "nim-legacy") {
+    return createNimLegacyForm(p);
+  }
+  return createImV10Accounts(p);
 }
