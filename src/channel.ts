@@ -356,7 +356,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
         sessionKey,
         timeoutMs: p.timeoutMs,
       });
-      if (result.connected && result.botToken && result.ilinkBotId) {
+      if (result.connected && result.botToken && result.nimAccount) {
         const qrCfg = resolveNimQrLoginFromConfig(cfg);
         const appKey = qrCfg?.appKey ?? "";
         if (!appKey) {
@@ -373,13 +373,13 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
           await persistNimQrCredentials({
             writeToAccountKey: writeKey,
             appKey,
-            account: result.ilinkBotId,
+            account: result.nimAccount,
             token: result.botToken,
           });
         } catch (err) {
           return {
             connected: false,
-            message: `扫码成功但写入 openclaw.json 失败：${String(err)}`,
+            message: `绑定成功但写入 openclaw.json 失败：${String(err)}`,
           };
         }
         return {

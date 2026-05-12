@@ -18,11 +18,10 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
-              "baseUrl": { "type": "string" },
-              "botType": { "type": "string" },
               "appKey": { "type": "string" },
-              "writeToAccountKey": { "type": "string" },
-              "skRouteTag": { "type": "string" }
+              "appSecret": { "type": "string", "sensitive": true },
+              "nimApiHost": { "type": "string" },
+              "writeToAccountKey": { "type": "string" }
             }
           },
           "accounts": {
@@ -154,14 +153,10 @@
           "label": "CDN Accelerate Host (Private Deploy)",
           "advanced": true
         },
-        "qrLogin": { "label": "QR login (ilink)", "advanced": true },
-        "qrLogin.baseUrl": { "label": "QR API Base URL", "advanced": true },
-        "qrLogin.botType": { "label": "ilink bot_type", "advanced": true },
-        "qrLogin.appKey": { "label": "NIM App Key (persist)", "advanced": true },
-        "qrLogin.skRouteTag": {
-          "label": "ilink SKRouteTag (optional)",
-          "advanced": true
-        },
+        "qrLogin": { "label": "Gateway bind (NetEase REST)", "advanced": true },
+        "qrLogin.appKey": { "label": "NetEase IM App Key", "advanced": true },
+        "qrLogin.appSecret": { "label": "NetEase IM App Secret", "sensitive": true, "advanced": true },
+        "qrLogin.nimApiHost": { "label": "REST API host (optional)", "advanced": true },
         "qrLogin.writeToAccountKey": {
           "label": "Default accounts.<key> for new login",
           "advanced": true

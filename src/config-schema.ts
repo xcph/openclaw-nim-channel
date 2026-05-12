@@ -217,22 +217,21 @@ const NimAccountsSchema = z
  * - a runtime protocol identity derived as "<appKey>:<accid>"
  */
 /**
- * Optional ilink-compatible QR login (nim-web.login.* / Flutter「/nim-login」)。
+ * 网关 nim-web.login.* / Flutter「/nim-login new」：网易云信服务端 user/create（AppKey + AppSecret），
+ * 不使用微信 ilink / get_bot_qrcode。
  */
 export const NimQrLoginConfigSchema = z.object({
-  /** HTTPS origin for `ilink/bot/get_bot_qrcode` (default: ilink national URL). */
-  baseUrl: z.string().optional(),
-  /** `bot_type` query parameter for ilink QR APIs. */
-  botType: z.string().min(1),
-  /** NIM App Key merged into credentials after scan (`nimToken` / SDK login). */
+  /** 网易云信控制台 App Key */
   appKey: z.string().min(1),
-  /** Writes into `channels.nim.accounts.<key>` when RPC omits accountId. */
-  writeToAccountKey: z.string().optional(),
+  /** 网易云信控制台 App Secret（仅服务端保存，用于 CheckSum） */
+  appSecret: z.string().min(1),
   /**
-   * Optional ilink routing header `SKRouteTag` (protocol curl 示例常用 `1001`)。
-   * 部分机房 / 接入形态若不携带会与轮询状态异常（如持续 expired）或响应字段不完整有关。
+   * REST 根地址，默认 `https://api.netease.im`；
+   * 融合通信 / 专有云请填控制台给出的 API 域名（仍拼接 `/nimserver/user/create.action`）。
    */
-  skRouteTag: z.string().optional(),
+  nimApiHost: z.string().optional(),
+  /** RPC 未带 accountId 时写入 `channels.nim.accounts.<key>` */
+  writeToAccountKey: z.string().optional(),
 });
 
 export type NimQrLoginConfig = z.infer<typeof NimQrLoginConfigSchema>;
@@ -250,11 +249,10 @@ export const nimChannelConfigJsonSchema = {
       type: "object",
       additionalProperties: false,
       properties: {
-        baseUrl: { type: "string" },
-        botType: { type: "string" },
         appKey: { type: "string" },
+        appSecret: { type: "string" },
+        nimApiHost: { type: "string" },
         writeToAccountKey: { type: "string" },
-        skRouteTag: { type: "string" },
       },
     },
     accounts: {
@@ -387,12 +385,11 @@ export const nimChannelConfigUiHints: Record<string, ConfigUiHint> = {
     label: "CDN Accelerate Host (Private Deploy)",
     advanced: true,
   },
-  qrLogin: { label: "QR login (ilink)", advanced: true },
-  "qrLogin.baseUrl": { label: "QR API Base URL", advanced: true },
-  "qrLogin.botType": { label: "ilink bot_type", advanced: true },
-  "qrLogin.appKey": { label: "NIM App Key (persist)", advanced: true },
-  "qrLogin.skRouteTag": {
-    label: "ilink SKRouteTag (optional)",
+  qrLogin: { label: "Gateway bind (NetEase REST)", advanced: true },
+  "qrLogin.appKey": { label: "NetEase IM App Key", advanced: true },
+  "qrLogin.appSecret": { label: "NetEase IM App Secret", sensitive: true, advanced: true },
+  "qrLogin.nimApiHost": {
+    label: "REST API host (default https://api.netease.im)",
     advanced: true,
   },
   "qrLogin.writeToAccountKey": {

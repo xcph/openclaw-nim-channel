@@ -1,6 +1,6 @@
 {
   "name": "@nimsuite/openclaw-nim-channel",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "type": "module",
   "description": "OpenClaw NIM (NetEase IM) channel plugin",
   "license": "MIT",
@@ -54,10 +54,12 @@
   },
   "dependencies": {
     "@yxim/nim-bot": "^10.9.78",
+    "qrcode": "^1.5.4",
     "zod": "^4.3.6"
   },
   "bundledDependencies": [
     "@yxim/nim-bot",
+    "qrcode",
     "zod"
   ],
   "devDependencies": {
