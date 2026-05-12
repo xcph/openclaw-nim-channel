@@ -3,6 +3,9 @@ import { createHash, randomBytes } from "node:crypto";
 /** IM V10 国内主域：https://doc.commsease.com/messaging2/server-apis/zcwODA3MTU */
 export const DEFAULT_NIM_OPEN_HOST = "https://open.yunxinapi.com";
 
+/** IM V10 新加坡等海外数据中心 open 网关 */
+export const DEFAULT_NIM_OPEN_HOST_SG = "https://open-sg.yunxinapi.com";
+
 /** 旧版 nimserver 表单接口常用根域（仅 nim-legacy 模式） */
 export const DEFAULT_NIM_LEGACY_HOST = "https://api.netease.im";
 
@@ -11,7 +14,7 @@ export type NimServerFlavor = "im-v10" | "nim-legacy";
 export type CreateNimUserParams = {
   /**
    * REST 根地址，勿带尾部路径。
-   * - im-v10：默认 `https://open.yunxinapi.com`，备用 `https://open-bak.yunxinapi.com`
+   * - im-v10：默认 `https://open.yunxinapi.com`；若 **未配置** 本字段且注册返回 **101303**，会在国内 open 与 `https://open-sg.yunxinapi.com` 之间自动再试一次。亦可手动指定数据中心域名。
    * - nim-legacy：默认 `https://api.netease.im`
    */
   nimApiHost?: string;
@@ -88,7 +91,7 @@ function hint414(flavor: NimServerFlavor): string {
 function hintForKnownCodes(code: number, flavor: NimServerFlavor): string {
   if (code === 414) return hint414(flavor);
   if (code === 101303) {
-    return "（101303：**服务端不认当前 AppKey**。请到网易云信控制台核对：是否为 **IM 即时通讯** 应用的 App Key（勿用其它产品线密钥、勿保留 __REPLACE__ 类占位符）；Key/Secret 是否同属一个应用；海外数据中心应用请将 qrLogin.nimApiHost 设为 **https://open-sg.yunxinapi.com**（或文档给出的该区域 open 域名）。）";
+    return "（101303：**服务端不认当前 App Key**。若 **未配置** qrLogin.nimApiHost，已自动依次请求国内 **open.yunxinapi.com** 与新加坡 **open-sg.yunxinapi.com**；仍失败请到控制台核对 **IM 即时通讯** 应用（勿用其它产品线密钥、勿保留占位符），Key 与 Secret 须同属一个应用。若控制台标明指定数据中心，也可 **手动设置** qrLogin.nimApiHost。）";
   }
   return "";
 }
@@ -102,9 +105,18 @@ function coerceV10Host(host: string): string {
   return h;
 }
 
-async function createImV10Accounts(params: CreateNimUserParams): Promise<CreateNimUserResult> {
-  const rawHost = (params.nimApiHost?.trim() || DEFAULT_NIM_OPEN_HOST).replace(/\/+$/, "");
-  const host = coerceV10Host(rawHost);
+function normalizeGatewayHost(host: string): string {
+  return host.replace(/\/+$/, "");
+}
+
+async function postImV2Accounts(
+  params: CreateNimUserParams,
+  hostBase: string,
+): Promise<
+  | { accountId: string; token: string }
+  | { error: true; code: number; codeRaw: unknown; msg: string }
+> {
+  const host = normalizeGatewayHost(hostBase);
   const url = `${host}/im/v2/accounts`;
   const nonce = randomBytes(16).toString("hex");
   const curTime = String(Math.floor(Date.now() / 1000));
@@ -144,9 +156,7 @@ async function createImV10Accounts(params: CreateNimUserParams): Promise<CreateN
   const codeRaw = root.code;
   const code = typeof codeRaw === "number" ? codeRaw : Number(codeRaw);
   if (!Number.isFinite(code) || code !== 200) {
-    const msg = pickMsg(root);
-    const hint = hintForKnownCodes(code, "im-v10");
-    throw new Error(`网易云信 IM V10 注册账号失败：code=${String(codeRaw)} ${msg}${hint}`);
+    return { error: true, code, codeRaw, msg: pickMsg(root) };
   }
 
   const data = root.data;
@@ -164,6 +174,39 @@ async function createImV10Accounts(params: CreateNimUserParams): Promise<CreateN
   }
 
   return { accountId, token };
+}
+
+async function createImV10Accounts(params: CreateNimUserParams): Promise<CreateNimUserResult> {
+  const explicitHost = Boolean(params.nimApiHost?.trim());
+  const rawHost = (params.nimApiHost?.trim() || DEFAULT_NIM_OPEN_HOST).replace(/\/+$/, "");
+  const primaryHost = normalizeGatewayHost(coerceV10Host(rawHost));
+
+  const first = await postImV2Accounts(params, primaryHost);
+  if (!("error" in first)) {
+    return { accountId: first.accountId, token: first.token };
+  }
+
+  /** 未显式配置 nimApiHost 且遇到「该区域不认该 Key」时，国内 ⇄ 新加坡 open 网关各试一次 */
+  if (!explicitHost && first.code === 101303) {
+    const cn = normalizeGatewayHost(DEFAULT_NIM_OPEN_HOST).toLowerCase();
+    const sg = normalizeGatewayHost(DEFAULT_NIM_OPEN_HOST_SG).toLowerCase();
+    const cur = primaryHost.toLowerCase();
+    const alt =
+      cur === cn ? normalizeGatewayHost(DEFAULT_NIM_OPEN_HOST_SG) : cur === sg ? normalizeGatewayHost(DEFAULT_NIM_OPEN_HOST) : null;
+    if (alt && alt.toLowerCase() !== cur) {
+      const second = await postImV2Accounts(params, alt);
+      if (!("error" in second)) {
+        return { accountId: second.accountId, token: second.token };
+      }
+      throw new Error(
+        `网易云信 IM V10 注册账号失败：已依次请求 ${primaryHost}（code=${first.code} ${first.msg}）与 ${alt}（code=${second.code} ${second.msg}）。${hintForKnownCodes(second.code, "im-v10")}`,
+      );
+    }
+  }
+
+  throw new Error(
+    `网易云信 IM V10 注册账号失败：code=${String(first.codeRaw)} ${first.msg}${hintForKnownCodes(first.code, "im-v10")}`,
+  );
 }
 
 async function createNimLegacyForm(params: CreateNimUserParams): Promise<CreateNimUserResult> {
