@@ -49,6 +49,12 @@ export type {
 // Export utility functions
 export { normalizeNimTarget, looksLikeNimId, formatNimTarget } from "./src/targets.js";
 export { resolveNimCredentials, resolveNimAccount, isNimP2pAllowed } from "./src/accounts.js";
+/** 网关 nim-web.login `qrDataUrl` 生成（nimToken → PNG data URL），可与其它仓库对齐复用 */
+export {
+  composeNimTokenLine,
+  buildNimGatewayQrDataUrl,
+  NIM_GATEWAY_QR_TO_DATA_URL_OPTIONS,
+} from "./src/auth/nim-qrcode.js";
 
 // Export QChat functions
 export { sendQChatMessage, setSharedQChatClient, getSharedQChatClient } from "./src/qchat-send.js";

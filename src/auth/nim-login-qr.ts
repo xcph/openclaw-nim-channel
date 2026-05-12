@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 
-import QRCode from "qrcode";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
 
 import type { NimQrLoginConfig } from "../config-schema.js";
 import { createNimUserViaServerApi } from "./nim-netease-create.js";
+import { buildNimGatewayQrDataUrl, composeNimTokenLine } from "./nim-qrcode.js";
 
 const ACTIVE_LOGIN_TTL_MS = 5 * 60_000;
 
@@ -134,13 +134,8 @@ export async function startNimLoginWithQr(params: {
       token: initialToken,
     });
 
-    const nimTokenLine = `${qrCfg.appKey}|${accountId}|${token}`;
-    const qrDataUrl = await QRCode.toDataURL(nimTokenLine, {
-      errorCorrectionLevel: "M",
-      margin: 2,
-      width: 280,
-      type: "image/png",
-    });
+    const nimTokenLine = composeNimTokenLine(qrCfg.appKey, accountId, token);
+    const qrDataUrl = await buildNimGatewayQrDataUrl(nimTokenLine);
 
     activeLogins.set(sessionKey, {
       sessionKey,
