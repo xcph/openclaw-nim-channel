@@ -1,10 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
 
-/** 默认与网易云信服务端 API 文档一致；专有云可改 qrLogin.nimApiHost。 */
-export const DEFAULT_NIM_API_HOST = "https://api.netease.im";
+/** 国内主域名（文档 2025+）：https://doc.commsease.com/messaging2/server-apis/jk3MzY2MTI */
+export const DEFAULT_NIM_API_HOST = "https://api.yunxinapi.com";
 
 function buildChecksum(appSecret: string, nonce: string, curTime: string): string {
-  return createHash("sha1").update(appSecret + nonce + curTime).digest("hex");
+  return createHash("sha1").update(`${appSecret}${nonce}${curTime}`, "utf8").digest("hex");
 }
 
 function parseInfoRecord(info: unknown): Record<string, unknown> | null {
@@ -25,7 +25,7 @@ function parseInfoRecord(info: unknown): Record<string, unknown> | null {
 }
 
 export type CreateNimUserParams = {
-  /** 如 `https://api.netease.im`，勿带尾部路径 */
+  /** 如 `https://api.yunxinapi.com`，勿带尾部路径；专有云按控制台填写 */
   nimApiHost?: string;
   appKey: string;
   appSecret: string;
@@ -83,7 +83,11 @@ export async function createNimUserViaServerApi(params: CreateNimUserParams): Pr
   const code = typeof codeRaw === "number" ? codeRaw : Number(codeRaw);
   if (!Number.isFinite(code) || code !== 200) {
     const desc = typeof root.desc === "string" ? root.desc : JSON.stringify(parsed).slice(0, 400);
-    throw new Error(`网易云信 user/create 失败：code=${String(codeRaw)} ${desc}`);
+    const hint414 =
+      code === 414
+        ? "（414：CheckSum 校验失败。请核对控制台 App Secret 是否与当前 App Key 为同一应用、复制无首尾空格或换行；网关容器需 NTP 同步（与服务端时间差须在 5 分钟内）；国内请优先使用 api.yunxinapi.com，必要时可在 qrLogin.nimApiHost 填写备用域名 api-cn-bak.yunxinapi.com。）"
+        : "";
+    throw new Error(`网易云信 user/create 失败：code=${String(codeRaw)} ${desc}${hint414}`);
   }
 
   const infoRec = parseInfoRecord(root.info);

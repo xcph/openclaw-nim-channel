@@ -226,8 +226,8 @@ export const NimQrLoginConfigSchema = z.object({
   /** 网易云信控制台 App Secret（仅服务端保存，用于 CheckSum） */
   appSecret: z.string().min(1),
   /**
-   * REST 根地址，默认 `https://api.netease.im`；
-   * 融合通信 / 专有云请填控制台给出的 API 域名（仍拼接 `/nimserver/user/create.action`）。
+   * REST 根地址，默认 `https://api.yunxinapi.com`（网易云信当前文档国内主域名）；
+   * 灾备可填 `https://api-cn-bak.yunxinapi.com`；专有云按控制台填写。
    */
   nimApiHost: z.string().optional(),
   /** RPC 未带 accountId 时写入 `channels.nim.accounts.<key>` */
@@ -389,7 +389,7 @@ export const nimChannelConfigUiHints: Record<string, ConfigUiHint> = {
   "qrLogin.appKey": { label: "NetEase IM App Key", advanced: true },
   "qrLogin.appSecret": { label: "NetEase IM App Secret", sensitive: true, advanced: true },
   "qrLogin.nimApiHost": {
-    label: "REST API host (default https://api.netease.im)",
+    label: "REST host (default api.yunxinapi.com)",
     advanced: true,
   },
   "qrLogin.writeToAccountKey": {
