@@ -22,7 +22,8 @@
               "appSecret": { "type": "string", "sensitive": true },
               "nimApiHost": { "type": "string" },
               "nimServerFlavor": { "type": "string", "enum": ["im-v10", "nim-legacy"] },
-              "writeToAccountKey": { "type": "string" }
+              "writeToAccountKey": { "type": "string" },
+              "lbsBaseUrl": { "type": "string" }
             }
           },
           "accounts": {
@@ -154,13 +155,17 @@
           "label": "CDN Accelerate Host (Private Deploy)",
           "advanced": true
         },
-        "qrLogin": { "label": "Gateway bind (NetEase REST)", "advanced": true },
-        "qrLogin.appKey": { "label": "NetEase IM App Key", "advanced": true },
-        "qrLogin.appSecret": { "label": "NetEase IM App Secret", "sensitive": true, "advanced": true },
-        "qrLogin.nimApiHost": { "label": "REST API host (V10: open.yunxinapi.com)", "advanced": true },
+        "qrLogin": { "label": "Gateway QR bind (NetEase LBS)", "advanced": true },
+        "qrLogin.appKey": { "label": "NetEase IM App Key (optional)", "advanced": true },
+        "qrLogin.appSecret": { "label": "NetEase IM App Secret (optional)", "sensitive": true, "advanced": true },
+        "qrLogin.nimApiHost": { "label": "REST API host (legacy)", "advanced": true },
         "qrLogin.nimServerFlavor": { "label": "API flavor (im-v10 / nim-legacy)", "advanced": true },
         "qrLogin.writeToAccountKey": {
           "label": "Default accounts.<key> for new login",
+          "advanced": true
+        },
+        "qrLogin.lbsBaseUrl": {
+          "label": "LBS bind host (default lbs.netease.im)",
           "advanced": true
         }
       }

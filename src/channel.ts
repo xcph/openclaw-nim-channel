@@ -358,11 +358,11 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       });
       if (result.connected && result.botToken && result.nimAccount) {
         const qrCfg = resolveNimQrLoginFromConfig(cfg);
-        const appKey = qrCfg?.appKey ?? "";
+        const appKey = result.nimAppKey ?? qrCfg?.appKey ?? "";
         if (!appKey) {
           return {
             connected: false,
-            message: "appKey 不可用（请配置 qrLogin.appKey 或环境变量 NIM_APP_KEY），无法写入 nimToken。",
+            message: "绑定结果缺少 appKey，无法写入 nimToken。",
           };
         }
         const writeKey = resolveNimQrWriteAccountKey({

@@ -1,6 +1,6 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
 
-import { resolveNimQrLoginFromConfig } from "./nim-login-qr.js";
+import { resolveNimGatewayQrBindOptions } from "./nim-login-qr.js";
 
 export async function persistNimQrCredentials(params: {
   writeToAccountKey: string;
@@ -37,6 +37,6 @@ export function resolveNimQrWriteAccountKey(params: {
 }): string {
   const g = params.gatewayAccountId?.trim();
   if (g) return g;
-  const qr = resolveNimQrLoginFromConfig(params.cfg);
-  return qr?.writeToAccountKey ?? "primary";
+  const opts = resolveNimGatewayQrBindOptions(params.cfg);
+  return opts.writeToAccountKey;
 }

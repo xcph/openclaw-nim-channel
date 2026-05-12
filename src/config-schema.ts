@@ -217,29 +217,33 @@ const NimAccountsSchema = z
  * - a runtime protocol identity derived as "<appKey>:<accid>"
  */
 /**
- * 网关 nim-web.login.* / Flutter「/nim-login new」：网易云信服务端 user/create（AppKey + AppSecret），
- * 不使用微信 ilink / get_bot_qrcode。
+ * 网关 nim-web.login.* / Flutter「/nim-login new」：
+ * - **默认**：网易云信 LBS 扫码绑定（`https://lbs.netease.im`，与 openclaw-nim-tools install 一致），**无需**事先配置 AppKey/AppSecret。
+ * - **可选**：`appKey` / `appSecret` / `nimApiHost` 等字段保留给其它需服务端 REST 的场景（本插件网关扫码流程不再使用其建号）。
  */
 export const NimQrLoginConfigSchema = z.object({
-  /** 网易云信控制台 App Key（也可用环境变量 NIM_APP_KEY，避免写入配置文件） */
-  appKey: z.string().min(1),
-  /** 网易云信控制台 App Secret（也可用环境变量 NIM_APP_SECRET） */
-  appSecret: z.string().min(1),
+  /** 可选；仅扩展用途（网关 LBS 扫码不依赖）。也可用环境变量 NIM_APP_KEY */
+  appKey: z.string().optional(),
+  /** 可选；仅扩展用途。也可用环境变量 NIM_APP_SECRET */
+  appSecret: z.string().optional(),
   /**
-   * REST 根地址，勿带路径后缀。
-   * - **im-v10**（默认）：一般为 `https://open.yunxinapi.com`，备用 `https://open-bak.yunxinapi.com`
-   * - **nim-legacy**：一般为 `https://api.netease.im`（nimserver 表单接口）
+   * REST 根地址（扩展用途）。网关 LBS 扫码不读取此项。
    *
-   * 未配置 `channels.nim.qrLogin` 对象时，可读环境变量 **NIM_QR_LOGIN_NIM_API_HOST**。
+   * 未在配置中填写时，可读环境变量 **NIM_QR_LOGIN_NIM_API_HOST**。
    */
   nimApiHost: z.string().optional(),
   /**
-   * - `im-v10`：`POST /im/v2/accounts`（JSON，当前公有云文档推荐）
-   * - `nim-legacy`：`POST /nimserver/user/create.action`（表单，旧栈/部分专有云）
+   * - `im-v10`：`POST /im/v2/accounts`（JSON）
+   * - `nim-legacy`：`POST /nimserver/user/create.action`（表单）
    */
   nimServerFlavor: z.enum(["im-v10", "nim-legacy"]).optional().default("im-v10"),
   /** RPC 未带 accountId 时写入 `channels.nim.accounts.<key>` */
   writeToAccountKey: z.string().optional(),
+  /**
+   * LBS 扫码绑定根地址，默认 `https://lbs.netease.im`。
+   * 可用环境变量 **NIM_LBS_BASE_URL** 覆盖。
+   */
+  lbsBaseUrl: z.string().optional(),
 });
 
 export type NimQrLoginConfig = z.infer<typeof NimQrLoginConfigSchema>;
@@ -262,6 +266,7 @@ export const nimChannelConfigJsonSchema = {
         nimApiHost: { type: "string" },
         nimServerFlavor: { type: "string", enum: ["im-v10", "nim-legacy"] },
         writeToAccountKey: { type: "string" },
+        lbsBaseUrl: { type: "string" },
       },
     },
     accounts: {
@@ -394,9 +399,16 @@ export const nimChannelConfigUiHints: Record<string, ConfigUiHint> = {
     label: "CDN Accelerate Host (Private Deploy)",
     advanced: true,
   },
-  qrLogin: { label: "Gateway bind (NetEase REST)", advanced: true },
-  "qrLogin.appKey": { label: "NetEase IM App Key", advanced: true },
-  "qrLogin.appSecret": { label: "NetEase IM App Secret", sensitive: true, advanced: true },
+  qrLogin: {
+    label: "Gateway QR bind (NetEase LBS)",
+    advanced: true,
+  },
+  "qrLogin.appKey": { label: "NetEase IM App Key (optional / legacy REST)", advanced: true },
+  "qrLogin.appSecret": {
+    label: "NetEase IM App Secret (optional / legacy REST)",
+    sensitive: true,
+    advanced: true,
+  },
   "qrLogin.nimApiHost": {
     label: "REST host (V10: open.yunxinapi.com)",
     advanced: true,
@@ -407,6 +419,10 @@ export const nimChannelConfigUiHints: Record<string, ConfigUiHint> = {
   },
   "qrLogin.writeToAccountKey": {
     label: "Default accounts.<key> for new login",
+    advanced: true,
+  },
+  "qrLogin.lbsBaseUrl": {
+    label: "LBS bind host (default: lbs.netease.im)",
     advanced: true,
   },
 };

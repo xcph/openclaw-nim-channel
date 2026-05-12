@@ -1,8 +1,8 @@
 /**
  * 网易云信「网关扫码登录」二维码：`nim-web.login.start` 返回给 Flutter 的 `qrDataUrl`。
  *
- * 与 @nimsuite/openclaw-nim-channel 行为对齐：服务端生成 **nimToken** 文本（`appKey|accountId|token`），
- * 再由 `qrcode` 渲染为 **PNG data URL**，供 `_OpenclawWeixinLoginDialog`（data:image 分支）展示。
+ * **LBS 绑定**（默认）：载荷为 JSON `{"qrCode":"<uuid>","expireAt":<ms>}`，与 openclaw-nim-tools / NIM 客户端约定一致。
+ * **PNG**：由 `qrcode` 渲染，供 `_OpenclawWeixinLoginDialog`（data:image 分支）展示。
  */
 import QRCode from "qrcode";
 
@@ -19,11 +19,11 @@ export function composeNimTokenLine(appKey: string, accountId: string, token: st
   return `${appKey.trim()}|${accountId.trim()}|${token.trim()}`;
 }
 
-/** 将凭据文本编码为 `data:image/png;base64,...`，用作网关 `payload.qrDataUrl`。 */
-export async function buildNimGatewayQrDataUrl(nimTokenLine: string): Promise<string> {
-  const line = nimTokenLine.trim();
+/** 将扫码载荷文本编码为 `data:image/png;base64,...`（LBS JSON 或 nimToken 单行）。 */
+export async function buildNimGatewayQrDataUrl(payloadText: string): Promise<string> {
+  const line = payloadText.trim();
   if (!line) {
-    throw new Error("nimTokenLine 为空，无法生成二维码");
+    throw new Error("二维码载荷为空");
   }
   return QRCode.toDataURL(line, NIM_GATEWAY_QR_TO_DATA_URL_OPTIONS);
 }

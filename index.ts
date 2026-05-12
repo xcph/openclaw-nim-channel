@@ -49,7 +49,7 @@ export type {
 // Export utility functions
 export { normalizeNimTarget, looksLikeNimId, formatNimTarget } from "./src/targets.js";
 export { resolveNimCredentials, resolveNimAccount, isNimP2pAllowed } from "./src/accounts.js";
-/** 网关 nim-web.login `qrDataUrl` 生成（nimToken → PNG data URL），可与其它仓库对齐复用 */
+/** 网关 nim-web.login `qrDataUrl`：LBS 为 JSON 载荷 → PNG data URL，可与其它仓库对齐复用 */
 export {
   composeNimTokenLine,
   buildNimGatewayQrDataUrl,
