@@ -228,6 +228,11 @@ export const NimQrLoginConfigSchema = z.object({
   appKey: z.string().min(1),
   /** Writes into `channels.nim.accounts.<key>` when RPC omits accountId. */
   writeToAccountKey: z.string().optional(),
+  /**
+   * Optional ilink routing header `SKRouteTag` (protocol curl 示例常用 `1001`)。
+   * 部分机房 / 接入形态若不携带会与轮询状态异常（如持续 expired）或响应字段不完整有关。
+   */
+  skRouteTag: z.string().optional(),
 });
 
 export type NimQrLoginConfig = z.infer<typeof NimQrLoginConfigSchema>;
@@ -249,6 +254,7 @@ export const nimChannelConfigJsonSchema = {
         botType: { type: "string" },
         appKey: { type: "string" },
         writeToAccountKey: { type: "string" },
+        skRouteTag: { type: "string" },
       },
     },
     accounts: {
@@ -385,6 +391,10 @@ export const nimChannelConfigUiHints: Record<string, ConfigUiHint> = {
   "qrLogin.baseUrl": { label: "QR API Base URL", advanced: true },
   "qrLogin.botType": { label: "ilink bot_type", advanced: true },
   "qrLogin.appKey": { label: "NIM App Key (persist)", advanced: true },
+  "qrLogin.skRouteTag": {
+    label: "ilink SKRouteTag (optional)",
+    advanced: true,
+  },
   "qrLogin.writeToAccountKey": {
     label: "Default accounts.<key> for new login",
     advanced: true,

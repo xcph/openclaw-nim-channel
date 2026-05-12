@@ -21,7 +21,8 @@
               "baseUrl": { "type": "string" },
               "botType": { "type": "string" },
               "appKey": { "type": "string" },
-              "writeToAccountKey": { "type": "string" }
+              "writeToAccountKey": { "type": "string" },
+              "skRouteTag": { "type": "string" }
             }
           },
           "accounts": {
@@ -157,6 +158,10 @@
         "qrLogin.baseUrl": { "label": "QR API Base URL", "advanced": true },
         "qrLogin.botType": { "label": "ilink bot_type", "advanced": true },
         "qrLogin.appKey": { "label": "NIM App Key (persist)", "advanced": true },
+        "qrLogin.skRouteTag": {
+          "label": "ilink SKRouteTag (optional)",
+          "advanced": true
+        },
         "qrLogin.writeToAccountKey": {
           "label": "Default accounts.<key> for new login",
           "advanced": true
