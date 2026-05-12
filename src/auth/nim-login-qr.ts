@@ -9,7 +9,10 @@ import { createNimUserViaServerApi } from "./nim-netease-create.js";
 const ACTIVE_LOGIN_TTL_MS = 5 * 60_000;
 
 /** 网关 nim-web.login.* / Flutter「/nim-login」解析用的扫码绑定配置（网易云信 REST，非微信 ilink）。 */
-export type NimQrResolved = Pick<NimQrLoginConfig, "appKey" | "appSecret" | "nimApiHost"> & {
+export type NimQrResolved = Pick<
+  NimQrLoginConfig,
+  "appKey" | "appSecret" | "nimApiHost" | "nimServerFlavor"
+> & {
   writeToAccountKey: string;
 };
 
@@ -52,6 +55,7 @@ export function resolveNimQrLoginFromConfig(cfg: OpenClawConfig): NimQrResolved 
     appKey,
     appSecret,
     nimApiHost: q?.nimApiHost?.trim(),
+    nimServerFlavor: q?.nimServerFlavor === "nim-legacy" ? "nim-legacy" : "im-v10",
     writeToAccountKey: q?.writeToAccountKey?.trim() || "primary",
   };
 }
@@ -94,7 +98,7 @@ export async function startNimLoginWithQr(params: {
   if (!qrCfg) {
     return {
       message:
-        "未配置 NIM 网关新账号绑定：请在 channels.nim.qrLogin 设置 appKey、appSecret（网易云信控制台 App Secret，用于服务端 user/create REST）。不使用微信 ilink。",
+        "未配置 NIM 网关新账号绑定：请在 channels.nim.qrLogin 设置 appKey、appSecret（网易云信控制台，用于服务端注册 IM 账号）。不使用微信 ilink。",
       sessionKey,
     };
   }
@@ -118,18 +122,19 @@ export async function startNimLoginWithQr(params: {
   }
 
   try {
-    const account = randomAccid();
+    const accountRequested = randomAccid();
     const initialToken = randomInitialToken();
-    const { token } = await createNimUserViaServerApi({
+    const { accountId, token } = await createNimUserViaServerApi({
       nimApiHost: qrCfg.nimApiHost,
+      nimServerFlavor: qrCfg.nimServerFlavor,
       appKey: qrCfg.appKey,
       appSecret: qrCfg.appSecret,
-      accid: account,
-      name: `OpenClaw bot ${account}`,
+      accountId: accountRequested,
+      name: `OpenClaw bot ${accountRequested}`,
       token: initialToken,
     });
 
-    const nimTokenLine = `${qrCfg.appKey}|${account}|${token}`;
+    const nimTokenLine = `${qrCfg.appKey}|${accountId}|${token}`;
     const qrDataUrl = await QRCode.toDataURL(nimTokenLine, {
       errorCorrectionLevel: "M",
       margin: 2,
@@ -142,7 +147,7 @@ export async function startNimLoginWithQr(params: {
       id: randomUUID(),
       startedAt: Date.now(),
       appKey: qrCfg.appKey,
-      account,
+      account: accountId,
       token,
       qrDataUrl,
     });
@@ -150,7 +155,7 @@ export async function startNimLoginWithQr(params: {
     return {
       qrDataUrl,
       message:
-        "已通过网易云信服务端创建新 IM 账号。请调用 nim-web.login.wait 写入配置；二维码内容为 nimToken，可供手机扫码备份。",
+        "已通过网易云信服务端注册新 IM 账号（默认 IM V10）。请调用 nim-web.login.wait 写入配置；二维码内容为 nimToken，可供手机扫码备份。",
       sessionKey,
     };
   } catch (err) {

@@ -21,6 +21,7 @@
               "appKey": { "type": "string" },
               "appSecret": { "type": "string", "sensitive": true },
               "nimApiHost": { "type": "string" },
+              "nimServerFlavor": { "type": "string", "enum": ["im-v10", "nim-legacy"] },
               "writeToAccountKey": { "type": "string" }
             }
           },
@@ -156,7 +157,8 @@
         "qrLogin": { "label": "Gateway bind (NetEase REST)", "advanced": true },
         "qrLogin.appKey": { "label": "NetEase IM App Key", "advanced": true },
         "qrLogin.appSecret": { "label": "NetEase IM App Secret", "sensitive": true, "advanced": true },
-        "qrLogin.nimApiHost": { "label": "REST API host (default api.yunxinapi.com)", "advanced": true },
+        "qrLogin.nimApiHost": { "label": "REST API host (V10: open.yunxinapi.com)", "advanced": true },
+        "qrLogin.nimServerFlavor": { "label": "API flavor (im-v10 / nim-legacy)", "advanced": true },
         "qrLogin.writeToAccountKey": {
           "label": "Default accounts.<key> for new login",
           "advanced": true
