@@ -68,8 +68,18 @@ function hint414(flavor: NimServerFlavor): string {
   return "（414：多为 CheckSum 失败。请核对 AppSecret、NTP；legacy 模式确认 nimApiHost 与 nimserver 路由可达。）";
 }
 
+function coerceV10Host(host: string): string {
+  const h = host.replace(/\/+$/, "");
+  /** 旧文档「api.yunxinapi.com」为另一套接入；IM V10 账号接口在 open 网关 */
+  if (/^https?:\/\/api\.yunxinapi\.com$/i.test(h)) {
+    return DEFAULT_NIM_OPEN_HOST;
+  }
+  return h;
+}
+
 async function createImV10Accounts(params: CreateNimUserParams): Promise<CreateNimUserResult> {
-  const host = (params.nimApiHost?.trim() || DEFAULT_NIM_OPEN_HOST).replace(/\/+$/, "");
+  const rawHost = (params.nimApiHost?.trim() || DEFAULT_NIM_OPEN_HOST).replace(/\/+$/, "");
+  const host = coerceV10Host(rawHost);
   const url = `${host}/im/v2/accounts`;
   const nonce = randomBytes(16).toString("hex");
   const curTime = String(Math.floor(Date.now() / 1000));
