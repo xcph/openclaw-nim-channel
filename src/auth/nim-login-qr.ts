@@ -8,6 +8,15 @@ import { buildNimGatewayQrDataUrl, composeNimTokenLine } from "./nim-qrcode.js";
 
 const ACTIVE_LOGIN_TTL_MS = 5 * 60_000;
 
+/**
+ * 网关扫码绑定用的网易云信 **应用级**密钥（与 `test/send-test.ts` 一致）。
+ * 可不写入 `channels.nim.qrLogin`：在容器/进程环境中注入即可触发服务端注册并出码。
+ */
+export const NIM_QR_LOGIN_ENV_APP_KEY = "NIM_APP_KEY";
+export const NIM_QR_LOGIN_ENV_APP_SECRET = "NIM_APP_SECRET";
+/** 可选；等价于 `qrLogin.nimApiHost`（未配置 qrLogin 对象时仍生效） */
+export const NIM_QR_LOGIN_ENV_NIM_API_HOST = "NIM_QR_LOGIN_NIM_API_HOST";
+
 /** 网关 nim-web.login.* / Flutter「/nim-login」解析用的扫码绑定配置（网易云信 REST，非微信 ilink）。 */
 export type NimQrResolved = Pick<
   NimQrLoginConfig,
@@ -46,15 +55,17 @@ function randomInitialToken(): string {
 export function resolveNimQrLoginFromConfig(cfg: OpenClawConfig): NimQrResolved | null {
   const nim = cfg.channels?.nim as { qrLogin?: NimQrLoginConfig } | undefined;
   const q = nim?.qrLogin;
-  const appKey = q?.appKey?.trim();
-  const appSecret = q?.appSecret?.trim();
+  const appKey = (q?.appKey?.trim() || process.env[NIM_QR_LOGIN_ENV_APP_KEY]?.trim() || "").trim();
+  const appSecret = (q?.appSecret?.trim() || process.env[NIM_QR_LOGIN_ENV_APP_SECRET]?.trim() || "").trim();
   if (!appKey || !appSecret) {
     return null;
   }
+  const nimApiHostRaw =
+    (q?.nimApiHost?.trim() || process.env[NIM_QR_LOGIN_ENV_NIM_API_HOST]?.trim() || "").trim();
   return {
     appKey,
     appSecret,
-    nimApiHost: q?.nimApiHost?.trim(),
+    nimApiHost: nimApiHostRaw || undefined,
     nimServerFlavor: q?.nimServerFlavor === "nim-legacy" ? "nim-legacy" : "im-v10",
     writeToAccountKey: q?.writeToAccountKey?.trim() || "primary",
   };
@@ -98,7 +109,7 @@ export async function startNimLoginWithQr(params: {
   if (!qrCfg) {
     return {
       message:
-        "未配置 NIM 网关新账号绑定：请在 channels.nim.qrLogin 设置 appKey、appSecret（网易云信控制台，用于服务端注册 IM 账号）。不使用微信 ilink。",
+        "未配置 NIM 网关新账号绑定：网易云信服务端注册账号必须使用应用级 AppKey + AppSecret。请在 channels.nim.qrLogin 填写，或通过环境变量注入 NIM_APP_KEY、NIM_APP_SECRET（无需写入配置文件）。扫码二维码展示的是注册成功后的 nimToken 备份，不能代替上述密钥。",
       sessionKey,
     };
   }
@@ -173,7 +184,8 @@ export async function waitForNimLogin(params: {
   if (!qrCfg) {
     return {
       connected: false,
-      message: "未配置 channels.nim.qrLogin（appKey/appSecret），无法完成绑定。",
+      message:
+        "未完成绑定前置条件：channels.nim.qrLogin 未提供 appKey/appSecret，且环境变量 NIM_APP_KEY、NIM_APP_SECRET 也未设置。",
     };
   }
 

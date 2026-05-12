@@ -221,14 +221,16 @@ const NimAccountsSchema = z
  * 不使用微信 ilink / get_bot_qrcode。
  */
 export const NimQrLoginConfigSchema = z.object({
-  /** 网易云信控制台 App Key */
+  /** 网易云信控制台 App Key（也可用环境变量 NIM_APP_KEY，避免写入配置文件） */
   appKey: z.string().min(1),
-  /** 网易云信控制台 App Secret（仅服务端保存，用于 CheckSum） */
+  /** 网易云信控制台 App Secret（也可用环境变量 NIM_APP_SECRET） */
   appSecret: z.string().min(1),
   /**
    * REST 根地址，勿带路径后缀。
    * - **im-v10**（默认）：一般为 `https://open.yunxinapi.com`，备用 `https://open-bak.yunxinapi.com`
    * - **nim-legacy**：一般为 `https://api.netease.im`（nimserver 表单接口）
+   *
+   * 未配置 `channels.nim.qrLogin` 对象时，可读环境变量 **NIM_QR_LOGIN_NIM_API_HOST**。
    */
   nimApiHost: z.string().optional(),
   /**

@@ -362,7 +362,7 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
         if (!appKey) {
           return {
             connected: false,
-            message: "channels.nim.qrLogin.appKey 未配置，无法写入 nimToken。",
+            message: "appKey 不可用（请配置 qrLogin.appKey 或环境变量 NIM_APP_KEY），无法写入 nimToken。",
           };
         }
         const writeKey = resolveNimQrWriteAccountKey({
