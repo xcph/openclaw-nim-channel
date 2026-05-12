@@ -307,7 +307,92 @@ export const nimPlugin: ChannelPlugin<ResolvedNimAccount> = {
       };
     },
   },
+  gatewayMethods: ["nim-web.login.start", "nim-web.login.wait"],
   gateway: {
+    loginWithQrStart: async (params) => {
+      const { loadConfig } = await import("openclaw/plugin-sdk/config-runtime");
+      const cfg = loadConfig();
+      const { startNimLoginWithQr } = await import("./auth/nim-login-qr.js");
+      const r = await startNimLoginWithQr({
+        cfg,
+        accountId: params.accountId,
+        force: params.force,
+        verbose: params.verbose,
+      });
+      return {
+        qrDataUrl: r.qrDataUrl,
+        message: r.message,
+        sessionKey: r.sessionKey,
+        connected: r.connected,
+      };
+    },
+    loginWithQrWait: async (params) => {
+      const p = params as {
+        accountId?: string;
+        timeoutMs?: number;
+        sessionKey?: string;
+        currentQrDataUrl?: string;
+      };
+      const { loadConfig } = await import("openclaw/plugin-sdk/config-runtime");
+      const cfg = loadConfig();
+      const { waitForNimLogin, resolveNimQrLoginFromConfig } = await import(
+        "./auth/nim-login-qr.js"
+      );
+      const { persistNimQrCredentials, resolveNimQrWriteAccountKey } = await import(
+        "./auth/nim-qr-persist.js"
+      );
+      const sessionKey =
+        (typeof p.sessionKey === "string" && p.sessionKey.trim()) ||
+        (typeof p.accountId === "string" && p.accountId.trim()) ||
+        "";
+      if (!sessionKey) {
+        return {
+          connected: false,
+          message: "缺少 sessionKey：请先调用 nim-web.login.start。",
+        };
+      }
+      const result = await waitForNimLogin({
+        cfg,
+        sessionKey,
+        timeoutMs: p.timeoutMs,
+      });
+      if (result.connected && result.botToken && result.ilinkBotId) {
+        const qrCfg = resolveNimQrLoginFromConfig(cfg);
+        const appKey = qrCfg?.appKey ?? "";
+        if (!appKey) {
+          return {
+            connected: false,
+            message: "channels.nim.qrLogin.appKey 未配置，无法写入 nimToken。",
+          };
+        }
+        const writeKey = resolveNimQrWriteAccountKey({
+          cfg,
+          gatewayAccountId: p.accountId,
+        });
+        try {
+          await persistNimQrCredentials({
+            writeToAccountKey: writeKey,
+            appKey,
+            account: result.ilinkBotId,
+            token: result.botToken,
+          });
+        } catch (err) {
+          return {
+            connected: false,
+            message: `扫码成功但写入 openclaw.json 失败：${String(err)}`,
+          };
+        }
+        return {
+          connected: true,
+          message: result.message,
+          accountId: writeKey,
+        };
+      }
+      return {
+        connected: result.connected,
+        message: result.message,
+      };
+    },
     startAccount: async (ctx) => {
       const { monitorNimProvider } = await import("./monitor.js");
 

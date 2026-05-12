@@ -1,6 +1,6 @@
 {
   "name": "@nimsuite/openclaw-nim-channel",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "description": "OpenClaw NIM (NetEase IM) channel plugin",
   "license": "MIT",

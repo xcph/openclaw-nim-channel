@@ -216,14 +216,41 @@ const NimAccountsSchema = z
  * - a stable config key (`accounts.<key>`) used for routing / task delivery
  * - a runtime protocol identity derived as "<appKey>:<accid>"
  */
+/**
+ * Optional ilink-compatible QR login (nim-web.login.* / Flutter「/nim-login」)。
+ */
+export const NimQrLoginConfigSchema = z.object({
+  /** HTTPS origin for `ilink/bot/get_bot_qrcode` (default: ilink national URL). */
+  baseUrl: z.string().optional(),
+  /** `bot_type` query parameter for ilink QR APIs. */
+  botType: z.string().min(1),
+  /** NIM App Key merged into credentials after scan (`nimToken` / SDK login). */
+  appKey: z.string().min(1),
+  /** Writes into `channels.nim.accounts.<key>` when RPC omits accountId. */
+  writeToAccountKey: z.string().optional(),
+});
+
+export type NimQrLoginConfig = z.infer<typeof NimQrLoginConfigSchema>;
+
 export const NimConfigSchema = z.object({
   accounts: NimAccountsSchema,
+  qrLogin: NimQrLoginConfigSchema.optional(),
 });
 
 export const nimChannelConfigJsonSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
+    qrLogin: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        baseUrl: { type: "string" },
+        botType: { type: "string" },
+        appKey: { type: "string" },
+        writeToAccountKey: { type: "string" },
+      },
+    },
     accounts: {
       type: "object",
       minProperties: 1,
@@ -352,6 +379,14 @@ export const nimChannelConfigUiHints: Record<string, ConfigUiHint> = {
   },
   "advanced.nos_accelerate_host": {
     label: "CDN Accelerate Host (Private Deploy)",
+    advanced: true,
+  },
+  qrLogin: { label: "QR login (ilink)", advanced: true },
+  "qrLogin.baseUrl": { label: "QR API Base URL", advanced: true },
+  "qrLogin.botType": { label: "ilink bot_type", advanced: true },
+  "qrLogin.appKey": { label: "NIM App Key (persist)", advanced: true },
+  "qrLogin.writeToAccountKey": {
+    label: "Default accounts.<key> for new login",
     advanced: true,
   },
 };
