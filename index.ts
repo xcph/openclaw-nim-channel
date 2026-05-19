@@ -1,6 +1,7 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { emptyPluginConfigSchema } from "openclaw/plugin-sdk";
 import { nimPlugin } from "./src/channel.js";
+import { registerNimQrGatewayMethods } from "./src/register-qr-gateway-methods.js";
 import { setNimRuntime } from "./src/runtime.js";
 
 // Version stamp — confirms new code is loaded
@@ -75,6 +76,7 @@ const plugin = {
     setNimRuntime(api.runtime as any);
 
     api.registerChannel({ plugin: nimPlugin });
+    registerNimQrGatewayMethods(api, nimPlugin);
   },
 };
 
